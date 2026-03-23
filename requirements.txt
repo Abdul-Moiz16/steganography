@@ -1,0 +1,20 @@
+# Core runtime
+Pillow>=10.0
+numpy>=1.24
+scipy>=1.10
+scikit-image>=0.22
+scikit-learn>=1.4
+
+# ML image generation (ml_a/ml_b)
+# Note: for CUDA-specific wheels, install torch per https://pytorch.org/get-started/locally/
+torch>=2.2
+diffusers>=0.30
+transformers>=4.41
+accelerate>=0.30
+safetensors>=0.4
+
+# Test tooling
+pytest>=8.0
+
+# Plot generation
+matplotlib>=3.8

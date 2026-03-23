@@ -1,0 +1,367 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+% ---- Minimalist theme ----
+\usetheme{default}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{frametitle continuation}{}
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{enumerate items}[default]
+
+% ---- Font ----
+\usepackage[T1]{fontenc}
+\usepackage{tgheros}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{microtype}
+
+% ---- Packages ----
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usetikzlibrary{arrows.meta,positioning,calc,fit}
+
+% ---- Maastricht University colors ----
+\definecolor{umdark}{HTML}{001C3D}
+\definecolor{umorange}{HTML}{E84E10}
+\definecolor{umlight}{HTML}{4A90C4}
+\definecolor{umgray}{HTML}{6B7280}
+\newcommand{\icite}[1]{{\footnotesize\color{umgray!85}#1}}
+
+% ---- Apply colors to Beamer ----
+\setbeamercolor{normal text}{fg=umdark}
+\setbeamercolor{frametitle}{fg=umdark}
+\setbeamercolor{title}{fg=umdark}
+\setbeamercolor{subtitle}{fg=umgray}
+\setbeamercolor{author}{fg=umgray}
+\setbeamercolor{date}{fg=umgray}
+\setbeamercolor{institute}{fg=umorange}
+\setbeamercolor{itemize item}{fg=umorange}
+\setbeamercolor{itemize subitem}{fg=umlight}
+\setbeamercolor{enumerate item}{fg=umorange}
+\setbeamercolor{block title}{bg=umdark,fg=white}
+\setbeamercolor{block body}{bg=umdark!5,fg=umdark}
+\setbeamercolor{block title alerted}{bg=umorange,fg=white}
+\setbeamercolor{block body alerted}{bg=umorange!8,fg=umdark}
+\setbeamercolor{block title example}{bg=umlight,fg=white}
+\setbeamercolor{block body example}{bg=umlight!8,fg=umdark}
+
+% ---- Frametitle style ----
+\setbeamertemplate{frametitle}{%
+  \vspace{0.35cm}%
+  \noindent\hspace*{0pt}%
+  \parbox{\textwidth}{%
+    {\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}\insertframetitle}%
+    \vspace{2pt}\\%
+    {\color{umorange}\rule{\textwidth}{1.2pt}}%
+  }%
+  \vspace{-2pt}%
+}
+\setbeamerfont{frametitle}{size=\large,series=\bfseries}
+\setbeamersize{text margin left=0.7cm,text margin right=0.7cm}
+
+% ---- Footline ----
+\setbeamertemplate{footline}{%
+  \hbox{%
+    \begin{beamercolorbox}[wd=\paperwidth,ht=2.2ex,dp=1ex]{footline}%
+      \hspace{1em}{\scriptsize\color{umgray}Midway Proposal -- 5-Minute Overview}%
+      \hfill%
+      {\scriptsize\color{umgray}\insertframenumber/\inserttotalframenumber}%
+      \hspace{1em}%
+    \end{beamercolorbox}%
+  }%
+}
+
+% ---- Metadata ----
+\title{Does the Source of Carrier Image Affect\\Steganographic Detectability?}
+\subtitle{Midway Proposal -- 5-Minute Version}
+\newcommand{\teamauthors}{Abdul Moiz Akbar \;|\; Malo Coquin \;|\; Daria Gjonbalaj \;|\; Nico Muller-Spath\\Jimena Narvaez del Cid \;|\; David Wicker \;|\; Nikolas Zouros}
+\author[Project 2.2 Team]{Project 2.2 Team}
+\institute{Department of Advanced Computing Sciences\\Maastricht University}
+\date{Project 2.2 \;|\; February 2026}
+
+\begin{document}
+
+% ============================================================
+% 1. Opening
+% ============================================================
+\begin{frame}[plain]
+\vfill
+\begin{center}
+{\color{umorange}\rule{0.42\textwidth}{2pt}}\\[12pt]
+{\LARGE\bfseries\color{umdark}\inserttitle}\\[10pt]
+{\normalsize\color{umgray}\insertsubtitle}\\[16pt]
+{\small\color{umdark}\teamauthors}\\[8pt]
+{\small\color{umorange}\insertinstitute}\\[8pt]
+{\footnotesize\color{umgray}\insertdate}\\[12pt]
+{\color{umorange}\rule{0.42\textwidth}{2pt}}
+\end{center}
+\vfill
+\end{frame}
+
+% ============================================================
+% 2. Agenda (content 1/10)
+% ============================================================
+\begin{frame}{Agenda}
+\small
+\begin{enumerate}
+\item Motivation and problem statement
+\item State of the art and research gap
+\item Research questions
+\item Hypotheses and literature support
+\item Study design and methods
+\item Experiment and evaluation plan
+\item Prototype status
+\item Research positioning and expected contribution
+\item Minimum deliverable threshold
+\end{enumerate}
+\end{frame}
+
+% ============================================================
+% 3. Motivation (content 2/10)
+% ============================================================
+\section{Motivation and Problem Statement}
+\begin{frame}{Motivation and Problem Statement}
+\small
+\begin{itemize}
+\item Steganalysis detectability depends on carrier-image statistics, not only on embedding logic \icite{(Petitcolas et al., 1999; Cheddad et al., 2010; Fridrich \& Kodovsky, 2012).}
+\item Most benchmarks assume real camera images; this assumption is weaker as synthetic images become common.
+\item Diffusion and GAN images exhibit different statistical traces \icite{(Wang et al., 2020; Corvi et al., 2023).}
+\end{itemize}
+\vspace{0.1cm}
+\begin{alertblock}{Core problem}
+Do detectors validated on photographs remain equally effective on ML-generated carriers under identical embedding settings?
+\end{alertblock}
+\begin{exampleblock}{Study scope}
+Controlled \(2\times2\times3\times2\) design, 1{,}000 images (500 real + 500 ML-generated), two embedding methods, three payload levels, two primary detectors.
+\end{exampleblock}
+\end{frame}
+
+% ============================================================
+% 4. State of the art (content 3/10)
+% ============================================================
+\section{Related Work}
+\begin{frame}{State of the Art and Research Gap}
+\small
+\begin{itemize}
+\item Classical post-hoc embedding and detection are well established (LSB, DCT-QIM, RS, \(\chi^2\), SRM).
+\item Generative and coverless steganography usually embed during generation, which is a different threat model than ours.
+\item Closest prior \icite{(De et al., 2022)} shows feasibility on AI-generated images but not a controlled real-vs-ML detectability comparison under matched LSB/DCT settings.
+\item Synthetic-image forensics shows that AI-generated images carry distinct statistical traces, which motivates our carrier-origin hypothesis.
+\end{itemize}
+\vspace{0.1cm}
+\begin{alertblock}{Research gap}
+No prior study in our scope isolates \textit{carrier origin} as the key variable while keeping embedding pipeline, payload, and detector settings fixed.
+\end{alertblock}
+\end{frame}
+
+% ============================================================
+% 5. Research Questions (content 4/10)
+% ============================================================
+\section{Research Questions}
+\begin{frame}{Research Questions}
+\scriptsize
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{RQ1 (Carrier Origin)}
+Is there any effect of carrier-image origin (real vs.\ ML-generated) on detectability of hidden data?
+\end{block}
+\begin{block}{RQ2 (Payload)}
+Does increasing payload size widen the detectability gap between real and ML-generated carriers?
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{RQ3 (Encryption)}
+Does encrypting payload before embedding make steganography harder or easier to detect, and does origin change this effect?
+\end{block}
+\begin{block}{RQ4 (Embedding Method)}
+Do different embedding methods (spatial LSB vs.\ frequency-domain DCT) interact differently with carrier origin in terms of detectability?
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.08cm}
+\begin{exampleblock}{RQ5 (Additional consideration)}
+How is image quality (PSNR/SSIM/FSIM) affected by embedding method, payload size, and carrier source?
+\end{exampleblock}
+\end{frame}
+
+% ============================================================
+% 7. Chosen Approaches I (content 6/10)
+% ============================================================
+\section{Chosen Approaches}
+\begin{frame}{Chosen Approaches: Data and Design}
+\small
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Factorial design}
+\begin{itemize}
+\item Carrier type: real vs ML-generated
+\item Embedding: LSB vs DCT-QIM
+\item Payload: low, medium, high
+\item Detectors: RS, SRM+FLD
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Datasets}
+\begin{itemize}
+\item Real: RAISE (250), COCO (150), Flickr30k (100)
+\item ML-generated: Stable Diffusion v2.1 (250), StyleGAN3 (250)
+\item All images normalized to 512x512 RGB PNG
+\item BRISQUE \(\leq 50\) quality gate for generated images
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 8. Chosen Approaches II (content 7/10)
+% ============================================================
+\begin{frame}{Chosen Approaches: Methods and Validation}
+\small
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Embedding methods}
+\begin{itemize}
+\item LSB substitution in spatial domain (\(k=1,2\))
+\item DCT-QIM in frequency domain (8x8 blocks; zigzag 10--54)
+\item Payload optionally encrypted with AES-256-CBC
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Detection and validation}
+\begin{itemize}
+\item Primary detectors: RS Analysis, SRM+FLD
+\item Supplementary check: \(\chi^2\) attack (LSB)
+\item Metrics: ROC-AUC, EER, accuracy at Youden's \(J\)
+\item Quality: PSNR, SSIM, FSIM
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 9. Experiments (content 8/10)
+% ============================================================
+\section{Experiments}
+\begin{frame}{Experiment and Evaluation Plan}
+\scriptsize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}p{2.2cm}p{9.9cm}@{}}
+\toprule
+\textbf{Experiment} & \textbf{Focus} \\
+\midrule
+\textbf{Exp.1 (RQ1)} & Compare real vs.\ ML detectability under matched settings. \\
+\textbf{Exp.2 (RQ2)} & Test whether payload level widens the real-vs-ML AUC gap. \\
+\textbf{Exp.3 (RQ3)} & Compare plain vs.\ AES-encrypted payload detectability. \\
+\textbf{Exp.4 (RQ4)} & Run two-way ANOVA for carrier origin \(\times\) embedding method. \\
+\textbf{Exp.5 (RQ5)} & Assess image quality (PSNR/SSIM/FSIM) across conditions. \\
+\bottomrule
+\end{tabular}
+\vspace{0.15cm}
+\begin{exampleblock}{Statistical reporting}
+We evaluate performance primarily with ROC-AUC and report uncertainty and effect size alongside significance, using a stricter threshold to account for multiple comparisons.
+\end{exampleblock}
+\end{frame}
+
+% ============================================================
+% 10. Prototype (content 9/10)
+% ============================================================
+\section{Prototype}
+\begin{frame}{Prototype Status}
+\small
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Vertical prototype}
+\begin{itemize}
+\item LSB embedding/extraction
+\item DCT-QIM embedding
+\item RS Analysis
+\item SRM feature extraction/classification
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Horizontal prototype}
+\begin{itemize}
+\item Integrated run on 50 images
+\item 25 real + 25 ML-generated
+\item Medium-payload pipeline check
+\item Interfaces validated before full run
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 11. Positioning (content 10/10)
+% ============================================================
+\section{Positioning and Contribution}
+\begin{frame}{Research Positioning and Expected Contribution}
+\small
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{What we are trying to do}
+\begin{itemize}
+\item Quantify whether ML-generated carriers change detectability.
+\item Compare real vs ML under identical LSB/DCT embedding conditions.
+\item Measure effects of payload and encryption, not just feasibility.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{How it fits current research}
+\begin{itemize}
+\item Bridges steganalysis and synthetic-image forensics.
+\item Uses standardized classical baselines for comparability.
+\item Produces direct evidence on whether existing detectors transfer to mixed real/synthetic traffic.
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 12. Passing Requirements (content 11/10)
+% ============================================================
+\section{Minimum Deliverable}
+\begin{frame}{Minimum Deliverable Threshold}
+\small
+\begin{block}{Approach threshold}
+\begin{itemize}
+\item At least one encryption algorithm
+\item At least two embedding methods:
+\item one spatial-domain and one frequency-domain
+\end{itemize}
+\end{block}
+\begin{block}{Research threshold}
+At minimum, answer:
+\begin{itemize}
+\item RQ3 (Encryption)
+\item RQ4 (Embedding-method interaction)
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ============================================================
+% 13. Closing
+% ============================================================
+\begin{frame}[plain]
+\vfill
+\begin{center}
+{\color{umorange}\rule{0.32\textwidth}{2pt}}\\[14pt]
+{\LARGE\bfseries\color{umdark}Thank you}\\[10pt]
+{\large\color{umgray}Questions and Discussion}\\[16pt]
+{\small\color{umgray}Document: \texttt{docs/proposals/midway\_proposal\_final.tex}}\\[14pt]
+{\color{umorange}\rule{0.32\textwidth}{2pt}}
+\end{center}
+\vfill
+\end{frame}
+
+\end{document}

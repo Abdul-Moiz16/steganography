@@ -1,0 +1,11 @@
+{
+  "covers_master_real_path": "data/manifests/covers_master_real.csv",
+  "dataset_counts": {
+    "COCO": 300,
+    "Flickr30k": 200
+  },
+  "generation_prompts_path": "data/manifests/generation_prompts.csv",
+  "raw_index_path": "data/manifests/raw_cover_index_real.csv",
+  "seed": 42,
+  "total_groups": 500
+}

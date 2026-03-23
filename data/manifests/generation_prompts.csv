@@ -1,0 +1,501 @@
+group_id,dataset,orig_id,caption_id,caption_text,real_image_path
+1,COCO,000000436795,coco-000000436795,A man eating a hotdog in a kitchen,data/covers/real/g0001__src-real.png
+2,Flickr30k,11914981,flickr-576,"A man, a woman, and a younger girl are moving a device with a conveyor belt",data/covers/real/g0002__src-real.png
+3,COCO,000000392915,coco-000000392915,"A neat and tidy, modern, residential, family kitchen",data/covers/real/g0003__src-real.png
+4,COCO,000000122203,coco-000000122203,Lots of cows eating grass on a large field.,data/covers/real/g0004__src-real.png
+5,COCO,000000183666,coco-000000183666,Red and blue train sits along the tracks,data/covers/real/g0005__src-real.png
+6,COCO,000000554625,coco-000000554625,a boy wearing headphones using one computer in a long row of computers,data/covers/real/g0006__src-real.png
+7,Flickr30k,1269470943,flickr-792,A boy laying on the grass face down with a football at his feet.,data/covers/real/g0007__src-real.png
+8,COCO,000000509819,coco-000000509819,A pencil is sitting on a ruler with a pair of scissors.,data/covers/real/g0008__src-real.png
+9,COCO,000000559442,coco-000000559442,White clouds float above a big fancy castle on a sunny day,data/covers/real/g0009__src-real.png
+10,Flickr30k,1082252566,flickr-229,A large brown dog is pushing a small Boston terrier with his face while anouther dog watches.,data/covers/real/g0010__src-real.png
+11,Flickr30k,1170586898,flickr-524,"Three men, each wearing a white shirt and orange shorts, build a sand castle while another man, wearing the same clothing, looks on.",data/covers/real/g0011__src-real.png
+12,Flickr30k,109380144,flickr-262,A man wearing an Illinois t-shirt is looking at a camera while a girl is aiming her foot at his face and another man is making an odd face in the background.,data/covers/real/g0012__src-real.png
+13,COCO,000000087199,coco-000000087199,A man in costume talking on a cell phone.,data/covers/real/g0013__src-real.png
+14,COCO,000000398580,coco-000000398580,A very tall giraffe walks through the trees.,data/covers/real/g0014__src-real.png
+15,Flickr30k,1234817607,flickr-679,An elderly man is smiling while sitting in front of a row of soda cans.,data/covers/real/g0015__src-real.png
+16,COCO,000000493174,coco-000000493174,Two women in white dresses playing a game of tennis.,data/covers/real/g0016__src-real.png
+17,Flickr30k,1119418776,flickr-357,"A brown, black and white dog is running through a large field with its mouth open.",data/covers/real/g0017__src-real.png
+18,COCO,000000191381,coco-000000191381,Blue dust pan and brush on floor next to white commode.,data/covers/real/g0018__src-real.png
+19,COCO,000000192440,coco-000000192440,A clean bathroom is seen in this image.,data/covers/real/g0019__src-real.png
+20,COCO,000000209322,coco-000000209322,A bathroom with blue and white tiles and a white toilet,data/covers/real/g0020__src-real.png
+21,Flickr30k,115767961,flickr-481,A man in a white and black uniform carries luggage and blankets across a sidewalk outside of a red bricked building.,data/covers/real/g0021__src-real.png
+22,Flickr30k,1131340021,flickr-398,The little boy is wearing a black pinstripe shirt and walking on a deck.,data/covers/real/g0022__src-real.png
+23,COCO,000000436470,coco-000000436470,a living room with couches chairs and a table,data/covers/real/g0023__src-real.png
+24,Flickr30k,111908743,flickr-356,A man in red pants balancing on a blue object with his hands,data/covers/real/g0024__src-real.png
+25,COCO,000000444444,coco-000000444444,A woman standing in front of a brown horse.,data/covers/real/g0025__src-real.png
+26,Flickr30k,1035392784,flickr-119,A man in black with long hair playing a guitar with stickers on it.,data/covers/real/g0026__src-real.png
+27,COCO,000000173574,coco-000000173574,That looks like a wall mural in the background of this photo with a lot of sheet.,data/covers/real/g0027__src-real.png
+28,COCO,000000207797,coco-000000207797,A lone giraffe walking in an open field.,data/covers/real/g0028__src-real.png
+29,COCO,000000283119,coco-000000283119,a dog laying down eating food out of a bowl,data/covers/real/g0029__src-real.png
+30,COCO,000000308599,coco-000000308599,Red wooden door with a stop sign requiring ID,data/covers/real/g0030__src-real.png
+31,COCO,000000316795,coco-000000316795,A man in black leading an all white horse,data/covers/real/g0031__src-real.png
+32,COCO,000000379977,coco-000000379977,A brown horse is walking around in the grassy mountain.,data/covers/real/g0032__src-real.png
+33,COCO,000000145383,coco-000000145383,A small airplane flying over a field over crops.,data/covers/real/g0033__src-real.png
+34,COCO,000000072833,coco-000000072833,A person riding a surfboard on a wave in a wet suit.,data/covers/real/g0034__src-real.png
+35,COCO,000000463836,coco-000000463836,A man looking down with a backpack on in a house.,data/covers/real/g0035__src-real.png
+36,COCO,000000193271,coco-000000193271,A kitchen filled with black appliances and lots of counter top space.,data/covers/real/g0036__src-real.png
+37,Flickr30k,1010673430,flickr-42,A little girl in a pink shirt and a little girl in an orange shirt sitting in the grass.,data/covers/real/g0037__src-real.png
+38,COCO,000000224736,coco-000000224736,A professional kitchen filled with sinks and appliances.,data/covers/real/g0038__src-real.png
+39,COCO,000000118113,coco-000000118113,this is a very dark picture of a room with a shelf,data/covers/real/g0039__src-real.png
+40,COCO,000000560323,coco-000000560323,a man with a tennis racket celebrates as people look on,data/covers/real/g0040__src-real.png
+41,Flickr30k,1013536888,flickr-50,"Women are seated at a picnic table eating, while a man in a white t-shirt and a yellow and orange balloon design on his head stands in the background.",data/covers/real/g0041__src-real.png
+42,COCO,000000095022,coco-000000095022,A bird with red eyes perched on top of a tree branch.,data/covers/real/g0042__src-real.png
+43,COCO,000000371973,coco-000000371973,A small yellow airplane is on a grassy runway.,data/covers/real/g0043__src-real.png
+44,COCO,000000340420,coco-000000340420,two different pizzas that just came out of an oven.,data/covers/real/g0044__src-real.png
+45,Flickr30k,1119015538,flickr-354,A small dogs ears stick up as it runs in the grass.,data/covers/real/g0045__src-real.png
+46,COCO,000000436141,coco-000000436141,The bathroom is clean and ready to be used.,data/covers/real/g0046__src-real.png
+47,COCO,000000078522,coco-000000078522,A sheep standing in the middle of a field.,data/covers/real/g0047__src-real.png
+48,Flickr30k,116002648,flickr-490,A child wearing a gray hat and black jacket while sleeping on a red coat.,data/covers/real/g0048__src-real.png
+49,COCO,000000223648,coco-000000223648,Multiple wooden spoons are shown on a table top.,data/covers/real/g0049__src-real.png
+50,COCO,000000024430,coco-000000024430,A boat sitting on someone's lawn near an abandoned brick house.,data/covers/real/g0050__src-real.png
+51,COCO,000000502090,coco-000000502090,A kite flying through a blue sky with a long tail.,data/covers/real/g0051__src-real.png
+52,COCO,000000235597,coco-000000235597,A group of men sitting at desks with computers.,data/covers/real/g0052__src-real.png
+53,Flickr30k,1247484195,flickr-725,"A young girl in a yellow dance, dancing on a stage with a baseball field in the background.",data/covers/real/g0053__src-real.png
+54,Flickr30k,1160034462,flickr-491,White-haired man in gray sweater and a straw hat sitting on a bench under a tree.,data/covers/real/g0054__src-real.png
+55,COCO,000000327433,coco-000000327433,The wildlife is grazing on the tall vegetation.,data/covers/real/g0055__src-real.png
+56,COCO,000000262284,coco-000000262284,A full view of a shower with glass.,data/covers/real/g0056__src-real.png
+57,COCO,000000094590,coco-000000094590,A bunch of doughnuts that are on a plate.,data/covers/real/g0057__src-real.png
+58,COCO,000000220690,coco-000000220690,A city street filled with lots of traffic and pedestrians.,data/covers/real/g0058__src-real.png
+59,COCO,000000117125,coco-000000117125,The train is rounding the bend of a track on the mountain side.,data/covers/real/g0059__src-real.png
+60,Flickr30k,110269384,flickr-301,A dark-haired woman in a green and white apron sits amid her outdoor display of flowers for sale on a city street.,data/covers/real/g0060__src-real.png
+61,COCO,000000466787,coco-000000466787,A stack of banana's sitting next to a pear and a pile of apples.,data/covers/real/g0061__src-real.png
+62,Flickr30k,1151321278,flickr-464,A little boy is standing on the beach with a blue bucket and a green shovel while looking at the water.,data/covers/real/g0062__src-real.png
+63,COCO,000000300814,coco-000000300814,Two adults playing a game in a arena.,data/covers/real/g0063__src-real.png
+64,COCO,000000398076,coco-000000398076,Here is a woman lying on a bed pointing her finger.,data/covers/real/g0064__src-real.png
+65,COCO,000000280607,coco-000000280607,A pizza that is sitting on a table.,data/covers/real/g0065__src-real.png
+66,COCO,000000557780,coco-000000557780,A small dog chewing on hot dog like dog toy.,data/covers/real/g0066__src-real.png
+67,Flickr30k,1223671563,flickr-648,Construction workers working on a highway at night as people look to see what they are doing.,data/covers/real/g0067__src-real.png
+68,COCO,000000476005,coco-000000476005,A line of multiple buses parked along a wall.,data/covers/real/g0068__src-real.png
+69,Flickr30k,1251558317,flickr-739,A woman and a young boy sit on a police motorcycle and smile for the camera.,data/covers/real/g0069__src-real.png
+70,Flickr30k,1167144956,flickr-515,A young man demonstrating his prowess in the martial arts for his girlfriend as she sits on a concrete wall that is part of a general seating area.,data/covers/real/g0070__src-real.png
+71,COCO,000000480076,coco-000000480076,A gray chair and a black chair sit in a room near a lamp.,data/covers/real/g0071__src-real.png
+72,Flickr30k,116382784,flickr-503,Two Asian women and an Asian girl are sitting at a farmers market and are selling produce including yams.,data/covers/real/g0072__src-real.png
+73,COCO,000000199951,coco-000000199951,a person riding a motorcycle on an enclosed road,data/covers/real/g0073__src-real.png
+74,Flickr30k,107985741,flickr-221,A group of people on a riverbank some sitting on the grass some standing.,data/covers/real/g0074__src-real.png
+75,Flickr30k,112719695,flickr-385,A woman in a pink shit and blue jeans is walking down a somewhat busy street while holding a cup of coffee.,data/covers/real/g0075__src-real.png
+76,Flickr30k,1141718391,flickr-422,A man and a woman are crossing over a rope bridge with greenery all over them.,data/covers/real/g0076__src-real.png
+77,COCO,000000538589,coco-000000538589,a modern bathroom with blue walls and a clear shower,data/covers/real/g0077__src-real.png
+78,Flickr30k,1184910489,flickr-545,A woman with a red sleeveless top and a long black skirt holding one young child in her arm and holding another young child by the hand as she walks along.,data/covers/real/g0078__src-real.png
+79,COCO,000000231408,coco-000000231408,there is a cat that is standing near the water,data/covers/real/g0079__src-real.png
+80,COCO,000000055375,coco-000000055375,A woman bathing a baby near a kitchen sink.,data/covers/real/g0080__src-real.png
+81,COCO,000000064710,coco-000000064710,a person and a dog are standing near some cliffs,data/covers/real/g0081__src-real.png
+82,COCO,000000393659,coco-000000393659,A bathroom with two sinks and two mirrors.,data/covers/real/g0082__src-real.png
+83,Flickr30k,114410209,flickr-431,A person wearing a short-sleeved light blue shirt over a long-sleeved white shirt and blue jeans is holding a long-lensed camera to his face while standing next to a red colored railroad car.,data/covers/real/g0083__src-real.png
+84,COCO,000000494731,coco-000000494731,Black birds on a wood fence near the ocean.,data/covers/real/g0084__src-real.png
+85,Flickr30k,1001465944,flickr-8,An asian man wearing a black suit stands near a dark-haired woman and a brown-haired woman.,data/covers/real/g0085__src-real.png
+86,Flickr30k,1032122270,flickr-110,Three dogs are standing in the grass and a person is sitting next to them,data/covers/real/g0086__src-real.png
+87,Flickr30k,109671650,flickr-280,A boy in yellow shorts is standing on top of a cliff.,data/covers/real/g0087__src-real.png
+88,COCO,000000153607,coco-000000153607,A wide blue vase is holding an orange daisy.,data/covers/real/g0088__src-real.png
+89,Flickr30k,1003163366,flickr-17,A man sleeping on a bench outside with a white and black dog sitting next to him.,data/covers/real/g0089__src-real.png
+90,COCO,000000476280,coco-000000476280,A man holds a surf board and walks with a woman.,data/covers/real/g0090__src-real.png
+91,COCO,000000271795,coco-000000271795,A laptop computer sitting on top of a wooden desk.,data/covers/real/g0091__src-real.png
+92,COCO,000000074369,coco-000000074369,A little boy in a baseball uniform holds the bat ready to swing.,data/covers/real/g0092__src-real.png
+93,COCO,000000527040,coco-000000527040,A bunch of birds sitting in a bread basket.,data/covers/real/g0093__src-real.png
+94,COCO,000000071281,coco-000000071281,some black and white sheep a fence dirt and grass,data/covers/real/g0094__src-real.png
+95,COCO,000000155877,coco-000000155877,Several goats are resting at the base of a tree.,data/covers/real/g0095__src-real.png
+96,COCO,000000150410,coco-000000150410,Man bending down to check out a model plain that is parked in the grass,data/covers/real/g0096__src-real.png
+97,COCO,000000039743,coco-000000039743,Two children who are sitting next to each other naked.,data/covers/real/g0097__src-real.png
+98,Flickr30k,1155138244,flickr-478,Woman dressed in a green hat and apron is holding a tray full of drink samples.,data/covers/real/g0098__src-real.png
+99,Flickr30k,123728333,flickr-690,An older man finishes the last touch up on his sculpture.,data/covers/real/g0099__src-real.png
+100,COCO,000000258516,coco-000000258516,A cricket inside of a small cage on a table..,data/covers/real/g0100__src-real.png
+101,COCO,000000197461,coco-000000197461,a ram is looking at the camera and standing on some grass,data/covers/real/g0101__src-real.png
+102,Flickr30k,120542286,flickr-603,Two men stand at a chalkboard that forms part of a stone wall in front of a number of tables and chairs of which only a few are occupied.,data/covers/real/g0102__src-real.png
+103,COCO,000000133698,coco-000000133698,A pizza that is half pepperoni and half chicken.,data/covers/real/g0103__src-real.png
+104,Flickr30k,1126403094,flickr-383,Two girls with purple hair and a short-haired woman are smiling.,data/covers/real/g0104__src-real.png
+105,COCO,000000052644,coco-000000052644,Parking meters are lined up on an empty lot.,data/covers/real/g0105__src-real.png
+106,Flickr30k,114164952,flickr-421,Family taking a winter walk in a park path while two of the children run ahead of the family.,data/covers/real/g0106__src-real.png
+107,COCO,000000288002,coco-000000288002,Four jets fly overhead trailing smoke with a clear blue sky.,data/covers/real/g0107__src-real.png
+108,Flickr30k,122188825,flickr-641,A construction worker in a yellow vest digs in the street while a second worker looks on.,data/covers/real/g0108__src-real.png
+109,COCO,000000169802,coco-000000169802,A man in hat made of bananas standing in room by men.,data/covers/real/g0109__src-real.png
+110,Flickr30k,111390902,flickr-337,Two Asian men are riding on a motorcycle in the midst of a crowd full of other motorcycle riders.,data/covers/real/g0110__src-real.png
+111,COCO,000000015113,coco-000000015113,A bird that is on a tree limb.,data/covers/real/g0111__src-real.png
+112,Flickr30k,1077546505,flickr-213,A boy in blue swimming trunks slides down a yellow slide into a wading pool with inflatable toys floating in the water.,data/covers/real/g0112__src-real.png
+113,COCO,000000232383,coco-000000232383,A cat laying on top of a flat screen TV.,data/covers/real/g0113__src-real.png
+114,COCO,000000195829,coco-000000195829,A group of young men playing a game of soccer.,data/covers/real/g0114__src-real.png
+115,Flickr30k,1131889107,flickr-401,Roller derby girls waiting for the next round of action!,data/covers/real/g0115__src-real.png
+116,Flickr30k,122958692,flickr-662,A man in white playing tennis is still in midair after jumping to hit the ball.,data/covers/real/g0116__src-real.png
+117,Flickr30k,1236964638,flickr-688,"Child flips off pool diving board, man and another tumbling child at poolside.",data/covers/real/g0117__src-real.png
+118,COCO,000000261757,coco-000000261757,a pizza on a wooden table ready to be cooked,data/covers/real/g0118__src-real.png
+119,COCO,000000542145,coco-000000542145,A toilet and a sink in small bathroom.,data/covers/real/g0119__src-real.png
+120,COCO,000000172327,coco-000000172327,A person swimming in the waves of a body of water.,data/covers/real/g0120__src-real.png
+121,COCO,000000262986,coco-000000262986,a bear sitting on a rock with a river running through it,data/covers/real/g0121__src-real.png
+122,COCO,000000557981,coco-000000557981,A young man holding a stuffed teddy bear and a white umbrella.,data/covers/real/g0122__src-real.png
+123,Flickr30k,1158505981,flickr-484,"An older bearded gentleman in glasses is reading a book in front of an open laptop, possibly in a classroom.",data/covers/real/g0123__src-real.png
+124,COCO,000000014990,coco-000000014990,A man leading two elephants down a road.,data/covers/real/g0124__src-real.png
+125,COCO,000000183757,coco-000000183757,A cat sitting on top of a red boat next to two dogs.,data/covers/real/g0125__src-real.png
+126,Flickr30k,1131155939,flickr-397,"A black lav runs into the water on the beach, with swimmers in the distance and sea kelp in the foreground.",data/covers/real/g0126__src-real.png
+127,COCO,000000292810,coco-000000292810,Restroom full of many urinals with smell eliminators.,data/covers/real/g0127__src-real.png
+128,COCO,000000463633,coco-000000463633,A red stop sign sitting in the middle of a street.,data/covers/real/g0128__src-real.png
+129,COCO,000000347453,coco-000000347453,all the vehicles in this town are red,data/covers/real/g0129__src-real.png
+130,Flickr30k,1072439304,flickr-200,"A young helmeted man, in his team uniform, is swinging his bat at an incoming baseball.",data/covers/real/g0130__src-real.png
+131,Flickr30k,12118309,flickr-616,Two men with dark hair wearing glasses and black shirts eat bread while holding their hands up to the camera.,data/covers/real/g0131__src-real.png
+132,COCO,000000175417,coco-000000175417,Two men riding horses at a horse racing track.,data/covers/real/g0132__src-real.png
+133,COCO,000000568101,coco-000000568101,kites being flown on the beach near the ocean,data/covers/real/g0133__src-real.png
+134,Flickr30k,124106477,flickr-703,A woman in a brown shirt is about to release a blue bowling ball into the aisle.,data/covers/real/g0134__src-real.png
+135,COCO,000000240727,coco-000000240727,Two children are sitting at a table eating food.,data/covers/real/g0135__src-real.png
+136,COCO,000000554114,coco-000000554114,A woman kneeling down in front of a parking meter.,data/covers/real/g0136__src-real.png
+137,COCO,000000336777,coco-000000336777,Many different signs cover a post next to a bus stop.,data/covers/real/g0137__src-real.png
+138,Flickr30k,100652400,flickr-24,A man in a blue hard hat and orange safety vest stands in an intersection while holding a flag.,data/covers/real/g0138__src-real.png
+139,Flickr30k,1076503761,flickr-212,A young woman in a bikini holding a bottle is goofing around and kicking a man in a straw hat.,data/covers/real/g0139__src-real.png
+140,Flickr30k,1104881373,flickr-306,A woman is at an ice cream shop and she is waiting for the man to scoop her ice cream.,data/covers/real/g0140__src-real.png
+141,COCO,000000335578,coco-000000335578,A tennis player hits a ball in an indoor area.,data/covers/real/g0141__src-real.png
+142,Flickr30k,1248357227,flickr-726,Three children in jackets looking at water's edge looking at their reflections in a lake,data/covers/real/g0142__src-real.png
+143,COCO,000000430867,coco-000000430867,A girl uses a phone next to a dog,data/covers/real/g0143__src-real.png
+144,COCO,000000516602,coco-000000516602,A small calf is in a pen with bails of hay.,data/covers/real/g0144__src-real.png
+145,COCO,000000129159,coco-000000129159,A large clock tower rises up above the surrounding buildings.,data/covers/real/g0145__src-real.png
+146,COCO,000000040986,coco-000000040986,Raw cookies in a pan on the counter and baked cookies in a pan on the stove.,data/covers/real/g0146__src-real.png
+147,Flickr30k,1196746186,flickr-588,A woman in a jacket walks on the beach in someone's footprints while holding her shoes in her hands.,data/covers/real/g0147__src-real.png
+148,COCO,000000477949,coco-000000477949,An arrangement of brightly colored flowers and greenery awakens a brick wall.,data/covers/real/g0148__src-real.png
+149,COCO,000000183181,coco-000000183181,A herd of buffalo grazing on grass next to the ocean.,data/covers/real/g0149__src-real.png
+150,Flickr30k,1232148178,flickr-668,There is a little blond-hair girl with a green sweatshirt and a red shirt playing on a playground.,data/covers/real/g0150__src-real.png
+151,COCO,000000425035,coco-000000425035,a toilet seat in a bathroom with the lid down.,data/covers/real/g0151__src-real.png
+152,COCO,000000495734,coco-000000495734,The giraffes are standing together on the grass,data/covers/real/g0152__src-real.png
+153,Flickr30k,1192725687,flickr-578,A homeless man holding up a sign with his request for money and his reasons for asking.,data/covers/real/g0153__src-real.png
+154,COCO,000000298443,coco-000000298443,A group of people sitting at a long table having food and drinks.,data/covers/real/g0154__src-real.png
+155,Flickr30k,1145781754,flickr-444,Four men with baseball caps and logo t-shirts laughing together at a table.,data/covers/real/g0155__src-real.png
+156,Flickr30k,1202620814,flickr-597,People are boarding a train that's painted yellow on the front.,data/covers/real/g0156__src-real.png
+157,Flickr30k,11245644,flickr-378,A newlywed couple is taking a picture outside on the steps of a building while other people are walking up and down the steps.,data/covers/real/g0157__src-real.png
+158,COCO,000000091227,coco-000000091227,A giraffe standing in the grass near a tree.,data/covers/real/g0158__src-real.png
+159,Flickr30k,1122357785,flickr-369,A young boy is falling into a pool of water with a man and a girl watching him.,data/covers/real/g0159__src-real.png
+160,COCO,000000253262,coco-000000253262,A large jet sitting on top of an airport tarmac.,data/covers/real/g0160__src-real.png
+161,COCO,000000434494,coco-000000434494,A bulldozer and fresh asphalt next to various people.,data/covers/real/g0161__src-real.png
+162,COCO,000000529917,coco-000000529917,A bunch of people wearing the same things are standing in line.,data/covers/real/g0162__src-real.png
+163,COCO,000000053990,coco-000000053990,A child eating a piece of cheese pizza.,data/covers/real/g0163__src-real.png
+164,COCO,000000562261,coco-000000562261,A man stretching out yelling while catching a Frisbee.,data/covers/real/g0164__src-real.png
+165,Flickr30k,116569042,flickr-511,A blurry picture of a man in a blue shirt and hard hat.,data/covers/real/g0165__src-real.png
+166,Flickr30k,124972799,flickr-733,A snarling brown and black dog corners a brown long-haired cat under a wooden bench.,data/covers/real/g0166__src-real.png
+167,COCO,000000043635,coco-000000043635,A bunch of people sit in an open court yard,data/covers/real/g0167__src-real.png
+168,COCO,000000271712,coco-000000271712,A bathroom with a white bath tub under a window.,data/covers/real/g0168__src-real.png
+169,Flickr30k,1266359954,flickr-783,A woman seated on the subway wearing blue jeans and a black shirt with small designs has her head bent down to her knees.,data/covers/real/g0169__src-real.png
+170,Flickr30k,1007320043,flickr-28,A little girl in pink climbs a rope bridge at the park.,data/covers/real/g0170__src-real.png
+171,COCO,000000493868,coco-000000493868,"A plate with broccoli down the sides and some white, rolled up things in the middle.",data/covers/real/g0171__src-real.png
+172,COCO,000000410097,coco-000000410097,All of these sheep have coats that are ready for shearing.,data/covers/real/g0172__src-real.png
+173,Flickr30k,1195966967,flickr-584,A man playing a guitar and a man dancing are entertaining a couple sitting on a ledge by the street.,data/covers/real/g0173__src-real.png
+174,COCO,000000196311,coco-000000196311,Image of a living room showing couches facing each other.,data/covers/real/g0174__src-real.png
+175,COCO,000000121041,coco-000000121041,A black duck floating in a wavy pond.,data/covers/real/g0175__src-real.png
+176,COCO,000000157269,coco-000000157269,several men on a street corner repairing a street sign,data/covers/real/g0176__src-real.png
+177,COCO,000000515289,coco-000000515289,People riding bicycles down the road approaching a bird.,data/covers/real/g0177__src-real.png
+178,COCO,000000295564,coco-000000295564,A lot of colorful vases sitting on top of a white table.,data/covers/real/g0178__src-real.png
+179,Flickr30k,1164765687,flickr-508,A man in a red shirt and glasses is bending down towards a small dog on a blanket with several stuffed animals.,data/covers/real/g0179__src-real.png
+180,Flickr30k,1179226886,flickr-536,Five girls and one boy are in their swimsuits all in the middle of jumping into the pool.,data/covers/real/g0180__src-real.png
+181,COCO,000000173704,coco-000000173704,A person standing on a street with some food.,data/covers/real/g0181__src-real.png
+182,COCO,000000262873,coco-000000262873,A snow boarder is going down an indoor slope.,data/covers/real/g0182__src-real.png
+183,COCO,000000453926,coco-000000453926,A plate that has a dessert on it.,data/covers/real/g0183__src-real.png
+184,Flickr30k,112604461,flickr-381,Two men work together to attach pieces of wood in a room set up for carpentry.,data/covers/real/g0184__src-real.png
+185,Flickr30k,126378326,flickr-773,"Children are climbing and digging in the sand at a makeshift playground, which features a structure made from tires.",data/covers/real/g0185__src-real.png
+186,COCO,000000455483,coco-000000455483,A bathroom with two sinks and a shower.,data/covers/real/g0186__src-real.png
+187,COCO,000000499268,coco-000000499268,A woman on a bench reading a book,data/covers/real/g0187__src-real.png
+188,Flickr30k,123889082,flickr-696,Two dogs are playing in a grassy field; one dog is biting the ear of the other dog.,data/covers/real/g0188__src-real.png
+189,COCO,000000208517,coco-000000208517,A woman with a suitcase holding a phone,data/covers/real/g0189__src-real.png
+190,COCO,000000413321,coco-000000413321,An explorer or adventurer hikes in a remote area in challenging weather.,data/covers/real/g0190__src-real.png
+191,Flickr30k,123501647,flickr-680,There are items hanging up in the background and then there are picnic tables made of wood and two big grills where people are cooking and a man watching.,data/covers/real/g0191__src-real.png
+192,COCO,000000322654,coco-000000322654,there are people sitting on the ground painting the street,data/covers/real/g0192__src-real.png
+193,Flickr30k,111497985,flickr-340,The person has a striped shirt on and is holding on to a rope on a mountain.,data/covers/real/g0193__src-real.png
+194,Flickr30k,118802644,flickr-562,Two men in black clothes at a meat market showing a red meat while workers in blue look on.,data/covers/real/g0194__src-real.png
+195,COCO,000000487159,coco-000000487159,"This meal consists of salad, water, vegetables and dip.",data/covers/real/g0195__src-real.png
+196,COCO,000000081922,coco-000000081922,A large jetliner flying over a traffic filled street.,data/covers/real/g0196__src-real.png
+197,COCO,000000107244,coco-000000107244,a street sign on a road near a building,data/covers/real/g0197__src-real.png
+198,COCO,000000321674,coco-000000321674,A mom and her baby are laying on the couch.,data/covers/real/g0198__src-real.png
+199,COCO,000000138246,coco-000000138246,some horses grazing in front of a church,data/covers/real/g0199__src-real.png
+200,Flickr30k,1144946743,flickr-437,"A little girl kneels on a ledge at the edge of a fence, with a bucket in front of her.",data/covers/real/g0200__src-real.png
+201,COCO,000000511058,coco-000000511058,A giraffe with a mouth full of grass in front of a forest.,data/covers/real/g0201__src-real.png
+202,COCO,000000446322,coco-000000446322,A glass display of different varieties of donuts.,data/covers/real/g0202__src-real.png
+203,Flickr30k,1107246521,flickr-320,A black dog playing fetch with a ball of rope.,data/covers/real/g0203__src-real.png
+204,Flickr30k,10459869,flickr-140,A group of people eating Chinese food in a restaurant.,data/covers/real/g0204__src-real.png
+205,COCO,000000527248,coco-000000527248,A large crowd is attending a community fair.,data/covers/real/g0205__src-real.png
+206,Flickr30k,10101477,flickr-40,A Asian man wearing a white top and baby blue bottoms is using a broom to remove the dirt of the pavement.,data/covers/real/g0206__src-real.png
+207,COCO,000000090935,coco-000000090935,A room filled with a metal rack with white pieces of cloth resting on it.,data/covers/real/g0207__src-real.png
+208,COCO,000000467522,coco-000000467522,A group of giraffes standing near each other.,data/covers/real/g0208__src-real.png
+209,COCO,000000450247,coco-000000450247,A cat laying on top of a plastic container next to a bottle.,data/covers/real/g0209__src-real.png
+210,COCO,000000550444,coco-000000550444,a group of men playing a game of soccer,data/covers/real/g0210__src-real.png
+211,Flickr30k,1057251835,flickr-172,A white dog is running down a rocky beach.,data/covers/real/g0211__src-real.png
+212,Flickr30k,121556804,flickr-629,Men in pants and coats walk up a steep and narrow road.,data/covers/real/g0212__src-real.png
+213,Flickr30k,1048710776,flickr-148,A couple of several people sitting on a ledge overlooking the beach,data/covers/real/g0213__src-real.png
+214,COCO,000000495612,coco-000000495612,An orange pedestrian crossing sign next to a tall building.,data/covers/real/g0214__src-real.png
+215,Flickr30k,1132772170,flickr-403,A man is standing with his arms folded looking at something while the person behind him is jumping onto one of the two beds in the room.,data/covers/real/g0215__src-real.png
+216,Flickr30k,1131932671,flickr-402,The boy in blue shorts is bouncing on the bed.,data/covers/real/g0216__src-real.png
+217,COCO,000000074331,coco-000000074331,This is a case full of yellow bananas.,data/covers/real/g0217__src-real.png
+218,Flickr30k,1044798682,flickr-137,A man wearing a hat and a white shirt is cleaning windows.,data/covers/real/g0218__src-real.png
+219,Flickr30k,1248734482,flickr-727,A girl wearing a pink shirt lays on the green grass and looks up.,data/covers/real/g0219__src-real.png
+220,COCO,000000399851,coco-000000399851,"A kitchen shelf holds an assortment of pots, pans, and utensils.",data/covers/real/g0220__src-real.png
+221,COCO,000000475238,coco-000000475238,A train crossing a street near train crossing lights.,data/covers/real/g0221__src-real.png
+222,Flickr30k,1010087623,flickr-39,A caucasian man wearing a short-sleeved black shirt and a dark-skinned woman wearing a sleeveless dress are working at a conveyor.,data/covers/real/g0222__src-real.png
+223,COCO,000000351938,coco-000000351938,A yellow fire hydrant surrounded by many types of flowers next to an apartment.,data/covers/real/g0223__src-real.png
+224,Flickr30k,101001624,flickr-36,"The ""white out"" conditions of snow on the ground seem to almost obliverate the details of a man dressed for the cold weather in a heavy jacket and red hat riding a bicycle in a suburban neighborhood.",data/covers/real/g0224__src-real.png
+225,COCO,000000247984,coco-000000247984,Several pieces of luggage with extendable handles deployed.,data/covers/real/g0225__src-real.png
+226,Flickr30k,1253264731,flickr-750,A girl wearing a pink shirt and overalls is smiling and there is another child that is out of focus.,data/covers/real/g0226__src-real.png
+227,COCO,000000410446,coco-000000410446,A group of people on a city street.,data/covers/real/g0227__src-real.png
+228,Flickr30k,122427967,flickr-650,A group of people in a coffee shop at night have coffee and juice together.,data/covers/real/g0228__src-real.png
+229,COCO,000000076460,coco-000000076460,A baby and adult elephant walk around their pen.,data/covers/real/g0229__src-real.png
+230,Flickr30k,114052371,flickr-417,This is a teen or young adult with braids in their hair sitting in a chair with a yellow pillow in their lap.,data/covers/real/g0230__src-real.png
+231,Flickr30k,1045124251,flickr-138,A blond-haired man with glasses and a blank tank top is sitting next to another man with glasses and headphones while sitting on a train.,data/covers/real/g0231__src-real.png
+232,Flickr30k,120545126,flickr-606,Several young adults performing in martial arts clothing.,data/covers/real/g0232__src-real.png
+233,COCO,000000060687,coco-000000060687,A brown cow lays down in the grass,data/covers/real/g0233__src-real.png
+234,Flickr30k,121551810,flickr-627,"Two men, in the woods, cook something in a can over an open fire.",data/covers/real/g0234__src-real.png
+235,COCO,000000579003,coco-000000579003,A shower stall with interesting tile is the focal point.,data/covers/real/g0235__src-real.png
+236,Flickr30k,1020651753,flickr-74,A white dog is trying to catch a ball in midair over a grassy field.,data/covers/real/g0236__src-real.png
+237,COCO,000000516750,coco-000000516750,"Two kayaks, one pink the other yellow, on bank of water.",data/covers/real/g0237__src-real.png
+238,Flickr30k,116862076,flickr-521,Woman with rolled up jeans throwing a frisbee on the beach.,data/covers/real/g0238__src-real.png
+239,COCO,000000140743,coco-000000140743,a person smiling eating a piece of pizza,data/covers/real/g0239__src-real.png
+240,COCO,000000041550,coco-000000041550,A room with large curved desk with lots of chairs.,data/covers/real/g0240__src-real.png
+241,Flickr30k,1160841776,flickr-495,The view from a overlook at the public beach.,data/covers/real/g0241__src-real.png
+242,COCO,000000289423,coco-000000289423,Two younger people playing a game of frisbee.,data/covers/real/g0242__src-real.png
+243,COCO,000000465692,coco-000000465692,Person in jacket riding a bicycle on a street.,data/covers/real/g0243__src-real.png
+244,COCO,000000380932,coco-000000380932,There are mountains in the background and a lake in the middle.,data/covers/real/g0244__src-real.png
+245,COCO,000000205103,coco-000000205103,A cute kitten playing with strings on a shoe.,data/covers/real/g0245__src-real.png
+246,COCO,000000577858,coco-000000577858,Children making their own personal pizzas with different toppings.,data/covers/real/g0246__src-real.png
+247,COCO,000000292639,coco-000000292639,Planes are flying in a V formation in a blue sky.,data/covers/real/g0247__src-real.png
+248,Flickr30k,102455176,flickr-85,An ice climber in a blue jacket and black pants is scaling a frozen ice wall.,data/covers/real/g0248__src-real.png
+249,COCO,000000105975,coco-000000105975,an elephant using its trunk to blow the dirt off its face,data/covers/real/g0249__src-real.png
+250,COCO,000000579056,coco-000000579056,A man hit something that exploded with a bat.,data/covers/real/g0250__src-real.png
+251,COCO,000000078696,coco-000000078696,A bus drives down the middle of a street.,data/covers/real/g0251__src-real.png
+252,Flickr30k,10090841,flickr-33,A man with black hair sits in a restaurant with a glass of beer.,data/covers/real/g0252__src-real.png
+253,Flickr30k,1205490378,flickr-607,A view from above of a young woman sitting behind a green both under a sign offering programs and ice cream.,data/covers/real/g0253__src-real.png
+254,Flickr30k,1130369873,flickr-393,A brown dog swims through water outdoors with a tennis ball in its mouth.,data/covers/real/g0254__src-real.png
+255,Flickr30k,1197800988,flickr-590,A woman in a purple jacket is eating a snack at a table behind the tree.,data/covers/real/g0255__src-real.png
+256,COCO,000000536831,coco-000000536831,A man is on the ski slope on a sunny day.,data/covers/real/g0256__src-real.png
+257,COCO,000000484982,coco-000000484982,A living room with chairs a fireplace and mirror,data/covers/real/g0257__src-real.png
+258,Flickr30k,118667747,flickr-551,There are three young boys playing in a public park with a red ball.,data/covers/real/g0258__src-real.png
+259,COCO,000000213687,coco-000000213687,Motorcycles driving down a wide city street nearing a white building.,data/covers/real/g0259__src-real.png
+260,COCO,000000496768,coco-000000496768,A young man flying a kite over a sandy beach.,data/covers/real/g0260__src-real.png
+261,COCO,000000375840,coco-000000375840,A try with a banana and two oranges visible on it,data/covers/real/g0261__src-real.png
+262,Flickr30k,1094606832,flickr-265,A young black person wearing a green shirt and a jacket using a sewing machine.,data/covers/real/g0262__src-real.png
+263,COCO,000000079472,coco-000000079472,Office space with office equipment on desk top.,data/covers/real/g0263__src-real.png
+264,COCO,000000328757,coco-000000328757,A woman eating vegetables in front of a stove.,data/covers/real/g0264__src-real.png
+265,COCO,000000090732,coco-000000090732,A little girl is mixing in a kitchen bowl while standing on a chair.,data/covers/real/g0265__src-real.png
+266,Flickr30k,122301379,flickr-647,Two men wearing khaki pants are looking at a tree that has just been felled by a saw.,data/covers/real/g0266__src-real.png
+267,Flickr30k,1246237064,flickr-721,"A bald white man wearing an apron dines alone at a restaurant table, set with a full meal and a bottle of wine.",data/covers/real/g0267__src-real.png
+268,Flickr30k,1250854171,flickr-737,A man with an axe chopping wood in front of a teepee.,data/covers/real/g0268__src-real.png
+269,Flickr30k,11205420,flickr-359,A man dressed in white walks a yellow rope on the ground that is attached to the handlebars of a bicycle.,data/covers/real/g0269__src-real.png
+270,COCO,000000493219,coco-000000493219,a couple of people that are sitting on a park bench,data/covers/real/g0270__src-real.png
+271,COCO,000000048636,coco-000000048636,a baseball player is swinging a bat at a ball,data/covers/real/g0271__src-real.png
+272,Flickr30k,1163297375,flickr-500,"A girl wearing a striped shirt, plaid shorts, and a baseball hat is on a bike, pulling a man in a red cart with a black top.",data/covers/real/g0272__src-real.png
+273,COCO,000000026942,coco-000000026942,A gray tiger cat sitting at a wooden table on a chair.,data/covers/real/g0273__src-real.png
+274,Flickr30k,106372282,flickr-185,A man sitting down with this head resting on his fists next to a man with his eyes closed and his together with dough sitting on a table in front of them both.,data/covers/real/g0274__src-real.png
+275,COCO,000000365426,coco-000000365426,Photograph of an outdoor arena that looks great.,data/covers/real/g0275__src-real.png
+276,COCO,000000291380,coco-000000291380,A car passes by to find a man outside near a TV.,data/covers/real/g0276__src-real.png
+277,COCO,000000529636,coco-000000529636,a large tower that has a big clock at the top,data/covers/real/g0277__src-real.png
+278,COCO,000000383419,coco-000000383419,A little girl sitting at a table eating a hot dog.,data/covers/real/g0278__src-real.png
+279,Flickr30k,126824259,flickr-789,A woman wearing a blue sweater sits at a table with a colorful tablecloth and clasps her hands together.,data/covers/real/g0279__src-real.png
+280,Flickr30k,122634567,flickr-657,A man wearing glasses holds a flip phone in his hand while a woman wearing earrings stands behind him.,data/covers/real/g0280__src-real.png
+281,COCO,000000318671,coco-000000318671,"A horse drawn trolly on a track, the trolly is full of people.",data/covers/real/g0281__src-real.png
+282,COCO,000000066800,coco-000000066800,A elephant that is standing in the grass.,data/covers/real/g0282__src-real.png
+283,Flickr30k,11610969,flickr-496,"A woman in a blue shirt with a blue bag passes by a large yard sale with colorful clothes, adults and children within.",data/covers/real/g0283__src-real.png
+284,Flickr30k,1231348815,flickr-667,"A rickshaw puller in an Asian country smiling and making a ""thumbs up"" sign at the photographer.",data/covers/real/g0284__src-real.png
+285,Flickr30k,111061041,flickr-329,Two men in a tennis court in a city are standing on either side of the net talking to each other.,data/covers/real/g0285__src-real.png
+286,Flickr30k,1084527029,flickr-236,Looks like everyone is getting good gas mileage here with all these beautiful scooters!,data/covers/real/g0286__src-real.png
+287,Flickr30k,1061467336,flickr-180,"A few firefighters, wearing black, yellow, and pink jackets, standing next to a firetruck.",data/covers/real/g0287__src-real.png
+288,COCO,000000540174,coco-000000540174,A baby in a carseat eating a donut.,data/covers/real/g0288__src-real.png
+289,COCO,000000270918,coco-000000270918,A sharp steeple on a building is lit in the sky.,data/covers/real/g0289__src-real.png
+290,COCO,000000573206,coco-000000573206,a pizza with olives sitting on a pizza pan on top of an oven,data/covers/real/g0290__src-real.png
+291,COCO,000000122851,coco-000000122851,There is a man picking bananas next to a street.,data/covers/real/g0291__src-real.png
+292,COCO,000000402330,coco-000000402330,A white toilet on the ground by some junk.,data/covers/real/g0292__src-real.png
+293,COCO,000000254277,coco-000000254277,Some orange flowers in a tall silver vase,data/covers/real/g0293__src-real.png
+294,Flickr30k,1006452823,flickr-23,"Two children, a girl and a boy are practicing their writing.",data/covers/real/g0294__src-real.png
+295,COCO,000000569839,coco-000000569839,A little girl sitting in the middle of a restaurant and smiling for picture.,data/covers/real/g0295__src-real.png
+296,COCO,000000436174,coco-000000436174,motorcycle bikes all parked next to each other lined up down the road .,data/covers/real/g0296__src-real.png
+297,Flickr30k,101559400,flickr-58,"Men in the business suits are crossing the street, and there are people with placards are gathering on the street.",data/covers/real/g0297__src-real.png
+298,Flickr30k,1059514525,flickr-174,"A person is sleeping on a bench on the sidewalk, across the street from a bus stop.",data/covers/real/g0298__src-real.png
+299,COCO,000000111076,coco-000000111076,A bathroom with a sink and toilet and a window.,data/covers/real/g0299__src-real.png
+300,COCO,000000472621,coco-000000472621,"An elegant bathroom features a tub, sink, mirror, and decorations.",data/covers/real/g0300__src-real.png
+301,COCO,000000381106,coco-000000381106,two kids play at the beach with their kite,data/covers/real/g0301__src-real.png
+302,COCO,000000402559,coco-000000402559,A large giraffe is standing in the wilderness.,data/covers/real/g0302__src-real.png
+303,Flickr30k,1130295306,flickr-391,"A boy in a striped blue shirt and gray pants, holding a blue scooter, is looking across a river.",data/covers/real/g0303__src-real.png
+304,Flickr30k,1016887272,flickr-64,Several climbers in a row are climbing the rock while the man in red watches and holds the line.,data/covers/real/g0304__src-real.png
+305,COCO,000000372979,coco-000000372979,A cat sitting on top of a window sill.,data/covers/real/g0305__src-real.png
+306,COCO,000000351683,coco-000000351683,A batter is waiting for a baseball to come to him.,data/covers/real/g0306__src-real.png
+307,COCO,000000489023,coco-000000489023,A soccer player looks up at a soccer ball.,data/covers/real/g0307__src-real.png
+308,Flickr30k,1119463452,flickr-358,A little girl in a pink bathing suit swimming in a pool.,data/covers/real/g0308__src-real.png
+309,COCO,000000370423,coco-000000370423,A white and gray dog sits on a bed near a pile of rumpled sheets.,data/covers/real/g0309__src-real.png
+310,COCO,000000132982,coco-000000132982,A wet view of a street with people crossing in front of buses.,data/covers/real/g0310__src-real.png
+311,COCO,000000356544,coco-000000356544,A dog with a hat strapped to its head.,data/covers/real/g0311__src-real.png
+312,COCO,000000041369,coco-000000041369,A person riding down a sidewalk on a skateboard.,data/covers/real/g0312__src-real.png
+313,COCO,000000394240,coco-000000394240,A row of motorcycles parked in front of a building.,data/covers/real/g0313__src-real.png
+314,Flickr30k,1066252238,flickr-191,A boy in a pink T-shirt is riding a bike over a sand pile while two others are riding in the street.,data/covers/real/g0314__src-real.png
+315,Flickr30k,109982467,flickr-293,A mother and three children collecting garbage from a blue and white garbage can on the street.,data/covers/real/g0315__src-real.png
+316,Flickr30k,1253095131,flickr-748,Two blond women sit outside as people walk by wearing casual clothing and some wearing bookbags.,data/covers/real/g0316__src-real.png
+317,Flickr30k,1030985833,flickr-105,The Chocolate Lab jumps too late to get the toy as the Black Lab captures it in the driveway.,data/covers/real/g0317__src-real.png
+318,COCO,000000299116,coco-000000299116,A little girl posing for a picture while eating food.,data/covers/real/g0318__src-real.png
+319,COCO,000000443591,coco-000000443591,A small herd of zebra walking on a lush green landscape.,data/covers/real/g0319__src-real.png
+320,COCO,000000071384,coco-000000071384,an over head view of cars parked below,data/covers/real/g0320__src-real.png
+321,COCO,000000062790,coco-000000062790,six different shots of horses and people standing on the street,data/covers/real/g0321__src-real.png
+322,COCO,000000346207,coco-000000346207,A cat is laying on a desk full of computers.,data/covers/real/g0322__src-real.png
+323,Flickr30k,1157855775,flickr-482,Three people are walking on a lake shore with houses on the other side.,data/covers/real/g0323__src-real.png
+324,COCO,000000169891,coco-000000169891,A 50s style fridge with a couple magnets on it.,data/covers/real/g0324__src-real.png
+325,Flickr30k,1128230658,flickr-386,A young boy with a shaved head and dirty white collared shirt holds a chicken in his arm.,data/covers/real/g0325__src-real.png
+326,COCO,000000143769,coco-000000143769,A brown miniature pony next to a wooden fence.,data/covers/real/g0326__src-real.png
+327,COCO,000000171062,coco-000000171062,A cat sits on a table and watches television,data/covers/real/g0327__src-real.png
+328,Flickr30k,119805497,flickr-591,A man in a white shirt and a woman in a black shirt are standing in front of a store.,data/covers/real/g0328__src-real.png
+329,Flickr30k,1123486015,flickr-375,A man is standing on a small floating raft with a flag.,data/covers/real/g0329__src-real.png
+330,Flickr30k,1000523639,flickr-5,Two people in the photo are playing the guitar and the other is poking at him.,data/covers/real/g0330__src-real.png
+331,Flickr30k,108656820,flickr-239,"A group of people are either standing or sitting, some are wearing hats and scarves, while some are not.",data/covers/real/g0331__src-real.png
+332,Flickr30k,110802332,flickr-325,Two hockey teams are shown at the goal where the white team is stopping a goal being made by the blue team.,data/covers/real/g0332__src-real.png
+333,Flickr30k,1093807815,flickr-263,A group of African American children with their arms above their heads and happy expressions on their faces.,data/covers/real/g0333__src-real.png
+334,COCO,000000565797,coco-000000565797,An orange striped tabby cat laying on top of a red vehicle's wheel.,data/covers/real/g0334__src-real.png
+335,COCO,000000241876,coco-000000241876,A cat on the lid of a toilet looking perturbed.,data/covers/real/g0335__src-real.png
+336,COCO,000000340559,coco-000000340559,There are two sinks next to two mirrors.,data/covers/real/g0336__src-real.png
+337,COCO,000000536615,coco-000000536615,Two giraffes stand and eat food out of a basket.,data/covers/real/g0337__src-real.png
+338,COCO,000000199602,coco-000000199602,A woman standing in the sand with a kite.,data/covers/real/g0338__src-real.png
+339,COCO,000000158801,coco-000000158801,A large plane is parked outside an airplane hangar.,data/covers/real/g0339__src-real.png
+340,Flickr30k,1001573224,flickr-10,Five ballet dancers caught mid jump in a dancing studio with sunlight coming through a window.,data/covers/real/g0340__src-real.png
+341,COCO,000000083915,coco-000000083915,"A concrete building with towers, a steep in the middle and a clock underneath.",data/covers/real/g0341__src-real.png
+342,COCO,000000489382,coco-000000489382,A herd of sheep crossing a bridge over a river.,data/covers/real/g0342__src-real.png
+343,COCO,000000018149,coco-000000018149,A dog in a cage looking out of the cage.,data/covers/real/g0343__src-real.png
+344,Flickr30k,1178705300,flickr-532,A brown dog jumping into a pool after a bloe ball.,data/covers/real/g0344__src-real.png
+345,Flickr30k,1148889628,flickr-453,A construction worker in jeans is standing on a scaffold holding on to a metal frame with a city backdrop.,data/covers/real/g0345__src-real.png
+346,Flickr30k,1095590286,flickr-272,A yellow dog and a black and white dog are running in the dirt.,data/covers/real/g0346__src-real.png
+347,Flickr30k,1206506157,flickr-608,Two dogs are playing rough in a green field of grass.,data/covers/real/g0347__src-real.png
+348,COCO,000000214698,coco-000000214698,A red stop sign leaning over on it's side.,data/covers/real/g0348__src-real.png
+349,COCO,000000129576,coco-000000129576,"A sofa, television and a bike are sitting in a room.",data/covers/real/g0349__src-real.png
+350,COCO,000000240903,coco-000000240903,A elephant that is standing in the dirt.,data/covers/real/g0350__src-real.png
+351,COCO,000000562870,coco-000000562870,A smart phone sitting on top of a wooden table.,data/covers/real/g0351__src-real.png
+352,COCO,000000293802,coco-000000293802,A boy performing a kickflip on his skateboard on a city street.,data/covers/real/g0352__src-real.png
+353,COCO,000000430359,coco-000000430359,A baseball player holding a bat over his head.,data/covers/real/g0353__src-real.png
+354,COCO,000000137118,coco-000000137118,An empty living room in an apartment with several chairs sitting in the middle of it.,data/covers/real/g0354__src-real.png
+355,Flickr30k,1082608010,flickr-232,A construction worker in a neon vest is working with electrical equipment while sparks fly.,data/covers/real/g0355__src-real.png
+356,Flickr30k,107022557,flickr-198,Two tired-looking men relax on a couch near a wooden trestle table with a coffee cup on it.,data/covers/real/g0356__src-real.png
+357,COCO,000000309434,coco-000000309434,Two planes fly next to each other with only the sky visible in the background.,data/covers/real/g0357__src-real.png
+358,COCO,000000368117,coco-000000368117,A couple of traffic lights sitting under a cloudy sky.,data/covers/real/g0358__src-real.png
+359,COCO,000000056624,coco-000000056624,A wooden bench with snow in a forest.,data/covers/real/g0359__src-real.png
+360,COCO,000000146659,coco-000000146659,A airplane flying high in the sky next to a set of white smoke lines.,data/covers/real/g0360__src-real.png
+361,COCO,000000006005,coco-000000006005,a couple of giraffes that are walking around,data/covers/real/g0361__src-real.png
+362,COCO,000000193251,coco-000000193251,A clean bathroom is seen in this image.,data/covers/real/g0362__src-real.png
+363,Flickr30k,1175268298,flickr-528,A young student receives fencing instruction from his kneeling teacher while a potential opponent and a woman gaze behind them.,data/covers/real/g0363__src-real.png
+364,COCO,000000146411,coco-000000146411,A cat on the ground with a shoe.,data/covers/real/g0364__src-real.png
+365,Flickr30k,109202801,flickr-256,Two golden brown horses pull a sleigh driven by a woman in a blue coat.,data/covers/real/g0365__src-real.png
+366,Flickr30k,1240297429,flickr-702,A dog is wearing a red number 6 and running through a field of green grass while being chased by a bird.,data/covers/real/g0366__src-real.png
+367,COCO,000000472854,coco-000000472854,Two young skateboarders are skating near each other.,data/covers/real/g0367__src-real.png
+368,COCO,000000310553,coco-000000310553,A man riding on the back of a motorcycle with a woman.,data/covers/real/g0368__src-real.png
+369,Flickr30k,112411540,flickr-376,Young man wearing a wear jacket is behind a counter in a jewelry store gazing off into the distance.,data/covers/real/g0369__src-real.png
+370,COCO,000000472246,coco-000000472246,"A fork next to an apple, orange and onion.",data/covers/real/g0370__src-real.png
+371,COCO,000000410002,coco-000000410002,Assortment of doughnuts and other snack items on a serving tray.,data/covers/real/g0371__src-real.png
+372,Flickr30k,1211184847,flickr-613,Several men are working on tiles together while sitting on the floor.,data/covers/real/g0372__src-real.png
+373,Flickr30k,1262720546,flickr-770,"A young musician playing a small guitar and singing, while sitting in a white plastic chair.",data/covers/real/g0373__src-real.png
+374,Flickr30k,1096097967,flickr-277,A black and white dog is being soaked with a jet of water in a blue paddling pool.,data/covers/real/g0374__src-real.png
+375,Flickr30k,1001545525,flickr-9,Two men in Germany jumping over a rail at the same time without shirts.,data/covers/real/g0375__src-real.png
+376,COCO,000000148358,coco-000000148358,Some very cute zebras in a grassy field.,data/covers/real/g0376__src-real.png
+377,COCO,000000308026,coco-000000308026,A skateboarder doing a trick with skyscrapers in the background.,data/covers/real/g0377__src-real.png
+378,COCO,000000057387,coco-000000057387,a crowd watching a girl ready to hit the tennis ball,data/covers/real/g0378__src-real.png
+379,COCO,000000181714,coco-000000181714,An animation of a girl holding an umbrella is shown.,data/covers/real/g0379__src-real.png
+380,COCO,000000132615,coco-000000132615,A baseball player is swinging and about to run.,data/covers/real/g0380__src-real.png
+381,COCO,000000251252,coco-000000251252,The shiny motorcycle is being shown on a display.,data/covers/real/g0381__src-real.png
+382,Flickr30k,123101580,flickr-665,"Two girls are playing soccer and one is wearing a white shirt with green shorts showing the number 4, while the other girl is wearing a red and white shirt.",data/covers/real/g0382__src-real.png
+383,COCO,000000010442,coco-000000010442,there are many baseball players greeting each other on the field,data/covers/real/g0383__src-real.png
+384,COCO,000000526711,coco-000000526711,A turquoise and white airplane and cars on the tarmac.,data/covers/real/g0384__src-real.png
+385,COCO,000000241350,coco-000000241350,A ten speed bike is next to a wooden desk.,data/covers/real/g0385__src-real.png
+386,Flickr30k,1021442086,flickr-78,"A bearded man wearing glasses, a red shirt, and a hat is reading a map while sitting in a car.",data/covers/real/g0386__src-real.png
+387,Flickr30k,1002674143,flickr-16,A small girl in the grass plays with fingerpaints in front of a white canvas with a rainbow on it.,data/covers/real/g0387__src-real.png
+388,COCO,000000387173,coco-000000387173,A person riding on the water in a red row boat.,data/covers/real/g0388__src-real.png
+389,Flickr30k,123416768,flickr-675,"Three women at a shopping mall, one has a dog, one is on her cellphone, one is playing with her necklace.",data/covers/real/g0389__src-real.png
+390,Flickr30k,1042020065,flickr-129,A young boy wearing a jersey looks down over a ledge at many boats in the water.,data/covers/real/g0390__src-real.png
+391,COCO,000000143824,coco-000000143824,A cat looking at a dog on a TV.,data/covers/real/g0391__src-real.png
+392,Flickr30k,1136758631,flickr-409,A woman in a black top with a shopping bag standing near the train tracks while others read.,data/covers/real/g0392__src-real.png
+393,COCO,000000439969,coco-000000439969,A rusted pink fire hydrant in the grass,data/covers/real/g0393__src-real.png
+394,Flickr30k,1094283901,flickr-264,A shirtless man jumping off a large concrete structure into a river with his friends watching from the structure.,data/covers/real/g0394__src-real.png
+395,Flickr30k,1065831604,flickr-190,A bunch of people in racing gear and helmets racing bicycles around a corner on wet pavement.,data/covers/real/g0395__src-real.png
+396,Flickr30k,119534510,flickr-583,A person in a brown jacket is sitting on a pier by the water reading.,data/covers/real/g0396__src-real.png
+397,COCO,000000490923,coco-000000490923,A young girl brushing her teeth with a tooth brush.,data/covers/real/g0397__src-real.png
+398,COCO,000000385633,coco-000000385633,A refrigerator that has a plant on top of it.,data/covers/real/g0398__src-real.png
+399,Flickr30k,105806535,flickr-173,"A young man is bathing, with only his shorts on, in a large wooden pale.",data/covers/real/g0399__src-real.png
+400,Flickr30k,1222063706,flickr-645,A woman in a brown knee length skirt and a silk brown button up shirt is sitting on a stone bench at a art gallery fixing her skirt.,data/covers/real/g0400__src-real.png
+401,COCO,000000362159,coco-000000362159,A traffic light hanging over a street next to tall buildings.,data/covers/real/g0401__src-real.png
+402,Flickr30k,1250745375,flickr-735,A group of people attending either a concert or a party.,data/covers/real/g0402__src-real.png
+403,Flickr30k,1106644976,flickr-316,A young group of friends adorned with face paint and feathered headbands sit on a bench.,data/covers/real/g0403__src-real.png
+404,Flickr30k,108503753,flickr-237,A white and green helicopter takes off from the airfield.,data/covers/real/g0404__src-real.png
+405,COCO,000000032965,coco-000000032965,A woman staniding on the shore holding two umbrellas.,data/covers/real/g0405__src-real.png
+406,Flickr30k,1248953128,flickr-732,A little girl in a colorful dress is playing with a blue and red soccer ball.,data/covers/real/g0406__src-real.png
+407,COCO,000000142129,coco-000000142129,A red four door car pulling into a parking space with a meter.,data/covers/real/g0407__src-real.png
+408,COCO,000000069392,coco-000000069392,A group of people that are standing on a tennis court.,data/covers/real/g0408__src-real.png
+409,COCO,000000310325,coco-000000310325,A refrigerator with an ice machine and two vertical doors stands on a tile floor next to a door.,data/covers/real/g0409__src-real.png
+410,COCO,000000303590,coco-000000303590,A child sitting with container that has chips and a hot dog in it.,data/covers/real/g0410__src-real.png
+411,COCO,000000477010,coco-000000477010,A tennis player serves a ball as a crowd watches.,data/covers/real/g0411__src-real.png
+412,Flickr30k,1073145694,flickr-201,A man in a yellow shirt and black shorts getting ready to throw a javelin.,data/covers/real/g0412__src-real.png
+413,COCO,000000217005,coco-000000217005,a large amount of plants growing in a forest,data/covers/real/g0413__src-real.png
+414,Flickr30k,1087539207,flickr-241,The four kids are riding on an ATV in a field.,data/covers/real/g0414__src-real.png
+415,Flickr30k,1164131282,flickr-505,A gray dog beside a black and white dog running in green grass.,data/covers/real/g0415__src-real.png
+416,COCO,000000284350,coco-000000284350,A woman standing in a set suit on a beach holding a surfboard.,data/covers/real/g0416__src-real.png
+417,Flickr30k,1193116658,flickr-579,A young girl rides a unicycle next to another riding a scooter on a busy street.,data/covers/real/g0417__src-real.png
+418,Flickr30k,110600869,flickr-311,A little girl in a blue jeans vest is running across the grass and laughing.,data/covers/real/g0418__src-real.png
+419,COCO,000000291712,coco-000000291712,a small boat in a body of water,data/covers/real/g0419__src-real.png
+420,Flickr30k,1089181217,flickr-247,A light brown dog runs down a path happily.,data/covers/real/g0420__src-real.png
+421,COCO,000000384213,coco-000000384213,A kitchen is shown with a variety of items on the counters.,data/covers/real/g0421__src-real.png
+422,Flickr30k,121800200,flickr-632,A group of rock climbers climb a rock wall in a forest.,data/covers/real/g0422__src-real.png
+423,COCO,000000278166,coco-000000278166,A glass elephant figurines sitting on a plate.,data/covers/real/g0423__src-real.png
+424,COCO,000000558524,coco-000000558524,"The large, very old jar is on display behind glass.",data/covers/real/g0424__src-real.png
+425,Flickr30k,1181708011,flickr-539,A woman in a green tank top looking at a drill while a crowd looks on.,data/covers/real/g0425__src-real.png
+426,COCO,000000102446,coco-000000102446,"A living area with counter, chairs, windows and an air hockey table.",data/covers/real/g0426__src-real.png
+427,COCO,000000523297,coco-000000523297,A bathroom with a toilet bowl and shower.,data/covers/real/g0427__src-real.png
+428,COCO,000000462341,coco-000000462341,An older building with birds flying near it.,data/covers/real/g0428__src-real.png
+429,Flickr30k,106027978,flickr-177,A woman in a pink shirt wrapped up in a blue blanket asleep in a car.,data/covers/real/g0429__src-real.png
+430,Flickr30k,102575576,flickr-88,A couple in their wedding attire stand behind a table with a wedding cake and flowers.,data/covers/real/g0430__src-real.png
+431,Flickr30k,116976749,flickr-523,Metal worker in protective gear and welding face mask works on weld.,data/covers/real/g0431__src-real.png
+432,COCO,000000421478,coco-000000421478,A man in a tie with a shirt jacket thrown over his shoulder.,data/covers/real/g0432__src-real.png
+433,COCO,000000376959,coco-000000376959,A baby in a high chair with paper on the table in front of her,data/covers/real/g0433__src-real.png
+434,COCO,000000382848,coco-000000382848,A yellow schoolbus with a woman spread out in front of it.,data/covers/real/g0434__src-real.png
+435,COCO,000000180800,coco-000000180800,Plastic container filled with oranges sitting on a green shelf.,data/covers/real/g0435__src-real.png
+436,COCO,000000287570,coco-000000287570,A young girl is skiing as others are far down the slope.,data/covers/real/g0436__src-real.png
+437,COCO,000000269089,coco-000000269089,A sandwich cut in half served with coffee,data/covers/real/g0437__src-real.png
+438,COCO,000000015827,coco-000000015827,Two rows of various makes of parked motorcycles.,data/covers/real/g0438__src-real.png
+439,Flickr30k,1001896054,flickr-13,A man with reflective safety clothes and ear protection drives a John Deere tractor on a road.,data/covers/real/g0439__src-real.png
+440,COCO,000000132686,coco-000000132686,A sky filled with lots of colorful flying kites.,data/covers/real/g0440__src-real.png
+441,Flickr30k,122019659,flickr-638,A young boy prepares to field a baseball with people in the background.,data/covers/real/g0441__src-real.png
+442,COCO,000000409251,coco-000000409251,A man and woman are playing a video game,data/covers/real/g0442__src-real.png
+443,Flickr30k,1263801010,flickr-774,"A person in a red and black ski outfit is looking over a snowy, mountainous landscape.",data/covers/real/g0443__src-real.png
+444,COCO,000000208663,coco-000000208663,A meal of vegetables and seafood mixed together.,data/covers/real/g0444__src-real.png
+445,Flickr30k,105493603,flickr-162,Two people sitting beside each other at a table with food on it smiling.,data/covers/real/g0445__src-real.png
+446,COCO,000000465566,coco-000000465566,A red train leaving a train station with man watching.,data/covers/real/g0446__src-real.png
+447,COCO,000000180490,coco-000000180490,A room with a refrigerator with a house plant sitting on top of it.,data/covers/real/g0447__src-real.png
+448,COCO,000000125997,coco-000000125997,A big billboard is painted onto the side of a brick building.,data/covers/real/g0448__src-real.png
+449,Flickr30k,1244140539,flickr-713,A black and brown dog is laying on a white shaggy carpet.,data/covers/real/g0449__src-real.png
+450,Flickr30k,11551286,flickr-477,A little toddler boy is crying while walking.,data/covers/real/g0450__src-real.png
+451,COCO,000000565683,coco-000000565683,White knitted teddy bears and christmas tree decoration,data/covers/real/g0451__src-real.png
+452,Flickr30k,124145159,flickr-704,"Two men, one looking at a screen with a drum next to him, while the other is a man dressed in a white shirt is talking into a microphone.",data/covers/real/g0452__src-real.png
+453,COCO,000000289444,coco-000000289444,A young man and woman playing a game of soccer.,data/covers/real/g0453__src-real.png
+454,COCO,000000475798,coco-000000475798,An airplane parked next to a terminal ready for passengers to board.,data/covers/real/g0454__src-real.png
+455,Flickr30k,1024138940,flickr-84,Two different breeds of brown and white dogs play on the beach.,data/covers/real/g0455__src-real.png
+456,COCO,000000098054,coco-000000098054,"A plate with chicken,carrots and mashed potatoes with silverware.",data/covers/real/g0456__src-real.png
+457,Flickr30k,106514190,flickr-188,A hiker standing high on a bluff overlooking the mountains below.,data/covers/real/g0457__src-real.png
+458,Flickr30k,1253275679,flickr-751,A young boy wearing a clever black and white shirt with his head bowed down,data/covers/real/g0458__src-real.png
+459,COCO,000000081561,coco-000000081561,A large point tower towering over a traffic light.,data/covers/real/g0459__src-real.png
+460,Flickr30k,113291048,flickr-404,A young man holds up a piece of wood and a chainsaw as presses a cigarette between his lips.,data/covers/real/g0460__src-real.png
+461,Flickr30k,1144865997,flickr-434,A group of people standing on the lawn in front of a building.,data/covers/real/g0461__src-real.png
+462,COCO,000000479057,coco-000000479057,A largge polar bear smelling the grass looking for food.,data/covers/real/g0462__src-real.png
+463,Flickr30k,1139029795,flickr-414,A group of local cheerleaders in red and white kept our spirits up during the parade.,data/covers/real/g0463__src-real.png
+464,Flickr30k,12252043,flickr-654,Four young Asian boys hold bowls and chopsticks as they stand around a barbecue.,data/covers/real/g0464__src-real.png
+465,COCO,000000043133,coco-000000043133,A picture of several people in a sail boat in the ocean.,data/covers/real/g0465__src-real.png
+466,Flickr30k,1122944218,flickr-374,A little toddler dressed in white is smiling while a lady helps him wave a flag.,data/covers/real/g0466__src-real.png
+467,COCO,000000158497,coco-000000158497,A kitchen filled with lots of dogs near a dishwasher.,data/covers/real/g0467__src-real.png
+468,COCO,000000207826,coco-000000207826,A woman holds up a book as she attempts to read in bed.,data/covers/real/g0468__src-real.png
+469,COCO,000000348140,coco-000000348140,An intracately designed boat on a river bank.,data/covers/real/g0469__src-real.png
+470,Flickr30k,1039637574,flickr-124,A bride in a light pink dress poses for a picture with male relatives and is being photographed by a man in a cream shirt with white pants.,data/covers/real/g0470__src-real.png
+471,Flickr30k,105077209,flickr-150,A man with a badge is standing on a wood floor next to a structure.,data/covers/real/g0471__src-real.png
+472,Flickr30k,1248940539,flickr-731,"Three little blond girls, two in blue, one in pink, play on a sunny beach.",data/covers/real/g0472__src-real.png
+473,Flickr30k,1027149103,flickr-92,A band is playing in front of an audience and the singer is wearing an orange shirt and has tattoos on his arm.,data/covers/real/g0473__src-real.png
+474,COCO,000000563964,coco-000000563964,A man throwing a frisbee in front of a sign point in the direction of the toilet.,data/covers/real/g0474__src-real.png
+475,COCO,000000286544,coco-000000286544,A man pushing a wheelchair on the street.,data/covers/real/g0475__src-real.png
+476,COCO,000000553867,coco-000000553867,A herd of Giraffes and a herd of Zebra's running together across a field.,data/covers/real/g0476__src-real.png
+477,Flickr30k,1147391743,flickr-450,A family in an African village sits outside of their home on the ground.,data/covers/real/g0477__src-real.png
+478,COCO,000000182245,coco-000000182245,Man sitting at a small table behind a pizza.,data/covers/real/g0478__src-real.png
+479,COCO,000000012547,coco-000000012547,Two elderly people are sitting on a city bench.,data/covers/real/g0479__src-real.png
+480,COCO,000000265003,coco-000000265003,A dog wearing a hat and sitting in the grass.,data/covers/real/g0480__src-real.png
+481,COCO,000000018783,coco-000000018783,A man in white shirt on bicycle with a dog riding in the back.,data/covers/real/g0481__src-real.png
+482,COCO,000000209604,coco-000000209604,Shelves are filled with parcels that have red ribbons.,data/covers/real/g0482__src-real.png
+483,COCO,000000449981,coco-000000449981,A crowd of people taking pictures of baby elephants,data/covers/real/g0483__src-real.png
+484,COCO,000000419856,coco-000000419856,a black bicycle parked near a large branch carrying bananas,data/covers/real/g0484__src-real.png
+485,Flickr30k,1191338263,flickr-574,"A woman with an umbrella is sitting at a station, with an Aquos commercial on the wall.",data/covers/real/g0485__src-real.png
+486,COCO,000000216841,coco-000000216841,Lots and lots and lots of very colorful ties,data/covers/real/g0486__src-real.png
+487,COCO,000000527025,coco-000000527025,People standing outside doorway with ribbon across it.,data/covers/real/g0487__src-real.png
+488,Flickr30k,1049955899,flickr-149,"A group of men and women are hiking through a dried up river bed littered with large rocks, which runs between two rocky walls in a dense green forest.",data/covers/real/g0488__src-real.png
+489,Flickr30k,1112334131,flickr-333,A kid wearing a Gap hat looks into the camera with a funny face and ice cream cone in his hand while a woman looks on from behind him.,data/covers/real/g0489__src-real.png
+490,Flickr30k,1102763701,flickr-302,Young individuals in uniforms are gathering under the flags of several different countries.,data/covers/real/g0490__src-real.png
+491,COCO,000000001369,coco-000000001369,A man in a wetsuit with a surfboard standing on a beach.,data/covers/real/g0491__src-real.png
+492,Flickr30k,118187095,flickr-540,Twin toddlers dressed alike being pushed in plastic car strollers in a parade,data/covers/real/g0492__src-real.png
+493,COCO,000000387431,coco-000000387431,Sidewalk in city with store fronts and clock.,data/covers/real/g0493__src-real.png
+494,COCO,000000398362,coco-000000398362,A window with wooden shutters and metal bars across it.,data/covers/real/g0494__src-real.png
+495,COCO,000000505099,coco-000000505099,a baseball player is going to swing a bat,data/covers/real/g0495__src-real.png
+496,COCO,000000272262,coco-000000272262,A guy in a maroon shirt is holding a tennis racket out to hit a tennis ball.,data/covers/real/g0496__src-real.png
+497,Flickr30k,1148095714,flickr-451,A young dark-skinned child in a long blue coat is chasing a ball.,data/covers/real/g0497__src-real.png
+498,COCO,000000556616,coco-000000556616,A row of parked cars sitting next to parking meters.,data/covers/real/g0498__src-real.png
+499,COCO,000000550529,coco-000000550529,A motorbike sitting in front of a wine display case,data/covers/real/g0499__src-real.png
+500,Flickr30k,1082478946,flickr-231,There are workers laying out the tracks for a trolley.,data/covers/real/g0500__src-real.png

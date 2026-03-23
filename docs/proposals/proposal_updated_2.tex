@@ -1,0 +1,607 @@
+\documentclass[10pt,twocolumn,a4paper]{article}
+
+% ---- Packages ----
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[top=1.8cm,bottom=1.8cm,left=1.5cm,right=1.5cm]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{url}
+\usepackage{caption}
+\usepackage{tikz}
+\usepackage{calc}
+\usepackage{needspace}
+\usetikzlibrary{positioning,calc}
+
+% ---- Colors ----
+\definecolor{umdark}{HTML}{001C3D}
+\definecolor{umorange}{HTML}{E84E10}
+\definecolor{umlight}{HTML}{4A90C4}
+\definecolor{umgray}{HTML}{6B7280}
+\definecolor{ganttblue}{HTML}{2563EB}
+\definecolor{ganttred}{HTML}{DC2626}
+\definecolor{ganttgreen}{HTML}{059669}
+\definecolor{ganttamber}{HTML}{D97706}
+\definecolor{ganttpurple}{HTML}{7C3AED}
+\definecolor{ganttgray}{HTML}{9CA3AF}
+
+% ---- Formatting ----
+\hypersetup{colorlinks=true,linkcolor=umdark,citecolor=umlight,urlcolor=umlight}
+\setlength{\columnsep}{0.6cm}
+\setlength{\parskip}{2pt plus 1pt}
+\setlength{\parindent}{0.8em}
+
+% Compact sections
+\titleformat{\section}{\normalfont\bfseries\normalsize\color{umdark}}{\thesection.}{0.4em}{}[\vspace{-2pt}\color{umorange}\rule{\columnwidth}{0.6pt}]
+\titleformat{\subsection}{\normalfont\bfseries\small}{\thesubsection}{0.4em}{}
+\titlespacing*{\section}{0pt}{8pt plus 2pt}{4pt plus 1pt}
+\titlespacing*{\subsection}{0pt}{5pt plus 2pt}{2pt plus 1pt}
+
+% Compact lists
+\setlist{nosep,leftmargin=1.2em}
+\captionsetup{font=small,labelfont=bf,skip=4pt}
+
+% ---- Header/Footer ----
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\small\thepage}
+
+% ============================================================
+% Title
+% ============================================================
+\title{\vspace{-1.2cm}\textbf{Does the Source of Carrier Image Affect\\
+Steganographic Detectability?}\\[4pt]
+\large Midway Project Proposal\\[6pt]
+\normalsize\textit{Project 2.2, Department of Advanced Computing Sciences}}
+\author{Abdul Moiz Akbar \quad Daria Gjonbalaj \quad Nico Müller-Späth\\[2pt]
+Jimena Narvaez del Cid \quad David Wicker \quad Nikolas Zouros\\[2pt]
+\small Maastricht University \quad$\cdot$\quad February 2026}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+\vspace{-0.6cm}
+
+% ============================================================
+\section{Motivation and Problem Statement}
+% ============================================================
+
+Image steganography is an important topic in online security and privacy, with both beneficial and adversarial uses~\cite{petitcolas1999,cheddad2010}. In practice, detectability depends not only on the embedding method but also on the underlying statistics of the carrier image~\cite{giboulot2020csm,fridrich2001lsb}. Steganalysis works by detecting subtle distributional perturbations in pixel values, residuals, and frequency coefficients after embedding. This is exactly why carrier selection matters: two carriers with identical payload and identical embedding can produce different detectability outcomes.
+
+Most existing steganalysis pipelines were developed and benchmarked on real camera photographs, where sensor noise and compression traces are relatively well characterized. This assumption is increasingly fragile. Photorealistic synthetic images from modern text-conditional diffusion generators (e.g., Stable Diffusion variants) are now widespread~\cite{rombach2022sd}, and they are produced by different mechanisms than camera pipelines. Prior synthetic-image forensics confirms that diffusion-generated images carry distinct statistical traces independent of any payload~\cite{corvi2023diffusion}, which may directly influence steganographic detectability.
+
+The core question is therefore: \textbf{do steganalysis detectors validated on photographs remain equally effective on ML-generated carriers under identical embedding settings?} This matters for three reasons:
+\begin{itemize}
+\item \textbf{Security:} if ML-generated carriers are harder to detect, an attacker may evade existing detectors by changing carrier source only.
+\item \textbf{Scientific:} the interaction between generative-model distributions and embedding perturbations remains underexplored.
+\item \textbf{Practical:} as AI-generated images become common in communication channels, the steganographic attack surface expands.
+\end{itemize}
+
+The problem statement for this project is to quantify whether \emph{carrier source category} (real vs.\ ML-generated, and model-to-model within ML) is associated with measurable detection differences when embedding, payload, and detector settings are held fixed. Because the synthetic images are regenerated from captions rather than matched at the pixel level, we frame the study as a domain-shift comparison rather than a source-only causal test. If source effects are large, detector calibration and risk assumptions built on photo-only datasets may not transfer to mixed real/synthetic traffic.
+
+The closest precedents are Gao et al.~\cite{gao2022ai} and M\'{e}reur et al.~\cite{mereur2024deepfake} (see Section~\ref{sec:relatedwork} for detailed comparison); neither provides a matched real-vs-ML comparison using standardized classical LSB/DCT pipelines and AUC-based steganalysis as the primary endpoint, leaving comparative detectability under those controlled conditions unclear.
+
+This study addresses that gap with a matched design spanning 3 carrier sources $\times$ 2 embedding methods $\times$ 3 payload levels $\times$ 2 encryption conditions over 1{,}500 carrier images (500 real, 500 ML-A, 500 ML-B), evaluated by training-free statistical detectors matched to each embedding branch. By holding embedding, payload, and detector settings fixed within this comparison, we test whether carrier domain and generator choice are associated with meaningful detection-performance differences. Because training-free detectors have no learned domain bias, any observed AUC gaps are attributable to carrier statistics rather than detector-training mismatch. Results will guide benchmarking and steganalysis policy in mixed real/synthetic environments.
+
+\smallskip
+\noindent\textbf{Contributions.} (1)~A prompt-matched, 3-way carrier dataset (real, SDXL, PixArt-$\alpha$) purpose-built for steganographic evaluation. (2)~A controlled experimental protocol that isolates carrier-domain effects from embedding, payload, and detector variables. (3)~An AUC-based confirmatory comparison (DeLong + Bonferroni--Holm) of training-free steganalysis performance on photographic versus diffusion-generated carriers across both spatial and frequency embedding branches.
+
+% ============================================================
+\section{Research Questions}
+% ============================================================
+
+\begin{description}[font=\normalfont\bfseries,leftmargin=1em,style=nextline]
+
+\item[RQ1: Primary (Carrier Source, Real vs.\ ML)] Does carrier source (real photographs vs.\ ML-generated images) significantly affect steganographic detectability under matched embedding settings? ML-A and ML-B are pooled into a single ML group to test whether ML origin \emph{in general} changes detectability; RQ2 then decomposes this pool by generator. Because the two generators may differ in opposite directions, pooling could attenuate or inflate the observed effect; we report per-generator breakdowns alongside the pooled result.
+
+\item[RQ2: Primary (Generation-Model Effect Within ML)] Within ML-generated carriers, does the choice of generation model (ML-A vs.\ ML-B) significantly affect detectability under prompt-matched conditions?
+
+\item[RQ3: Exploratory (Payload Interaction)] Does payload size alter source-related detectability gaps (real vs.\ ML and ML-A vs.\ ML-B)?
+
+\item[RQ4: Exploratory (Embedding Branch)] Do the spatial-domain branch (LSB+PNG) and frequency-domain branch (DCT-LSB+JPEG) show different carrier-source effects on detectability? Each branch bundles an embedding algorithm with its natural codec; observed cross-branch differences therefore reflect the complete pipeline rather than embedding algorithm alone.
+
+\item[RQ5: Verification (Encryption Invariance)] Does AES-256-CBC encryption of the payload affect detectability, and does any such effect interact with carrier source or embedding branch? Because AES-256-CBC output is computationally indistinguishable from uniform random bits, embedding statistics presented to the detector should be structurally identical under both conditions, so we expect no effect; this serves as a design-validation check. Any deviation would indicate detector sensitivity to payload structure and would have direct implications for threat modelling.
+
+\end{description}
+\noindent\textcolor{umgray}{\footnotesize\textit{Verification details for each RQ are specified in Section~\ref{sec:experiments}.}}
+
+% ============================================================
+\Needspace{8\baselineskip}
+\section{Chosen Approaches}
+\label{sec:approaches}
+% ============================================================
+
+\subsection{Datasets}
+
+\textbf{Real images (500 total).} We use \textbf{COCO}~\cite{coco2014} (300 images) and \textbf{Flickr30k}~\cite{flickr30k2014} (200 images) for their detailed human-written captions; images with ambiguous captions are excluded. Images are converted to grayscale (luma $0.299R + 0.587G + 0.114B$), resized to 512$\times$512, and stored as 8-bit PNG (LSB branch) and JPEG Q=95 (DCT branch). Grayscale conversion aligns with the BOSSBase~\cite{bas2011boss} training corpus and removes color-palette biases of diffusion models from residual statistics.
+
+\textbf{ML-generated images (1{,}000 total).} From the real set, we generate two prompt-matched sets via the \texttt{diffusers} library~\cite{diffusers}: \textbf{ML-A} (500) with Stable Diffusion XL 1.0~\cite{sdxl2023} and \textbf{ML-B} (500) with PixArt-$\alpha$~\cite{pixart2023}, comparing a latent U-Net diffusion model against a diffusion-transformer. Each caption is used once per model.
+
+\textbf{Generation-stage quality control.} Generated candidates are screened for two gross failure modes: \textbf{(1)}~\emph{saturation failures} (grayscale mean $>245$ or $<10$ after $512\!\times\!512$ normalization, flagging washed-out or near-black outputs) and \textbf{(2)}~\emph{semantic failures} (near-uniform outputs or complete subject absence, assessed on a stratified random 10\% holdout per generator model via manual inspection). BRISQUE is excluded: its NSS assumptions~\cite{mittal2012brisque} do not transfer to diffusion outputs~\cite{li2024aigiqa}. Images that fail either screen are re-generated from the same caption with a new random seed; if re-generation fails a second time the caption is dropped entirely and replaced by the next unused caption in the dataset, preserving the target $N$=500 per source group.
+
+\subsection{Embedding Methods}
+
+We implement two canonical steganographic methods:
+
+\textbf{LSB substitution (spatial domain)} replaces the $k$ least significant bits of each pixel channel value with message bits in row-major order. Three payload levels are defined by the fraction of available positions filled:
+
+\begin{table}[h]
+\centering
+\caption{Payload level definitions. Levels are matched across branches by fill rate (fraction of available embedding positions used). Both branches use $k$=1 LSB replacement; spatial capacity is 1~bpp (one bit per pixel), DCT capacity is 1~bit per non-zero AC coefficient.}
+\label{tab:payload}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Level} & \textbf{Fill} & \textbf{Spatial bpp} & \textbf{DCT fill} \\
+\midrule
+Low    & 25\% & 0.25 & 25\% of non-zero ACs \\
+Medium & 50\% & 0.50 & 50\% of non-zero ACs \\
+High   & 75\% & 0.75 & 75\% of non-zero ACs \\
+\midrule
+\multicolumn{4}{@{}l@{}}{\textit{Bit-depth sensitivity (reported separately, not in RQ3 analysis):}} \\
+BD-Sens & 75\% ($k$=2) & 1.50 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent The three primary payload levels all use $k$=1 to isolate fill-rate effects from bit-depth effects. The BD-Sens condition ($k$=2, 1.50~bpp) is a spatial-branch-only sensitivity check, excluded from the payload-interaction analysis in RQ3 since it changes both bit-depth and fill rate simultaneously.
+
+\textbf{DCT-LSB embedding (frequency domain)} operates on JPEG carriers (Q=95). Following the JSteg approach~\cite{westfeld1999chi,fridrich2003calib}, message bits replace the least significant bit of non-zero quantized AC~DCT coefficients in row-major block order. Zero-valued coefficients and DC coefficients are skipped to avoid perceptible distortion and gross histogram artifacts. This mirrors the spatial-branch embedding logic (LSB replacement) but operates in the frequency domain, making both branches structurally parallel while producing different statistical footprints.
+
+\textbf{Implementation pipeline.} DCT-LSB operates directly on the quantized integer DCT coefficients stored in the JPEG bitstream, accessed via \texttt{jpegio} (Python), which exposes the coefficient matrix without pixel-domain decoding. The modified coefficients are re-entropy-coded at the same Q=95 table without re-quantization, avoiding double-quantization distortion.
+
+\subsection{Encryption}
+
+Payloads are embedded under two conditions (plain and AES-256-CBC), applied uniformly across both branches.
+
+\subsection{Image-Quality Tests (Quality Control)}
+
+For each stego/cover pair we compute PSNR, SSIM, and FSIM~\cite{zhang2011fsim} to rule out trivial degradation effects.
+
+\subsection{Steganalysis Detectors}
+
+All primary detectors are training-free statistical tests, each reimplemented in Python from the original publications. Training-free detectors carry no learned domain bias, so any AUC differences across carrier sources reflect the carrier statistics themselves rather than a detector-training mismatch. Because both branches use LSB replacement (on pixel values and on DCT coefficients respectively), the $\chi^2$ attack applies to both, giving each branch at least two independent detectors.
+
+\begin{table}[h]
+\centering
+\caption{Steganalysis detector overview. All primary detectors are training-free.}
+\label{tab:detectors}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Detector} & \textbf{Principle} & \textbf{Training} & \textbf{Domain} \\
+\midrule
+RS Analysis~\cite{fridrich2001lsb} & Regular/Singular groups & None & Spatial \\
+$\chi^2$ attack~\cite{westfeld1999chi} & Pairs-of-values frequency & None & Spatial \\
+Sample Pairs~\cite{dumitrescu2003sp} & Trace multisets & None & Spatial \\
+$\chi^2$ attack (DCT)~\cite{westfeld1999chi} & Pairs-of-values on DCT coeff. & None & DCT \\
+Calibration $\chi^2$~\cite{fridrich2003calib} & Crop-recompress reference & None & DCT \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Spatial-branch detectors.} \textbf{RS analysis}~\cite{fridrich2001lsb} classifies pixel groups as Regular or Singular under flipping masks; the ratio shift between cover and stego images estimates embedding rate. \textbf{The $\chi^2$ attack}~\cite{westfeld1999chi} tests whether adjacent value pairs $(2k, 2k\!+\!1)$ converge to equal frequency, a signature of LSB replacement. \textbf{Sample Pairs (SP) analysis}~\cite{dumitrescu2003sp} counts trace multisets from pixel pairs, providing a third independent estimate. All three assume sequential (row-major) embedding order.
+
+\textbf{DCT-branch detectors.} The \textbf{$\chi^2$ attack (DCT)}~\cite{westfeld1999chi} applies the same pairs-of-values test to quantized DCT coefficients rather than pixel values; since DCT-LSB replaces coefficient LSBs identically to spatial LSB, the test transfers directly. \textbf{Calibration $\chi^2$}~\cite{fridrich2003calib} provides an independent second detector: the stego image is cropped by four pixels at a non-block-aligned offset and re-compressed at Q=95, giving an embedding-free reference; a $\chi^2$ test on the resulting DCT histogram pairs detects embedding-induced shifts.
+
+\textbf{Extension (time-permitting):} SRNet~\cite{boroumand2019srnet}, a deep residual network for steganalysis, retrained on BOSSBase~\cite{bas2011boss} images embedded with spatial LSB and DCT-LSB respectively. If completed, SRNet would add a trained detector to both branches, reported separately from the primary training-free analysis.
+
+\subsection{Limitations}
+
+With 500 images per source group, the design targets medium-to-large effects; confirmatory testing is restricted to RQ1--2 (Bonferroni--Holm), with RQ3--4 reported by effect size. Generator coverage is limited to two families. Crucially, ML-A (SDXL, latent U-Net) and ML-B (PixArt-$\alpha$, diffusion transformer) differ not only in architecture but also in training data and conditioning pipeline, so any observed RQ2 difference is architecture-plus-training-data confounded and cannot be attributed to architecture alone. The spatial branch has three detectors while the DCT branch has two; this minor asymmetry reflects the available training-free methods in the literature. Grayscale conversion, while necessary for BOSSBase alignment, discards inter-channel correlations that may carry source-distinguishing information, potentially attenuating the measured carrier-source effect. Cross-branch comparisons (RQ4) conflate embedding algorithm with codec; within-branch results for RQ1--2 are free of this confound.
+
+% ============================================================
+\section{Experiments}
+\label{sec:experiments}
+% ============================================================
+
+\noindent\textit{Statistical protocol:} Exp.\,1--2 are \textbf{confirmatory} (Bonferroni--Holm, $\alpha = 0.05$); Exp.\,3--4 are \textbf{exploratory}, reported via AUC differences with 95\% confidence intervals; Exp.\,5 is a \textbf{verification} check (expected null). A \emph{stratum} is defined as the tuple (detector, embedding method, payload level). We use the DeLong test~\cite{delong1988} because the same images pass through all detectors, making per-stratum AUC estimates correlated; Bonferroni--Holm is preferred over plain Bonferroni for higher power when some null hypotheses are false.
+
+\textbf{Exp.\,1 (RQ1): Carrier Source, real vs.\ pooled ML.} Apply all detectors per branch (spatial: RS, $\chi^2$, SP; DCT: $\chi^2$, calibration $\chi^2$). For each stratum (detector, method, payload), compare real vs.\ pooled ML AUC via DeLong test and report differences with 95\% CIs.
+
+\textbf{Exp.\,2 (RQ2): Generation-model effect within ML.} For each stratum (detector, method, payload), compare AUC between prompt-matched ML-A and ML-B pairs using the DeLong test~\cite{delong1988}. Report detector-specific AUC differences with 95\% confidence intervals.
+
+\textbf{Exp.\,3 (RQ3): Payload interaction.} Plot AUC and source-contrast gaps across Low, Medium, and High payload levels (all $k$=1; LSB~bpp: 0.25, 0.50, 0.75; DCT fill: 25\%, 50\%, 75\% of non-zero ACs). Report source $\times$ payload interaction with effect sizes. The BD-Sens condition (1.50~LSB~bpp, $k$=2, LSB branch only) is reported separately as a sensitivity check and excluded from this analysis.
+
+\textbf{Exp.\,4 (RQ4): Embedding-branch interaction.} Compare carrier-source AUC gaps stratified by branch (spatial LSB+PNG vs.\ DCT-LSB+JPEG). Each branch bundles embedding with its natural codec, so cross-branch differences reflect the full pipeline rather than the algorithm alone; within-branch results for RQ1--2 allow stronger attribution. Report source $\times$ branch interaction via AUC differences with 95\% CIs.
+
+\textbf{Exp.\,5 (RQ5): Encryption invariance check.} Compare AUC between plain and AES-256-CBC conditions per source group, branch, and detector. Since AES-256-CBC output is computationally indistinguishable from random bits, encryption should not change detection rates; a null result validates the experimental design. Any deviation would indicate detector sensitivity to payload structure. Report encryption main effect and source $\times$ encryption interaction via AUC differences with 95\% CIs.
+
+
+% ============================================================
+\Needspace{8\baselineskip}
+\section{Prototype}
+% ============================================================
+
+\textbf{Vertical prototype (algorithm depth):} We validate the core components separately before scaling: spatial LSB + RS/$\chi^2$/SP, and DCT-LSB + $\chi^2$/calibration $\chi^2$ on a small test subset.
+
+\textbf{Horizontal prototype (integration breadth):} We then run an integrated pipeline on a mixed 60-image subset (20~real + 20~ML-A + 20~ML-B) at medium payload to validate interfaces and outputs before executing the full 1{,}500-image study.
+
+% ============================================================
+\section{Related Work}
+\label{sec:relatedwork}
+% ============================================================
+
+\subsection{Classical Embedding and Detection Foundations}
+Image steganography has predominantly focused on embedding secret data into photographic carriers using spatial- and frequency-domain techniques~\cite{petitcolas1999,hussain2018}. The canonical example is LSB substitution, which replaces the least significant bit of sample values --- pixel intensities in the spatial domain, or quantized DCT coefficients in JPEG (the JSteg approach)~\cite{westfeld1999chi,fridrich2003calib}. We adopt LSB replacement in both domains rather than introducing a new embedding algorithm, to preserve comparability with prior steganalysis literature and focus on how detectability changes across carrier domains.
+
+On the detection side, RS analysis~\cite{fridrich2001lsb}, the $\chi^2$ attack~\cite{westfeld1999chi}, and Sample Pairs analysis~\cite{dumitrescu2003sp} provide independent training-free baselines for LSB-like embedding. Fridrich et al.~\cite{fridrich2003calib} introduced calibration-based training-free detection for JPEG via re-compression at a non-block-aligned offset. Higher-capacity trained detectors such as SRM~\cite{fridrich2012srm} and DCTR~\cite{holub2015dctr} exist but require reimplementation of high-dimensional feature extraction pipelines; we use the training-free methods listed above, which additionally avoid domain-bias confounds in our cross-source comparison.
+
+\subsection{AI-Generated Carriers and Closest Prior Work}
+Gao et al.~\cite{gao2022ai} demonstrate that generative models can encode steganographic secrets as coverless shares --- where the AI-generated image constitutes the secret-bearing object itself rather than a carrier for an embedded payload --- establishing that generative models produce images suitable for information concealment; this is a distinct paradigm from the classical payload-embedding studied here. Most closely related, M\'{e}reur et al.~\cite{mereur2024deepfake} study cover-source mismatch introduced by a wide range of AI text-to-image generators (diffusion models and GANs) as steganographic carriers, showing that synthetic covers significantly exploit detector mismatch. However, they use adaptive embedding algorithms (HILL, UNIWARD, MiPOD) rather than classical LSB pipelines, and report total probability of error~$P_E$ rather than AUC; their study is also large-scale and exploratory rather than controlled and confirmatory. Mallet et al.~\cite{mallet2024csm} provide a systematic review of the broader cover-source mismatch problem. Our study fills a complementary gap: a controlled classical pipeline (spatial and DCT-domain LSB embedding, training-free detectors, AUC+DeLong confirmatory inference) applied to real photographs versus prompt-conditioned outputs from two distinct diffusion architectures.
+
+\subsection{Cross-Domain and Synthetic-Image Forensics}
+\label{sec:crossdomain}
+Cross-domain steganalysis has typically examined camera-to-camera distribution shifts. Giboulot et al.~\cite{giboulot2020csm} show that detectors trained on one camera source suffer measurable AUC degradation on another. Our study applies this framing to a larger shift: from camera photographs to latent diffusion outputs, which lack the optical sensor noise and JPEG compression history that steganalysis detectors exploit. Corvi et al.~\cite{corvi2023diffusion} separately confirm that diffusion-generated images carry distinct statistical traces independent of any payload, further supporting our hypothesis.
+
+\subsection{Classical vs.\ Deep Steganalysis}
+Deep-learning detectors such as SRNet~\cite{boroumand2019srnet} can achieve high benchmark accuracy, but with higher compute requirements and reduced interpretability. We prioritize classical detectors for the primary analysis, consistent with the project's cryptography/steganography focus. Our contribution is not a new embedding method or detector, but a controlled evaluation of how existing classical steganalysis transfers across carrier domains.
+
+% ============================================================
+\section{Relation to Curriculum}
+% ============================================================
+
+This project connects directly to \textbf{Computer Security} (AES-256-CBC and adversarial threat modeling), \textbf{AI and Machine Learning} (diffusion-based image generation and cross-domain evaluation), \textbf{Software Engineering and Architectures} (modular, testable pipeline design), and \textbf{Statistics} (DeLong AUC testing, effect sizes, and confidence intervals for rigorous comparison).
+
+% ============================================================
+\section{Planning}
+% ============================================================
+
+Gantt charts for both Phase~2 (implementation) and Phase~3 (completion and reporting) are provided in Appendix~\ref{app:gantt}.
+
+% ============================================================
+\section{Minimal Passing Requirements}
+% ============================================================
+
+The study must implement one encryption scheme, two embedding approaches (spatial and frequency domain), and domain-appropriate detectors, and must provide defensible answers to RQ1 (carrier-source effect: real vs.\ ML) and RQ2 (generation-model effect within ML).
+
+% ============================================================
+\clearpage
+\renewcommand{\refname}{References}
+% ============================================================
+
+\begin{thebibliography}{26}
+\small
+
+\bibitem{petitcolas1999}
+F.~A.~P.~Petitcolas, R.~J.~Anderson, and M.~G.~Kuhn,
+``Information hiding: a survey,''
+\textit{Proc.\ IEEE}, vol.~87, no.~7, pp.~1062--1078, 1999.
+
+\bibitem{cheddad2010}
+A.~Cheddad, J.~Condell, K.~Curran, and P.~McKevitt,
+``Digital image steganography: Survey and analysis of current methods,''
+\textit{Signal Process.}, vol.~90, no.~3, pp.~727--752, 2010.
+
+\bibitem{hussain2018}
+M.~Hussain, A.~W.~A.~Wahab, Y.~I.~B.~Idris, A.~T.~S.~Ho, and K.~H.~Jung,
+``Image steganography in spatial domain: A survey,''
+\textit{Signal Process.: Image Commun.}, vol.~65, pp.~46--66, 2018.
+
+\bibitem{fridrich2012srm}
+J.~Fridrich and J.~Kodovsk\'{y},
+``Rich models for steganalysis of digital images,''
+\textit{IEEE Trans.\ Inf.\ Forensics Security}, vol.~7, no.~3, pp.~868--882, 2012.
+
+\bibitem{rombach2022sd}
+R.~Rombach, A.~Blattmann, D.~Lorenz, P.~Esser, and B.~Ommer,
+``High-resolution image synthesis with latent diffusion models,''
+in \textit{Proc.\ IEEE CVPR}, pp.~10674--10685, 2022.
+
+\bibitem{sdxl2023}
+D.~Podell et al.,
+``SDXL: Improving latent diffusion models for high-resolution image synthesis,''
+in \textit{Proc.\ Int.\ Conf.\ Learning Representations (ICLR)}, 2024.
+arXiv:2307.01952.
+
+\bibitem{pixart2023}
+J.~Chen et al.,
+``PixArt-$\alpha$: Fast training of diffusion transformer for photorealistic text-to-image synthesis,''
+in \textit{Proc.\ Int.\ Conf.\ Learning Representations (ICLR)}, 2024.
+arXiv:2310.00426.
+
+\bibitem{gao2022ai}
+K.~Gao, C.-C.~Chang, J.-H.~Horng, and I.~Echizen,
+``Steganographic secret sharing via AI-generated photorealistic images,''
+\textit{EURASIP J.\ Wireless Commun.\ Netw.}, vol.~2022, art.~119, 2022.
+DOI: 10.1186/s13638-022-02190-8.
+
+\bibitem{fridrich2001lsb}
+J.~Fridrich, M.~Goljan, and R.~Du,
+``Detecting LSB steganography in color and grayscale images,''
+\textit{IEEE Multimedia}, vol.~8, no.~4, pp.~22--28, 2001.
+
+\bibitem{westfeld1999chi}
+A.~Westfeld and A.~Pfitzmann,
+``Attacks on steganographic systems,''
+in \textit{Proc.\ 3rd Int.\ Workshop Information Hiding}, LNCS 1768, pp.~61--76, 1999.
+
+\bibitem{dumitrescu2003sp}
+S.~Dumitrescu, X.~Wu, and Z.~Wang,
+``Detection of LSB steganography via sample pair analysis,''
+\textit{IEEE Trans.\ Signal Process.}, vol.~51, no.~7, pp.~1995--2007, 2003.
+
+\bibitem{holub2015dctr}
+V.~Holub and J.~Fridrich,
+``Low-complexity features for JPEG steganalysis using undecimated DCT,''
+\textit{IEEE Trans.\ Inf.\ Forensics Security}, vol.~10, no.~2, pp.~219--228, 2015.
+
+\bibitem{fridrich2003calib}
+J.~Fridrich, M.~Goljan, and D.~Hogea,
+``New methodology for breaking steganographic techniques for JPEGs,''
+in \textit{Proc.\ SPIE Electronic Imaging}, vol.~5020, pp.~143--155, 2003.
+
+
+\bibitem{delong1988}
+E.~R.~DeLong, D.~M.~DeLong, and D.~L.~Clarke-Pearson,
+``Comparing the areas under two or more correlated receiver operating characteristic curves: a nonparametric approach,''
+\textit{Biometrics}, vol.~44, no.~3, pp.~837--845, 1988.
+
+\bibitem{corvi2023diffusion}
+R.~Corvi, D.~Cozzolino, G.~Zingarini, G.~Poggi, K.~Nagano, and L.~Verdoliva,
+``On the detection of synthetic images generated by diffusion models,''
+in \textit{Proc.\ IEEE ICASSP}, pp.~1--5, 2023.
+
+\bibitem{coco2014}
+T.-Y.~Lin et al.,
+``Microsoft COCO: Common objects in context,''
+in \textit{Proc.\ ECCV}, LNCS 8693, pp.~740--755, 2014.
+
+\bibitem{flickr30k2014}
+P.~Young, A.~Lai, M.~Hodosh, and J.~Hockenmaier,
+``From image descriptions to visual denotations: New similarity metrics for semantic inference over event descriptions,''
+\textit{Trans.\ Assoc.\ Comput.\ Linguist.}, vol.~2, pp.~67--78, 2014.
+
+\bibitem{boroumand2019srnet}
+M.~Boroumand, M.~Chen, and J.~Fridrich,
+``Deep residual network for steganalysis of digital images,''
+\textit{IEEE Trans.\ Inf.\ Forensics Security}, vol.~14, no.~5, pp.~1181--1193, 2019.
+
+\bibitem{bas2011boss}
+P.~Bas, T.~Filler, and T.~Pevn\'{y},
+``Break our steganographic system: The ins and outs of organizing BOSS,''
+in \textit{Proc.\ 13th Int.\ Conf.\ Information Hiding}, LNCS 6958, pp.~59--70, 2011.
+
+\bibitem{zhang2011fsim}
+L.~Zhang, L.~Zhang, X.~Mou, and D.~Zhang,
+``FSIM: A feature similarity index for image quality assessment,''
+\textit{IEEE Trans.\ Image Process.}, vol.~20, no.~8, pp.~2378--2386, 2011.
+
+\bibitem{giboulot2020csm}
+Q.~Giboulot, R.~Cogranne, D.~Borghys, and P.~Bas,
+``Effects and solutions of cover-source mismatch in image steganalysis,''
+\textit{Signal Process.: Image Commun.}, vol.~86, art.~115888, 2020.
+
+\bibitem{mittal2012brisque}
+A.~Mittal, A.~K.~Moorthy, and A.~C.~Bovik,
+``No-reference image quality assessment in the spatial domain,''
+\textit{IEEE Trans.\ Image Process.}, vol.~21, no.~12, pp.~4695--4708, 2012.
+
+\bibitem{li2024aigiqa}
+C.~Li et al.,
+``AIGIQA-20K: A large database for AI-generated image quality assessment,''
+in \textit{Proc.\ IEEE/CVF CVPR Workshops (NTIRE)}, pp.~6327--6336, 2024.
+
+\bibitem{diffusers}
+P.~von Platen et al.,
+``\texttt{diffusers}: State-of-the-art diffusion models,''
+Hugging Face, Inc., 2022.
+\url{https://github.com/huggingface/diffusers}
+
+\bibitem{mereur2024deepfake}
+A.~M\'{e}reur, A.~Mallet, and R.~Cogranne,
+``Are deepfakes a game-changer in digital images steganography leveraging the cover-source mismatch?''
+in \textit{Proc.\ 19th Int.\ Conf.\ Availability, Reliability and Security (ARES)}, 9~pages, 2024.
+DOI: 10.1145/3664476.3670893.
+
+\bibitem{mallet2024csm}
+A.~Mallet, M.~Bene\v{s}, and R.~Cogranne,
+``Cover-source mismatch in steganalysis: Systematic review,''
+\textit{EURASIP J.\ Inf.\ Security}, vol.~2024, art.~26, 2024.
+DOI: 10.1186/s13635-024-00171-6.
+
+\end{thebibliography}
+
+% ============================================================
+% APPENDIX — full-width Gantt charts (table-based)
+% ============================================================
+\clearpage
+\onecolumn
+\appendix
+
+\section{Project Gantt Charts}
+\label{app:gantt}
+
+% ------------------------------------------------------------------
+% Phase 2: Implementation (Period 5, 30 Mar -- 15 May 2026, 7 weeks)
+% ------------------------------------------------------------------
+
+\noindent\textbf{\large Phase 2: Implementation} \hfill
+\textit{Period~5: 30~March\,--\,15~May 2026 (7~weeks)}
+
+\vspace{6pt}
+
+{%
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{1.2}
+\footnotesize
+\noindent\begin{tabularx}{\textwidth}{
+  |>{\centering\arraybackslash}p{0.8cm}
+  |>{\raggedright\arraybackslash}p{4.6cm}
+  |>{\centering\arraybackslash}p{1.2cm}
+  |>{\centering\arraybackslash}p{1.2cm}
+  |>{\centering\arraybackslash}p{0.8cm}
+  |*{7}{>{\centering\arraybackslash}X|}
+}
+\hline
+\rowcolor{umdark!10}
+\textbf{WBS} & \textbf{Task} & \textbf{Start} & \textbf{End} & \textbf{Days} &
+\textbf{Wk\,1} & \textbf{Wk\,2} & \textbf{Wk\,3} & \textbf{Wk\,4} &
+\textbf{Wk\,5} & \textbf{Wk\,6} & \textbf{Wk\,7} \\
+\hline
+
+% --- Section 1: Data ---
+\rowcolor{ganttblue!8}
+\textbf{1} & \textbf{Data Construction} & & & & & & & & & & \\
+\hline
+1.1 & Dataset collection (COCO/Flickr30k with captions) & 30.03 & 10.04 & 10 &
+  \cellcolor{ganttblue!50} & \cellcolor{ganttblue!50} & & & & & \\
+\hline
+1.2 & ML image generation (SDXL + PixArt-$\alpha$) & 30.03 & 10.04 & 10 &
+  \cellcolor{ganttblue!50} & \cellcolor{ganttblue!50} & & & & & \\
+\hline
+1.3 & Heuristic quality screening \& dual-format normalisation & 07.04 & 17.04 & 8 &
+  & \cellcolor{ganttblue!30} & \cellcolor{ganttblue!30} & & & & \\
+\hline
+
+% --- Section 2: Steganography ---
+\rowcolor{ganttred!8}
+\textbf{2} & \textbf{Steganography Implementation} & & & & & & & & & & \\
+\hline
+2.1 & LSB embedding pipeline (sequential, $k\!=\!1,2$, PNG) & 07.04 & 17.04 & 8 &
+  & \cellcolor{ganttred!50} & \cellcolor{ganttred!50} & & & & \\
+\hline
+2.2 & DCT-LSB embedding pipeline (JPEG Q=95) & 07.04 & 17.04 & 8 &
+  & \cellcolor{ganttred!50} & \cellcolor{ganttred!50} & & & & \\
+\hline
+2.3 & AES-256-CBC payload encryption & 14.04 & 17.04 & 4 &
+  & & \cellcolor{ganttred!30} & & & & \\
+\hline
+
+% --- Section 3: Detection ---
+\rowcolor{ganttgreen!8}
+\textbf{3} & \textbf{Detection \& Analysis} & & & & & & & & & & \\
+\hline
+3.1 & RS Analysis + $\chi^2$ detector & 14.04 & 24.04 & 8 &
+  & & \cellcolor{ganttgreen!50} & \cellcolor{ganttgreen!50} & & & \\
+\hline
+3.2 & Sample Pairs detector \& calibration $\chi^2$ setup & 14.04 & 01.05 & 14 &
+  & & \cellcolor{ganttgreen!50} & \cellcolor{ganttgreen!50} & \cellcolor{ganttgreen!50} & & \\
+\hline
+3.3 & Image quality metrics (PSNR/SSIM/FSIM) & 21.04 & 01.05 & 8 &
+  & & & \cellcolor{ganttamber!50} & \cellcolor{ganttamber!50} & & \\
+\hline
+3.4 & Encryption-effect experiments (RQ5) & 28.04 & 08.05 & 8 &
+  & & & & \cellcolor{ganttpurple!50} & \cellcolor{ganttpurple!50} & \\
+\hline
+3.5 & Statistical analysis \& effect-size reporting & 28.04 & 08.05 & 8 &
+  & & & & \cellcolor{ganttpurple!50} & \cellcolor{ganttpurple!50} & \\
+\hline
+
+% --- Section 4: Writing ---
+\rowcolor{ganttgray!12}
+\textbf{4} & \textbf{Writing \& Revision} & & & & & & & & & & \\
+\hline
+4.1 & Visualisations + report writing & 04.05 & 15.05 & 8 &
+  & & & & & \cellcolor{ganttgray!50} & \cellcolor{ganttgray!50} \\
+\hline
+4.2 & Buffer / final revision & 11.05 & 15.05 & 5 &
+  & & & & & & \cellcolor{ganttgray!30} \\
+\hline
+
+\end{tabularx}
+}%
+
+\vspace{6pt}
+\noindent{\small\color{umgray}%
+\textcolor{ganttblue!60}{$\blacksquare$}~Data\enspace
+\textcolor{ganttred!60}{$\blacksquare$}~Steganography\enspace
+\textcolor{ganttgreen!60}{$\blacksquare$}~Detection\enspace
+\textcolor{ganttamber!60}{$\blacksquare$}~Evaluation\enspace
+\textcolor{ganttpurple!60}{$\blacksquare$}~Analysis\enspace
+\textcolor{ganttgray!60}{$\blacksquare$}~Writing}
+
+\vspace{4pt}
+\noindent{\small\textbf{Milestones:}
+\textbf{M1}~(end Wk\,2): Dataset ready \quad
+\textbf{M2}~(end Wk\,3): Embedding complete \quad
+\textbf{M3}~(end Wk\,5): Detection + metrics complete \quad
+\textbf{M4}~(end Wk\,7): Final report submitted}
+
+\vspace{18pt}
+
+% ------------------------------------------------------------------
+% Phase 3: Completion (Project Period 6, 25 May -- 12 June 2026, 3 weeks)
+% ------------------------------------------------------------------
+
+\noindent\textbf{\large Phase 3: Completion} \hfill
+\textit{Project Period~6: 25~May\,--\,12~June 2026 (3~weeks)}
+
+\vspace{6pt}
+
+{%
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{1.2}
+\footnotesize
+\noindent\begin{tabularx}{\textwidth}{
+  |>{\centering\arraybackslash}p{0.8cm}
+  |>{\raggedright\arraybackslash}p{5.6cm}
+  |>{\centering\arraybackslash}p{1.2cm}
+  |>{\centering\arraybackslash}p{1.2cm}
+  |>{\centering\arraybackslash}p{0.8cm}
+  |*{3}{>{\centering\arraybackslash}X|}
+}
+\hline
+\rowcolor{umdark!10}
+\textbf{WBS} & \textbf{Task} & \textbf{Start} & \textbf{End} & \textbf{Days} &
+\textbf{Wk\,1} & \textbf{Wk\,2} & \textbf{Wk\,3} \\
+\hline
+
+1.1 & Complete remaining implementation & 25.05 & 05.06 & 10 &
+  \cellcolor{ganttblue!50} & \cellcolor{ganttblue!50} & \\
+\hline
+1.2 & Verify results \& rerun experiments & 25.05 & 05.06 & 10 &
+  \cellcolor{ganttgreen!50} & \cellcolor{ganttgreen!50} & \\
+\hline
+1.3 & Statistical verification \& effect sizes & 01.06 & 05.06 & 5 &
+  & \cellcolor{ganttamber!50} & \\
+\hline
+2.1 & Presentation slides & 01.06 & 08.06 & 6 &
+  & \cellcolor{ganttpurple!50} & \cellcolor{ganttpurple!50} \\
+\hline
+2.2 & Poster & 05.06 & 10.06 & 4 &
+  & & \cellcolor{ganttred!50} \\
+\hline
+2.3 & Final paper write-up & 01.06 & 12.06 & 10 &
+  & \cellcolor{ganttgray!50} & \cellcolor{ganttgray!50} \\
+\hline
+2.4 & Buffer / revision / submission & 10.06 & 12.06 & 3 &
+  & & \cellcolor{ganttgray!30} \\
+\hline
+
+\end{tabularx}
+}%
+
+\vspace{6pt}
+\noindent{\small\color{umgray}%
+\textcolor{ganttblue!60}{$\blacksquare$}~Implementation\enspace
+\textcolor{ganttgreen!60}{$\blacksquare$}~Verification\enspace
+\textcolor{ganttamber!60}{$\blacksquare$}~Analysis\enspace
+\textcolor{ganttpurple!60}{$\blacksquare$}~Slides\enspace
+\textcolor{ganttred!60}{$\blacksquare$}~Poster\enspace
+\textcolor{ganttgray!60}{$\blacksquare$}~Paper}
+
+\vspace{4pt}
+\noindent{\small\textbf{Milestones:}
+\textbf{M5}~(end Wk\,1): Implementation finalised \quad
+\textbf{M6}~(end Wk\,2): Results verified, slides ready \quad
+\textbf{M7}~(end Wk\,3): All deliverables submitted}
+
+\end{document}
