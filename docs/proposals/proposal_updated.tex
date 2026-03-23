@@ -1,0 +1,594 @@
+\documentclass[10pt,twocolumn,a4paper]{article}
+
+% ---- Packages ----
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[top=1.8cm,bottom=1.8cm,left=1.5cm,right=1.5cm]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{url}
+\usepackage{caption}
+\usepackage{tikz}
+\usepackage{calc}
+\usepackage{needspace}
+\usetikzlibrary{positioning,calc}
+
+% ---- Colors ----
+\definecolor{umdark}{HTML}{001C3D}
+\definecolor{umorange}{HTML}{E84E10}
+\definecolor{umlight}{HTML}{4A90C4}
+\definecolor{umgray}{HTML}{6B7280}
+\definecolor{ganttblue}{HTML}{2563EB}
+\definecolor{ganttred}{HTML}{DC2626}
+\definecolor{ganttgreen}{HTML}{059669}
+\definecolor{ganttamber}{HTML}{D97706}
+\definecolor{ganttpurple}{HTML}{7C3AED}
+\definecolor{ganttgray}{HTML}{9CA3AF}
+
+% ---- Formatting ----
+\hypersetup{colorlinks=true,linkcolor=umdark,citecolor=umlight,urlcolor=umlight}
+\setlength{\columnsep}{0.6cm}
+\setlength{\parskip}{2pt plus 1pt}
+\setlength{\parindent}{0.8em}
+
+% Compact sections
+\titleformat{\section}{\normalfont\bfseries\normalsize\color{umdark}}{\thesection.}{0.4em}{}[\vspace{-2pt}\color{umorange}\rule{\columnwidth}{0.6pt}]
+\titleformat{\subsection}{\normalfont\bfseries\small}{\thesubsection}{0.4em}{}
+\titlespacing*{\section}{0pt}{8pt plus 2pt}{4pt plus 1pt}
+\titlespacing*{\subsection}{0pt}{5pt plus 2pt}{2pt plus 1pt}
+
+% Compact lists
+\setlist{nosep,leftmargin=1.2em}
+\captionsetup{font=small,labelfont=bf,skip=4pt}
+
+% ---- Header/Footer ----
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\small\thepage}
+
+% ============================================================
+% Title
+% ============================================================
+\title{\vspace{-1.2cm}\textbf{Does the Source of Carrier Image Affect\\
+Steganographic Detectability?}\\[4pt]
+\large Midway Project Proposal\\[6pt]
+\normalsize\textit{Project 2.2, Department of Advanced Computing Sciences}}
+\author{Abdul Moiz Akbar \quad Daria Gjonbalaj \quad Nico Müller-Späth\\[2pt]
+Jimena Narvaez del Cid \quad David Wicker \quad Nikolas Zouros\\[2pt]
+\small Maastricht University \quad$\cdot$\quad February 2026}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+\vspace{-0.6cm}
+
+% ============================================================
+\section{Motivation and Problem Statement}
+% ============================================================
+
+Image steganography is an important topic in online security and privacy, with both beneficial and adversarial uses~\cite{petitcolas1999,cheddad2010,provos2003f5}. In practice, detectability depends not only on the embedding method but also on the underlying statistics of the carrier image~\cite{hussain2018,fridrich2012srm}. Steganalysis works by detecting subtle distributional perturbations in pixel values, residuals, and frequency coefficients after embedding. This is exactly why carrier selection matters: two carriers with identical payload and identical embedding can produce different detectability outcomes.
+
+Most existing steganalysis pipelines were developed and benchmarked on real camera photographs, where sensor noise and compression traces are relatively well characterized. This assumption is increasingly fragile. Photorealistic synthetic images from modern text-conditional diffusion generators (e.g., Stable Diffusion variants) are now widespread~\cite{rombach2022sd}, and they are produced by different mechanisms than camera pipelines. Prior synthetic-image forensics shows that generated images can contain distinct statistical traces~\cite{wang2020cnn,corvi2023diffusion}, which may directly influence steganographic detectability.
+
+The core question is therefore: \textbf{do steganalysis detectors validated on photographs remain equally effective on ML-generated carriers under identical embedding settings?} This matters for three reasons:
+\begin{itemize}
+\item \textbf{Security:} if ML-generated carriers are harder to detect, an attacker may evade existing detectors by changing carrier source only.
+\item \textbf{Scientific:} the interaction between generative-model distributions and embedding perturbations remains underexplored.
+\item \textbf{Practical:} as AI-generated images become common in communication channels, the steganographic attack surface expands.
+\end{itemize}
+
+The problem statement for this project is to quantify whether \emph{carrier source category} (real vs.\ ML-generated, and model-to-model within ML) causes measurable detection differences when embedding, payload, and detector settings are fixed. If source effects are large, detector calibration and risk assumptions built on photo-only datasets may not transfer to mixed real/synthetic traffic.
+
+The closest precedent is Gao et al.~\cite{gao2022ai}, who demonstrate AI-generated images for steganographic secret sharing, but without a controlled real-vs-ML carrier comparison using standardized LSB/DCT pipelines and classical steganalysis endpoints. In other words, feasibility of secret sharing on generated images has been shown, but comparative detectability under matched conditions is still unclear.
+
+This study addresses that gap with a controlled $3\!\times\!2\!\times\!3\!\times\!2$ design over 1{,}500 carrier images (500 real, 500 ML-A, 500 ML-B), two embedding methods, three payload levels, and three detector families (cross-domain baseline, LSB-specific, and DCT-specific). By keeping embedding, payload, and detector settings fixed while varying source category, we isolate whether source and generation model are meaningful drivers of detection-performance differences. Results will guide benchmarking and steganalysis policy in mixed real/synthetic environments.
+
+% ============================================================
+\section{Research Questions}
+% ============================================================
+
+\begin{description}[font=\normalfont\bfseries,leftmargin=1em,style=nextline]
+
+\item[RQ1: Primary (Carrier Source, Real vs.\ ML)] Does carrier source (real photographs vs.\ ML-generated images) significantly affect steganographic detectability under matched embedding settings?
+
+\item[RQ2: Primary (Generation-Model Effect Within ML)] Within ML-generated carriers, does the choice of generation model (ML-A vs.\ ML-B) significantly affect detectability under prompt-matched conditions?
+
+\item[RQ3: Exploratory (Payload Interaction)] Does payload size alter source-related detectability gaps (real vs.\ ML and ML-A vs.\ ML-B)?
+
+\item[RQ4: Exploratory (Embedding Method)] Do LSB and DCT embedding methods interact differently with carrier source in terms of detectability?
+
+\item[RQ5: Exploratory (Encryption Interaction)] Does payload encryption prior to embedding change detectability, and does this effect depend on carrier source?
+
+\end{description}
+\noindent\textcolor{umgray}{\footnotesize\textit{Verification details for each RQ are specified in Section~\ref{sec:experiments}.}}
+
+% ============================================================
+\Needspace{8\baselineskip}
+\section{Chosen Approaches}
+% ============================================================
+
+\subsection{Datasets}
+
+\textbf{Real images (500 total).} We use \textbf{COCO}~\cite{coco2014} (300 images) and \textbf{Flickr30k}~\cite{flickr30k2014} (200 images), selected for their detailed human-written captions. Each image is assigned one caption from the dataset; images with ambiguous or low-information captions are excluded. All images are normalized to 512$\times$512 RGB and stored as 8-bit PNG (LSB branch) and JPEG at Q=95 (DCT branch), keeping codec differences branch-local.
+
+\textbf{ML-generated images (1{,}000 total).} From the real set, we generate two prompt-matched sets via \texttt{diffusers}: \textbf{ML-A} (500) with Stable Diffusion XL 1.0~\cite{sdxl2023} and \textbf{ML-B} (500) with PixArt-$\alpha$~\cite{pixart2023}, comparing a latent U-Net diffusion model against a diffusion-transformer. Each caption is used once per model.
+
+\textbf{Generation-stage quality control.} Generated candidates pass a two-stage gate: Stage~1 discards images with pixel saturation above 2\% or detectable checkerboard artifacts; Stage~2 discards images with CLIP cosine similarity below 0.28 (a conservative threshold targeting clear content failures, calibrated via pilot inspection on a held-out subset). BRISQUE is excluded as its natural-scene-statistics assumptions do not hold for diffusion-generated images.
+
+\subsection{Embedding Methods}
+
+We implement two canonical steganographic methods spanning the two principal domains:
+
+\textbf{LSB substitution (spatial domain)} replaces the $k$ least significant bits of each pixel channel value with message bits in row-major order. PNG carriers preserve the embedded bits through the codec pipeline. Three payload levels are defined by the fraction of available positions filled:
+
+\begin{table}[h]
+\centering
+\caption{Payload level definitions.}
+\label{tab:payload}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Level} & \textbf{LSB $k$} & \textbf{Fill} & \textbf{bpp} \\
+\midrule
+Low    & 1 & 25\% of $k$=1 capacity & 0.25 \\
+Medium & 1 & 75\% of $k$=1 capacity & 0.75 \\
+High   & 2 & 75\% of $k$=2 capacity & 1.50 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent DCT payload is defined equivalently in bpp, controlling the fraction of embeddable mid-frequency coefficients filled. The high payload (1.50 bpp) is included as a sensitivity bound: if source effects are visible only at moderate payloads, this condition will establish that boundary.
+
+\textbf{DCT-based embedding (frequency domain)} operates on JPEG carriers (Q=95). Each channel is partitioned into non-overlapping 8$\times$8 blocks and bits are embedded into mid-frequency coefficients (zigzag positions 10--54) via \textbf{Quantization Index Modulation} (QIM)~\cite{chen_wornell2001}. For message bit $b\!\in\!\{0,1\}$:
+\[
+C'_i \;=\; \Delta\cdot\operatorname{round}\!\left(\frac{C_i}{\Delta} - \frac{b}{2}\right) + \frac{b\,\Delta}{2},
+\]
+where $b$ selects between two interleaved quantizers: $\mathcal{Q}_0$ at integer multiples of $\Delta$ and $\mathcal{Q}_1$ at half-integer multiples.
+
+\subsection{Encryption}
+
+Payloads are processed under two conditions (plain and AES-256-CBC encrypted), applied uniformly across both embedding branches so detectability differences are attributable to encryption status alone.
+
+\subsection{Image-Quality Tests (Quality Control)}
+
+For each stego/cover pair we compute PSNR, SSIM, and FSIM, reported by source group, embedding method, and payload level to rule out trivial degradation effects.
+
+\subsection{Steganalysis Detectors}
+
+Our detector selection is deliberately scoped to \emph{classical signal processing and statistics}, consistent with this project's cryptography/steganography focus:
+
+\begin{table}[h]
+\centering
+\caption{Steganalysis detector comparison.}
+\label{tab:detectors}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Detector} & \textbf{Type} & \textbf{Training} & \textbf{Domain} \\
+\midrule
+SRM+EC~\cite{fridrich2012srm,kodovsky2012ec} & Classical ML & Trained (held-out) & LSB + DCT \\
+RS Analysis~\cite{fridrich2001lsb} & Statistical & None & LSB only \\
+$\chi^2$ attack~\cite{westfeld1999chi} & Statistical & None & LSB (sensitivity) \\
+Block-DCT shift test~\cite{wangmoulin2003dct} & Statistical & None & DCT only \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{SRM + Ensemble Classifier (EC)}~\cite{fridrich2012srm,kodovsky2012ec} is the primary baseline across all conditions. We train the ensemble following~\cite{fridrich2012srm,kodovsky2012ec} on a held-out photographic corpus separate from our experimental carriers. Fixing this trained classifier avoids retraining on our small per-source sets and frames the study as a cross-domain transfer test: a model trained on photographs is applied to all three source categories under matched conditions.
+
+\textbf{RS + $\chi^2$ analytical checks}~\cite{fridrich2001lsb,westfeld1999chi} are applied only to LSB experiments as fast, training-free detectors. Both methods assume sequential embedding order, which is satisfied by our row-major LSB implementation.
+
+\textbf{Block-DCT shift test}~\cite{wangmoulin2003dct} is applied only to DCT experiments as a training-free counterpart to RS, following the DCT-domain statistical detector described by Wang and Moulin.
+
+\textbf{Optional extension.} If compute permits, we add one deep detector (SRNet~\cite{boroumand2019srnet}) as a secondary benchmark and report it separately from the primary classical results.
+
+\subsection{Limitations}
+
+With 500 images per source group, the design is sized to target medium-to-large effects; confirmatory testing is restricted to RQ1--2 (Bonferroni--Holm), with RQ3--5 reported by effect size. Generator coverage is limited to two families, so ML-A vs.\ ML-B differences may reflect architecture-specific rather than general diffusion-carrier properties. SRM+EC was trained on photographs, so detectability gaps may partly reflect detector distributional mismatch. RQ5 is expected to yield near-null results, since AES-256-CBC produces near-random bit streams; it is retained as a pipeline sanity check.
+
+% ============================================================
+\section{Experiments}
+\label{sec:experiments}
+% ============================================================
+
+\noindent\textit{Statistical protocol:} Exp.\,1--2 are \textbf{confirmatory} (Bonferroni--Holm, $\alpha = 0.05$); Exp.\,3--5 are \textbf{exploratory}, reported via effect sizes (Cohen's~$d$, AUC differences) and confidence intervals only.
+
+\textbf{Exp.\,1 (RQ1): Carrier Source, real vs.\ pooled ML.} Apply all applicable detectors (LSB: SRM+EC, RS, $\chi^2$; DCT: SRM+EC, block-DCT shift test). For each stratum defined by detector, embedding method, and payload level, compare real vs.\ pooled ML AUC using the DeLong test~\cite{delong1988} and Cohen's~$d$ on per-image detector scores. Report stratum-level results to avoid conflating heterogeneous conditions.
+
+\textbf{Exp.\,2 (RQ2): Generation-model effect within ML.} For each stratum (detector, method, payload), compare AUC between prompt-matched ML-A and ML-B pairs using the DeLong test~\cite{delong1988}. Report detector-specific AUC differences and Cohen's~$d$ on per-image detector scores.
+
+\textbf{Exp.\,3 (RQ3): Payload interaction.} Plot AUC and source-contrast gaps across Low/Medium/High payload. Report source $\times$ payload interaction with effect sizes.
+
+\textbf{Exp.\,4 (RQ4): Embedding-method interaction.} Compare AUC stratified by source category and embedding method (LSB/DCT). Report source $\times$ method interaction via effect sizes (AUC differences, Cohen's~$d$), avoiding ANOVA assumptions that do not hold over dependent AUC scores.
+
+\textbf{Exp.\,5 (RQ5): Encryption interaction.} Compare AUC between plain and AES-256-CBC conditions per source group and method. Report encryption main effect and source $\times$ encryption interaction descriptively.
+
+
+% ============================================================
+\Needspace{8\baselineskip}
+\section{Prototype}
+% ============================================================
+
+\textbf{Vertical prototype (algorithm depth):} We validate the core components separately before scaling: LSB embedding + RS/$\chi^2$, DCT-QIM + block-DCT shift test, and SRM+EC on a small test subset.
+
+\textbf{Horizontal prototype (integration breadth):} We then run an integrated pipeline on a mixed 60-image subset (20~real + 20~ML-A + 20~ML-B) at medium payload to validate interfaces and outputs before executing the full 1{,}500-image study.
+
+% ============================================================
+\section{Related Work}
+% ============================================================
+
+\subsection{Classical Embedding and Detection Foundations}
+Image steganography has predominantly focused on embedding secret data into photographic carriers using spatial- and frequency-domain techniques~\cite{petitcolas1999,cheddad2010,hussain2018}. Canonical examples include LSB substitution, which perturbs pixel intensities directly, and DCT-based Quantization Index Modulation (QIM), which embeds information in transform coefficients~\cite{chen_wornell2001}. We adopt these established post-hoc embedding strategies rather than introducing a new embedding algorithm, to preserve comparability with prior steganalysis literature and isolate the effect of carrier origin.
+
+On the detection side, RS analysis and the $\chi^2$ attack provide analytical baselines for LSB-like embedding~\cite{fridrich2001lsb,westfeld1999chi}. Rich-model approaches remain strong classical baselines: Fridrich and Kodovsk\'{y}~\cite{fridrich2012srm} introduced SRM features that capture high-dimensional residual co-occurrences linked to embedding artifacts.
+
+\subsection{Generative and Coverless Steganography}
+Recent generative steganography methods use GAN- or deep encoder-based models to generate stego-images directly from secret messages~\cite{tang2017cnn,zhu2018hidden}. Related coverless approaches encode information by selecting or generating content rather than modifying a fixed image~\cite{duan2020}. Our setup differs in a key way: ML-generated images are treated as \emph{passive carriers}, and standardized post-hoc embedding (LSB and DCT) is applied afterward. This separation between generation and embedding lets us test carrier-origin effects under matched embedding conditions.
+
+\subsection{AI-Generated Carriers and Closest Prior Work}
+The closest related study is Gao et al.~\cite{gao2022ai}, which demonstrates AI-generated photorealistic images for steganographic secret sharing. However, it does not perform a controlled real-versus-ML comparison under identical embedding pipelines, does not compare multiple generation models under prompt-matched conditions, and does not evaluate detectability using classical steganalysis endpoints such as ROC-AUC. Our factorial design (source category $\times$ embedding method $\times$ payload size $\times$ encryption) makes steganalysis detectability the primary outcome.
+
+\subsection{Cross-Domain and Synthetic-Image Forensics}
+Cross-domain steganalysis has typically examined distribution shifts between camera sources~\cite{fridrich2012srm}. The real-versus-synthetic shift is broader, because the full image-generation process changes when moving from camera capture to GAN or diffusion synthesis. Synthetic-image forensics reports distinct statistical traces in generated images~\cite{wang2020cnn,corvi2023diffusion}, supporting our hypothesis that carrier origin can affect steganographic detectability.
+
+\subsection{Classical vs.\ Deep Steganalysis}
+Recent deep-learning steganalysis methods can achieve strong benchmark accuracy~\cite{luo2024survey,boroumand2019srnet}, but often with higher computational requirements and reduced interpretability. We therefore prioritize classical detectors (SRM+EC, block-DCT statistical testing, and RS/$\chi^2$) for the primary analysis, with deep models as an optional secondary benchmark. Overall, prior work has studied embedding techniques, steganalysis models, generative steganography, and synthetic-image detection largely in isolation; our contribution is a controlled evaluation of how carrier origin influences detectability.
+
+% ============================================================
+\section{Relation to Curriculum}
+% ============================================================
+
+This project connects directly to \textbf{Computer Security} (AES-256-CBC and adversarial threat modeling), \textbf{AI and Machine Learning} (SRM+EC feature-based classification and cross-domain evaluation), \textbf{Software Engineering and Architectures} (modular, testable pipeline design), and \textbf{Statistics} (DeLong AUC testing, effect sizes, and confidence intervals for rigorous comparison).
+
+% ============================================================
+\section{Planning}
+% ============================================================
+
+Phase~2 and Phase~3 Gantt charts are provided in Appendix~\ref{app:gantt}.
+
+% ============================================================
+\section{Minimal Passing Requirements}
+% ============================================================
+
+The study must implement one encryption scheme, two embedding approaches (spatial and frequency domain), and domain-appropriate detectors, and must provide defensible answers to RQ1 (carrier-source effect: real vs.\ ML) and RQ2 (generation-model effect within ML).
+
+% ============================================================
+\clearpage
+\renewcommand{\refname}{References}
+% ============================================================
+
+\begin{thebibliography}{25}
+\small
+
+\bibitem{petitcolas1999}
+F.~A.~P.~Petitcolas, R.~J.~Anderson, and M.~G.~Kuhn,
+``Information hiding: a survey,''
+\textit{Proc.\ IEEE}, vol.~87, no.~7, pp.~1062--1078, 1999.
+
+\bibitem{cheddad2010}
+A.~Cheddad, J.~Condell, K.~Curran, and P.~McKevitt,
+``Digital image steganography: Survey and analysis of current methods,''
+\textit{Signal Process.}, vol.~90, no.~3, pp.~727--752, 2010.
+
+\bibitem{hussain2018}
+M.~Hussain, A.~W.~A.~Wahab, Y.~I.~B.~Idris, A.~T.~S.~Ho, and K.~H.~Jung,
+``Image steganography in spatial domain: A survey,''
+\textit{Signal Process.: Image Commun.}, vol.~65, pp.~46--66, 2018.
+
+\bibitem{fridrich2012srm}
+J.~Fridrich and J.~Kodovsk\'{y},
+``Rich models for steganalysis of digital images,''
+\textit{IEEE Trans.\ Inf.\ Forensics Security}, vol.~7, no.~3, pp.~868--882, 2012.
+
+\bibitem{kodovsky2012ec}
+J.~Kodovsk\'{y}, J.~Fridrich, and V.~Holub,
+``Ensemble classifiers for steganalysis of digital media,''
+\textit{IEEE Trans.\ Inf.\ Forensics Security}, vol.~7, no.~2, pp.~432--444, 2012.
+
+\bibitem{rombach2022sd}
+R.~Rombach, A.~Blattmann, D.~Lorenz, P.~Esser, and B.~Ommer,
+``High-resolution image synthesis with latent diffusion models,''
+in \textit{Proc.\ IEEE CVPR}, pp.~10684--10695, 2022.
+
+\bibitem{sdxl2023}
+D.~Podell et al.,
+``SDXL: Improving latent diffusion models for high-resolution image synthesis,''
+arXiv:2307.01952, 2023.
+
+\bibitem{pixart2023}
+J.~Chen et al.,
+``PixArt-$\alpha$: Fast training of diffusion transformer for photorealistic text-to-image synthesis,''
+arXiv:2310.00426, 2023.
+
+\bibitem{gao2022ai}
+K.~Gao, C.-C.~Chang, and J.-H.~Horng,
+``Steganographic secret sharing via AI-generated photorealistic images,''
+\textit{EURASIP J.\ Wireless Commun.\ Netw.}, vol.~2022, art.~119, 2022.
+DOI: 10.1186/s13638-022-02190-8.
+
+\bibitem{fridrich2001lsb}
+J.~Fridrich, M.~Goljan, and R.~Du,
+``Detecting LSB steganography in color and grayscale images,''
+\textit{IEEE Multimedia}, vol.~8, no.~4, pp.~22--28, 2001.
+
+\bibitem{westfeld1999chi}
+A.~Westfeld and A.~Pfitzmann,
+``Attacks on steganographic systems,''
+in \textit{Proc.\ 3rd Int.\ Workshop Information Hiding}, LNCS 1768, pp.~61--76, 1999.
+
+\bibitem{wangmoulin2003dct}
+Y.~Wang and P.~Moulin,
+``Steganalysis of block-DCT image steganography,''
+in \textit{Proc.\ IEEE Workshop Statistical Signal Processing (SSP)}, pp.~339--342, 2003.
+DOI: 10.1109/SSP.2003.1289414.
+
+\bibitem{provos2003f5}
+N.~Provos and P.~Honeyman,
+``Hide and seek: An introduction to steganography,''
+\textit{IEEE Security Privacy}, vol.~1, no.~3, pp.~32--44, 2003.
+
+\bibitem{chen_wornell2001}
+B.~Chen and G.~W.~Wornell,
+``Quantization index modulation: A class of provably good methods for digital watermarking and information embedding,''
+\textit{IEEE Trans.\ Inf.\ Theory}, vol.~47, no.~4, pp.~1423--1443, 2001.
+DOI: 10.1109/18.923725.
+
+\bibitem{delong1988}
+E.~R.~DeLong, D.~M.~DeLong, and D.~L.~Clarke-Pearson,
+``Comparing the areas under two or more correlated receiver operating characteristic curves: a nonparametric approach,''
+\textit{Biometrics}, vol.~44, no.~3, pp.~837--845, 1988.
+
+\bibitem{wang2020cnn}
+S.~Y.~Wang, O.~Wang, R.~Zhang, A.~Owens, and A.~A.~Efros,
+``CNN-generated images are surprisingly easy to spot\ldots for now,''
+in \textit{Proc.\ IEEE CVPR}, pp.~8695--8704, 2020.
+
+\bibitem{corvi2023diffusion}
+R.~Corvi, D.~Cozzolino, G.~Zingarini, G.~Poggi, K.~Nagano, and L.~Verdoliva,
+``On the detection of synthetic images generated by diffusion models,''
+in \textit{Proc.\ IEEE ICASSP}, pp.~1--5, 2023.
+
+\bibitem{coco2014}
+T.-Y.~Lin et al.,
+``Microsoft COCO: Common objects in context,''
+in \textit{Proc.\ ECCV}, LNCS 8693, pp.~740--755, 2014.
+
+\bibitem{flickr30k2014}
+P.~Young, A.~Lai, M.~Hodosh, and J.~Hockenmaier,
+``From image descriptions to visual denotations: New similarity metrics for semantic inference over event descriptions,''
+\textit{Trans.\ Assoc.\ Comput.\ Linguist.}, vol.~2, pp.~67--78, 2014.
+
+\bibitem{luo2024survey}
+H.~Kheddar, M.~Hemis, Y.~Himeur, D.~Meg\'{i}as, and A.~Amira,
+``Deep learning for steganalysis of diverse data types: A review of methods, taxonomy, challenges and future directions,''
+\textit{Neurocomputing}, vol.~581, art.~127528, Elsevier, 2024.
+DOI: 10.1016/j.neucom.2024.127528.
+
+\bibitem{boroumand2019srnet}
+M.~Boroumand, M.~Chen, and J.~Fridrich,
+``Deep residual network for steganalysis of digital images,''
+\textit{IEEE Trans.\ Inf.\ Forensics Security}, vol.~14, no.~5, pp.~1181--1193, 2019.
+
+\bibitem{tang2017cnn}
+W.~Tang, S.~Tan, B.~Li, and J.~Huang,
+``Automatic steganographic distortion learning using a generative adversarial network,''
+\textit{IEEE Signal Process.\ Lett.}, vol.~24, no.~10, pp.~1547--1551, 2017.
+DOI: 10.1109/LSP.2017.2745572.
+
+\bibitem{zhu2018hidden}
+J.~Zhu, R.~Kaplan, J.~Johnson, and L.~Fei-Fei,
+``HiDDeN: Hiding data with deep networks,''
+in \textit{Proc.\ ECCV}, LNCS 11219, pp.~657--672, 2018.
+DOI: 10.1007/978-3-030-01267-0\_40.
+
+\bibitem{duan2020}
+X.~Duan, B.~Li, D.~Guo, Z.~Zhang, and Y.~Ma,
+``A coverless steganography method based on generative adversarial network,''
+\textit{EURASIP J.\ Image Video Process.}, vol.~2020, art.~18, 2020.
+DOI: 10.1186/s13640-020-00506-6.
+
+\end{thebibliography}
+
+% ============================================================
+% APPENDIX — full-width Gantt charts (table-based)
+% ============================================================
+\clearpage
+\onecolumn
+\appendix
+
+\section{Project Gantt Charts}
+\label{app:gantt}
+
+% ------------------------------------------------------------------
+% Phase 2: Implementation (Period 5, 30 Mar -- 15 May 2026, 7 weeks)
+% ------------------------------------------------------------------
+
+\noindent\textbf{\large Phase 2: Implementation} \hfill
+\textit{Period~5: 30~March\,--\,15~May 2026 (7~weeks)}
+
+\vspace{6pt}
+
+{%
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{1.2}
+\footnotesize
+\noindent\begin{tabularx}{\textwidth}{
+  |>{\centering\arraybackslash}p{0.8cm}
+  |>{\raggedright\arraybackslash}p{4.6cm}
+  |>{\centering\arraybackslash}p{1.2cm}
+  |>{\centering\arraybackslash}p{1.2cm}
+  |>{\centering\arraybackslash}p{0.8cm}
+  |*{7}{>{\centering\arraybackslash}X|}
+}
+\hline
+\rowcolor{umdark!10}
+\textbf{WBS} & \textbf{Task} & \textbf{Start} & \textbf{End} & \textbf{Days} &
+\textbf{Wk\,1} & \textbf{Wk\,2} & \textbf{Wk\,3} & \textbf{Wk\,4} &
+\textbf{Wk\,5} & \textbf{Wk\,6} & \textbf{Wk\,7} \\
+\hline
+
+% --- Section 1: Data ---
+\rowcolor{ganttblue!8}
+\textbf{1} & \textbf{Data Construction} & & & & & & & & & & \\
+\hline
+1.1 & Dataset collection (COCO/Flickr30k with captions) & 30.03 & 10.04 & 10 &
+  \cellcolor{ganttblue!50} & \cellcolor{ganttblue!50} & & & & & \\
+\hline
+1.2 & ML image generation (SDXL + PixArt-$\alpha$) & 30.03 & 10.04 & 10 &
+  \cellcolor{ganttblue!50} & \cellcolor{ganttblue!50} & & & & & \\
+\hline
+1.3 & Artifact + CLIP quality gate \& dual-format normalisation & 07.04 & 17.04 & 8 &
+  & \cellcolor{ganttblue!30} & \cellcolor{ganttblue!30} & & & & \\
+\hline
+
+% --- Section 2: Steganography ---
+\rowcolor{ganttred!8}
+\textbf{2} & \textbf{Steganography Implementation} & & & & & & & & & & \\
+\hline
+2.1 & LSB embedding pipeline (sequential, $k\!=\!1,2$, PNG) & 07.04 & 17.04 & 8 &
+  & \cellcolor{ganttred!50} & \cellcolor{ganttred!50} & & & & \\
+\hline
+2.2 & DCT-QIM embedding pipeline (JPEG Q=95) & 07.04 & 17.04 & 8 &
+  & \cellcolor{ganttred!50} & \cellcolor{ganttred!50} & & & & \\
+\hline
+2.3 & AES-256-CBC payload encryption & 14.04 & 17.04 & 4 &
+  & & \cellcolor{ganttred!30} & & & & \\
+\hline
+
+% --- Section 3: Detection ---
+\rowcolor{ganttgreen!8}
+\textbf{3} & \textbf{Detection \& Analysis} & & & & & & & & & & \\
+\hline
+3.1 & RS Analysis + $\chi^2$ detector & 14.04 & 24.04 & 8 &
+  & & \cellcolor{ganttgreen!50} & \cellcolor{ganttgreen!50} & & & \\
+\hline
+3.2 & SRM+EC (pre-trained) \& DCT statistical detector setup & 14.04 & 01.05 & 14 &
+  & & \cellcolor{ganttgreen!50} & \cellcolor{ganttgreen!50} & \cellcolor{ganttgreen!50} & & \\
+\hline
+3.3 & Image quality metrics (PSNR/SSIM/FSIM) & 21.04 & 01.05 & 8 &
+  & & & \cellcolor{ganttamber!50} & \cellcolor{ganttamber!50} & & \\
+\hline
+3.4 & Encryption-effect experiments (RQ5) & 28.04 & 08.05 & 8 &
+  & & & & \cellcolor{ganttpurple!50} & \cellcolor{ganttpurple!50} & \\
+\hline
+3.5 & Statistical analysis (ANOVA, Wilcoxon) & 28.04 & 08.05 & 8 &
+  & & & & \cellcolor{ganttpurple!50} & \cellcolor{ganttpurple!50} & \\
+\hline
+
+% --- Section 4: Writing ---
+\rowcolor{ganttgray!12}
+\textbf{4} & \textbf{Writing \& Revision} & & & & & & & & & & \\
+\hline
+4.1 & Visualisations + report writing & 04.05 & 15.05 & 8 &
+  & & & & & \cellcolor{ganttgray!50} & \cellcolor{ganttgray!50} \\
+\hline
+4.2 & Buffer / final revision & 11.05 & 15.05 & 5 &
+  & & & & & & \cellcolor{ganttgray!30} \\
+\hline
+
+\end{tabularx}
+}%
+
+\vspace{6pt}
+\noindent{\small\color{umgray}%
+\textcolor{ganttblue!60}{$\blacksquare$}~Data\enspace
+\textcolor{ganttred!60}{$\blacksquare$}~Steganography\enspace
+\textcolor{ganttgreen!60}{$\blacksquare$}~Detection\enspace
+\textcolor{ganttamber!60}{$\blacksquare$}~Evaluation\enspace
+\textcolor{ganttpurple!60}{$\blacksquare$}~Analysis\enspace
+\textcolor{ganttgray!60}{$\blacksquare$}~Writing}
+
+\vspace{4pt}
+\noindent{\small\textbf{Milestones:}
+\textbf{M1}~(end Wk\,2): Dataset ready \quad
+\textbf{M2}~(end Wk\,3): Embedding pipelines verified \quad
+\textbf{M3}~(end Wk\,5): All experiments complete \quad
+\textbf{M4}~(end Wk\,7): Report submitted}
+
+% ------------------------------------------------------------------
+% Phase 3: Completion (Project Period, 25 May -- 12 Jun 2026, 3 weeks)
+% ------------------------------------------------------------------
+
+\vspace{20pt}
+
+\noindent\textbf{\large Phase 3: Completion} \hfill
+\textit{Project Period: 25~May\,--\,12~June 2026 (3~weeks)}
+
+\vspace{6pt}
+
+{%
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{1.2}
+\footnotesize
+\noindent\begin{tabularx}{\textwidth}{
+  |>{\centering\arraybackslash}p{0.8cm}
+  |>{\raggedright\arraybackslash}p{4.6cm}
+  |>{\centering\arraybackslash}p{1.2cm}
+  |>{\centering\arraybackslash}p{1.2cm}
+  |>{\centering\arraybackslash}p{0.8cm}
+  |*{3}{>{\centering\arraybackslash}X|}
+}
+\hline
+\rowcolor{umdark!10}
+\textbf{WBS} & \textbf{Task} & \textbf{Start} & \textbf{End} & \textbf{Days} &
+\textbf{Wk\,1} & \textbf{Wk\,2} & \textbf{Wk\,3} \\
+\hline
+
+1.1 & Complete remaining implementation & 25.05 & 05.06 & 10 &
+  \cellcolor{ganttblue!50} & \cellcolor{ganttblue!50} & \\
+\hline
+1.2 & Verify results \& rerun experiments & 25.05 & 05.06 & 10 &
+  \cellcolor{ganttgreen!50} & \cellcolor{ganttgreen!50} & \\
+\hline
+1.3 & Statistical verification \& effect sizes & 01.06 & 05.06 & 5 &
+  & \cellcolor{ganttamber!50} & \\
+\hline
+2.1 & Presentation slides & 01.06 & 08.06 & 6 &
+  & \cellcolor{ganttpurple!50} & \cellcolor{ganttpurple!50} \\
+\hline
+2.2 & Poster & 05.06 & 10.06 & 4 &
+  & & \cellcolor{ganttred!50} \\
+\hline
+2.3 & Final paper write-up & 01.06 & 12.06 & 10 &
+  & \cellcolor{ganttgray!50} & \cellcolor{ganttgray!50} \\
+\hline
+2.4 & Buffer / revision / submission & 10.06 & 12.06 & 3 &
+  & & \cellcolor{ganttgray!30} \\
+\hline
+
+\end{tabularx}
+}%
+
+\vspace{6pt}
+\noindent{\small\color{umgray}%
+\textcolor{ganttblue!60}{$\blacksquare$}~Implementation\enspace
+\textcolor{ganttgreen!60}{$\blacksquare$}~Verification\enspace
+\textcolor{ganttamber!60}{$\blacksquare$}~Analysis\enspace
+\textcolor{ganttpurple!60}{$\blacksquare$}~Slides\enspace
+\textcolor{ganttred!60}{$\blacksquare$}~Poster\enspace
+\textcolor{ganttgray!60}{$\blacksquare$}~Paper}
+
+\vspace{4pt}
+\noindent{\small\textbf{Milestones:}
+\textbf{M5}~(end Wk\,1): Implementation finalised \quad
+\textbf{M6}~(end Wk\,2): Results verified, slides ready \quad
+\textbf{M7}~(end Wk\,3): All deliverables submitted}
+
+\end{document}

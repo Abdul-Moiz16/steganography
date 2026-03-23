@@ -1,0 +1,316 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+% ---- Minimalist theme ----
+\usetheme{default}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{frametitle continuation}{}
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{enumerate items}[default]
+
+% ---- Font: TeX Gyre Heros ----
+\usepackage[T1]{fontenc}
+\usepackage{tgheros}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{microtype}
+
+% ---- Packages ----
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usetikzlibrary{arrows.meta,positioning,calc,fit}
+
+% ---- Maastricht University colors ----
+\definecolor{umdark}{HTML}{001C3D}
+\definecolor{umorange}{HTML}{E84E10}
+\definecolor{umlight}{HTML}{4A90C4}
+\definecolor{umgray}{HTML}{6B7280}
+\definecolor{umbg}{HTML}{F8F9FA}
+\definecolor{umfaint}{HTML}{E5E7EB}
+
+% ---- Apply colors to Beamer ----
+\setbeamercolor{normal text}{fg=umdark}
+\setbeamercolor{frametitle}{fg=umdark}
+\setbeamercolor{title}{fg=umdark}
+\setbeamercolor{subtitle}{fg=umgray}
+\setbeamercolor{author}{fg=umgray}
+\setbeamercolor{date}{fg=umgray}
+\setbeamercolor{institute}{fg=umorange}
+\setbeamercolor{itemize item}{fg=umorange}
+\setbeamercolor{itemize subitem}{fg=umlight}
+\setbeamercolor{enumerate item}{fg=umorange}
+\setbeamercolor{block title}{bg=umdark,fg=white}
+\setbeamercolor{block body}{bg=umdark!5,fg=umdark}
+\setbeamercolor{block title alerted}{bg=umorange,fg=white}
+\setbeamercolor{block body alerted}{bg=umorange!8,fg=umdark}
+\setbeamercolor{block title example}{bg=umlight,fg=white}
+\setbeamercolor{block body example}{bg=umlight!8,fg=umdark}
+
+% ---- Frametitle style ----
+\setbeamertemplate{frametitle}{%
+  \vspace{0.35cm}%
+  \noindent\hspace*{0pt}%
+  \parbox{\textwidth}{%
+    {\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}\insertframetitle}%
+    \vspace{2pt}\\%
+    {\color{umorange}\rule{\textwidth}{1.2pt}}%
+  }%
+  \vspace{-2pt}%
+}
+\setbeamerfont{frametitle}{size=\large,series=\bfseries}
+\setbeamersize{text margin left=0.7cm,text margin right=0.7cm}
+
+% ---- Footline ----
+\setbeamertemplate{footline}{%
+  \hbox{%
+    \begin{beamercolorbox}[wd=\paperwidth,ht=2.2ex,dp=1ex]{footline}%
+      \hspace{1em}{\scriptsize\color{umgray}Proposal Revision Summary -- Carrier Origin and Steganographic Detectability}%
+      \hfill%
+      {\scriptsize\color{umgray}\insertframenumber/\inserttotalframenumber}%
+      \hspace{1em}%
+    \end{beamercolorbox}%
+  }%
+}
+
+% ---- Metadata ----
+\title{Proposal Revision Summary}
+\subtitle{Major Changes from Submitted Midway Proposal to Final Updated Version}
+\newcommand{\teamauthors}{Abdul Moiz Akbar \;|\; Daria Gjonbalaj \;|\; Nico Muller-Spath\\Jimena Narvaez del Cid \;|\; David Wicker \;|\; Nikolas Zouros}
+\author[Project 2.2 Team]{Project 2.2 Team}
+\institute{Department of Advanced Computing Sciences\\Maastricht University}
+\date{Project 2.2 \;|\; March 2026}
+
+\begin{document}
+
+% ============================================================
+\begin{frame}[plain]
+\vfill
+\begin{center}
+{\color{umorange}\rule{0.42\textwidth}{2pt}}\\[12pt]
+{\LARGE\bfseries\color{umdark}\inserttitle}\\[10pt]
+{\normalsize\color{umgray}\insertsubtitle}\\[16pt]
+{\small\color{umdark}\teamauthors}\\[8pt]
+{\small\color{umorange}\insertinstitute}\\[8pt]
+{\footnotesize\color{umgray}\insertdate}\\[12pt]
+{\color{umorange}\rule{0.42\textwidth}{2pt}}
+\end{center}
+\vfill
+\end{frame}
+
+% ============================================================
+\begin{frame}{Agenda}
+\begin{enumerate}
+\item Why the proposal had to be revised
+\item Motivation and research-question changes
+\item Methodology and chosen-approach changes
+\item Experiment and statistics changes
+\item Related-work and reference corrections
+\item What stayed constant across versions
+\end{enumerate}
+\end{frame}
+
+% ============================================================
+\begin{frame}{Why We Revised the Proposal}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{alertblock}{Problems in the submitted version}
+\begin{itemize}
+\item Some methods and references were weakly grounded or mismatched to the actual study plan.
+\item The original design mixed domains in ways that made interpretation harder.
+\item Several sections sounded over-polished and AI-like.
+\item A few methodological choices were not realistic for the intended scope and implementation path.
+\end{itemize}
+\end{alertblock}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{exampleblock}{Revision goals}
+\begin{itemize}
+\item Keep the same core research problem.
+\item Remove hallucination-prone or unsupported claims.
+\item Make the design easier to justify and implement.
+\item Tighten the writing into a clearer bachelor-level proposal.
+\end{itemize}
+\end{exampleblock}
+\end{column}
+\end{columns}
+
+\vspace{0.08cm}
+{\footnotesize\color{umgray}\textbf{Bottom line:} the final version is the same project, but reframed into a more defensible and implementable form.}
+\end{frame}
+
+% ============================================================
+\begin{frame}{Motivation and Research Questions}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Original version}
+\begin{itemize}
+\item Stronger rhetorical emphasis on security, science, and practice.
+\item More expansive wording about mixed real/synthetic traffic.
+\item RQs were tied to a less stable methodology.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{exampleblock}{Updated version}
+\begin{itemize}
+\item Motivation now starts from steganography and steganalysis as one problem.
+\item The core question is unchanged.
+\item RQs are labeled by role: primary, exploratory, and verification.
+\end{itemize}
+\end{exampleblock}
+\end{column}
+\end{columns}
+
+\vspace{0.05cm}
+{\footnotesize\color{umgray}Main change: tighter framing without changing the actual problem.}
+\end{frame}
+
+% ============================================================
+\begin{frame}{Chosen Approaches: Major Method Changes}
+\tiny
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{@{}p{3.4cm}p{4.9cm}p{4.9cm}@{}}
+\toprule
+\textbf{Area} & \textbf{Submitted version} & \textbf{Updated version} \\
+\midrule
+Carrier format & RGB PNG everywhere & Grayscale throughout; PNG for spatial, JPEG Q=95 for DCT \\
+Quality control & BRISQUE gate + artifact rejection & Saturation + semantic screening; BRISQUE discussed, not used \\
+Spatial embedding & PRNG-keyed pixel selection, $k=1/2$ framing & Sequential row-major LSB, with payload levels defined by fill rate \\
+Frequency embedding & DCT-QIM on PNG carriers & DCT-LSB on actual JPEG carriers via quantized coefficients \\
+Domain comparison & Method contrast entangled with carrier handling & Full pipeline contrast: LSB+PNG vs DCT-LSB+JPEG \\
+Detector scope & SRM+EC primary baseline & Training-free primary detectors; SRNet optional \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.08cm}
+\begin{block}{Why this matters}
+These changes removed the most fragile parts of the original design and made the proposal match a realistic implementation path.
+\end{block}
+\end{frame}
+
+% ============================================================
+\begin{frame}{Detectors and Statistical Evaluation}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Submitted version}
+\begin{itemize}
+\item Detector set centered on SRM+EC plus branch-specific checks.
+\item Statistics relied on Wilcoxon, ANOVA, and Cohen's $d$.
+\item Trained and training-free detectors were mixed in the main analysis.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{exampleblock}{Updated version}
+\begin{itemize}
+\item Primary analysis now uses RS, $\chi^2$, Sample Pairs, and calibration $\chi^2$.
+\item ROC-AUC remains the metric, but comparisons now use DeLong for correlated AUCs.
+\item Multiple testing is handled explicitly with Bonferroni--Holm.
+\item SRNet remains possible, but only as a separate extension.
+\end{itemize}
+\end{exampleblock}
+\end{column}
+\end{columns}
+
+\vspace{0.05cm}
+\begin{alertblock}{Key methodological correction}
+The updated detector/statistics stack fits the actual study structure much better than the original mixed setup.
+\end{alertblock}
+\end{frame}
+
+% ============================================================
+\begin{frame}{Related Work and Reference Corrections}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{What was problematic before}
+\begin{itemize}
+\item The original proposal used a broader but less stable reference set.
+\item It treated De et al.\ as the closest prior work.
+\item QIM-based framing and some detector references were tied to the dropped methodology.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{exampleblock}{What the final version does}
+\begin{itemize}
+\item Related work is now built around the papers that directly support the final design.
+\item Gao is used to distinguish coverless/generative steganography from our setting.
+\item M\'{e}reur is used as the closest prior comparison on AI-generated carriers.
+\item Mallet, Giboulot, and Corvi anchor the cover-source mismatch and synthetic-image forensics argument.
+\end{itemize}
+\end{exampleblock}
+\end{column}
+\end{columns}
+
+\vspace{0.05cm}
+{\footnotesize\color{umgray}Main change: the literature review became narrower, but more accurate and better aligned with the actual proposal.}
+\end{frame}
+
+% ============================================================
+\begin{frame}{What Stayed Constant}
+\footnotesize
+\begin{block}{Core study idea}
+\begin{itemize}
+\item The project still asks whether carrier origin changes detectability.
+\item The main comparison is still real vs.\ ML, with ML-A vs.\ ML-B as a second contrast.
+\item The overall scale remains 1,500 images across 3 sources.
+\item Payload, encryption, and two embedding branches remain part of the design.
+\end{itemize}
+\end{block}
+
+\begin{exampleblock}{Practical takeaway for the team}
+\begin{itemize}
+\item We did \textbf{not} abandon the project direction.
+\item We removed risky claims and unrealistic components.
+\item The final document is closer to what we can build and defend.
+\end{itemize}
+\end{exampleblock}
+\end{frame}
+
+% ============================================================
+\begin{frame}{Net Effect of the Revision}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.32\textwidth}
+\begin{block}{Improved credibility}
+\begin{itemize}
+\item fewer hallucination risks
+\item cleaner literature positioning
+\item more defensible claims
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.32\textwidth}
+\begin{block}{Improved methodology}
+\begin{itemize}
+\item branch-consistent carriers
+\item more realistic detectors
+\item statistics matched to AUC comparisons
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.32\textwidth}
+\begin{block}{Improved communication}
+\begin{itemize}
+\item less AI-like wording
+\item clearer flow
+\item tighter explanation of scope and limitations
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+
+\vspace{0.08cm}
+\begin{alertblock}{Team summary}
+The final proposal is best understood as a correction and sharpening of the original submission, not a change of direction.
+\end{alertblock}
+\end{frame}
+
+\end{document}

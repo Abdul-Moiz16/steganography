@@ -1,0 +1,1643 @@
+[
+  {
+    "key": "petitcolas1999",
+    "title": "Information hiding: a survey",
+    "year": "1999",
+    "authors": "F. A. P. Petitcolas, R. J. Anderson, and M. G. Kuhn",
+    "citation": "F. A. P. Petitcolas, R. J. Anderson, and M. G. Kuhn, \"Information hiding: a survey,\" Proc. IEEE, vol. 87, no. 7, pp. 1062--1078, 1999.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/petitcolas1999.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "cheddad2010",
+    "title": "Digital image steganography: Survey and analysis of current methods",
+    "year": "2010",
+    "authors": "A. Cheddad, J. Condell, K. Curran, and P. McKevitt",
+    "citation": "A. Cheddad, J. Condell, K. Curran, and P. McKevitt, \"Digital image steganography: Survey and analysis of current methods,\" Signal Process., vol. 90, no. 3, pp. 727--752, 2010.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/cheddad2010.xml",
+    "file_type": "xml",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "hussain2018",
+    "title": "Image steganography in spatial domain: A survey",
+    "year": "2018",
+    "authors": "M. Hussain, A. W. A. Wahab, Y. I. B. Idris, A. T. S. Ho, and K. H. Jung",
+    "citation": "M. Hussain, A. W. A. Wahab, Y. I. B. Idris, A. T. S. Ho, and K. H. Jung, \"Image steganography in spatial domain: A survey,\" Signal Process.: Image Commun., vol. 65, pp. 46--66, 2018.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/hussain2018.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "fridrich2012srm",
+    "title": "Rich models for steganalysis of digital images",
+    "year": "2012",
+    "authors": "J. Fridrich and J. Kodovsky",
+    "citation": "J. Fridrich and J. Kodovsky, \"Rich models for steganalysis of digital images,\" IEEE Trans. Inf. Forensics Security, vol. 7, no. 3, pp. 868--882, 2012.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/fridrich2012srm.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "rombach2022sd",
+    "title": "High-resolution image synthesis with latent diffusion models",
+    "year": "2022",
+    "authors": "R. Rombach, A. Blattmann, D. Lorenz, P. Esser, and B. Ommer",
+    "citation": "R. Rombach, A. Blattmann, D. Lorenz, P. Esser, and B. Ommer, \"High-resolution image synthesis with latent diffusion models,\" in Proc. IEEE CVPR, pp. 10674--10685, 2022.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/rombach2022sd.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "sdxl2023",
+    "title": "SDXL: Improving latent diffusion models for high-resolution image synthesis",
+    "year": "2024",
+    "authors": "D. Podell et al.",
+    "citation": "D. Podell et al., \"SDXL: Improving latent diffusion models for high-resolution image synthesis,\" in Proc. Int. Conf. Learning Representations (ICLR), 2024. arXiv:2307.01952.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "2307.01952",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/sdxl2023.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "pixart2023",
+    "title": "PixArt-$alpha$: Fast training of diffusion transformer for photorealistic text-to-image synthesis",
+    "year": "2024",
+    "authors": "J. Chen et al.",
+    "citation": "J. Chen et al., \"PixArt-$alpha$: Fast training of diffusion transformer for photorealistic text-to-image synthesis,\" in Proc. Int. Conf. Learning Representations (ICLR), 2024. arXiv:2310.00426.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "2310.00426",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/pixart2023.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "gao2022ai",
+    "title": "Steganographic secret sharing via AI-generated photorealistic images",
+    "year": "2022",
+    "authors": "K. Gao, C.-C. Chang, J.-H. Horng, and I. Echizen",
+    "citation": "K. Gao, C.-C. Chang, J.-H. Horng, and I. Echizen, \"Steganographic secret sharing via AI-generated photorealistic images,\" EURASIP J. Wireless Commun. Netw., vol. 2022, art. 119, 2022. DOI: 10.1186/s13638-022-02190-8.",
+    "original_doi": "10.1186/s13638-022-02190-8",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/gao2022ai.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "fridrich2001lsb",
+    "title": "Detecting LSB steganography in color and grayscale images",
+    "year": "2001",
+    "authors": "J. Fridrich, M. Goljan, and R. Du",
+    "citation": "J. Fridrich, M. Goljan, and R. Du, \"Detecting LSB steganography in color and grayscale images,\" IEEE Multimedia, vol. 8, no. 4, pp. 22--28, 2001.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/fridrich2001lsb.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "westfeld1999chi",
+    "title": "Attacks on steganographic systems",
+    "year": "1999",
+    "authors": "A. Westfeld and A. Pfitzmann",
+    "citation": "A. Westfeld and A. Pfitzmann, \"Attacks on steganographic systems,\" in Proc. 3rd Int. Workshop Information Hiding, LNCS 1768, pp. 61--76, 1999.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/westfeld1999chi.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "dumitrescu2003sp",
+    "title": "Detection of LSB steganography via sample pair analysis",
+    "year": "2003",
+    "authors": "S. Dumitrescu, X. Wu, and Z. Wang",
+    "citation": "S. Dumitrescu, X. Wu, and Z. Wang, \"Detection of LSB steganography via sample pair analysis,\" IEEE Trans. Signal Process., vol. 51, no. 7, pp. 1995--2007, 2003.",
+    "original_doi": "",
+    "resolved_doi": "10.1109/TSP.2003.812753",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "Detection of LSB steganography via sample pair analysis",
+    "match_score": 1.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/dumitrescu2003sp.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "holub2015dctr",
+    "title": "Low-complexity features for JPEG steganalysis using undecimated DCT",
+    "year": "2015",
+    "authors": "V. Holub and J. Fridrich",
+    "citation": "V. Holub and J. Fridrich, \"Low-complexity features for JPEG steganalysis using undecimated DCT,\" IEEE Trans. Inf. Forensics Security, vol. 10, no. 2, pp. 219--228, 2015.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/holub2015dctr.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "fridrich2003calib",
+    "title": "New methodology for breaking steganographic techniques for JPEGs",
+    "year": "2003",
+    "authors": "J. Fridrich, M. Goljan, and D. Hogea",
+    "citation": "J. Fridrich, M. Goljan, and D. Hogea, \"New methodology for breaking steganographic techniques for JPEGs,\" in Proc. SPIE Electronic Imaging, vol. 5020, pp. 143--155, 2003.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/fridrich2003calib.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "delong1988",
+    "title": "Comparing the areas under two or more correlated receiver operating characteristic curves: a nonparametric approach",
+    "year": "1988",
+    "authors": "E. R. DeLong, D. M. DeLong, and D. L. Clarke-Pearson",
+    "citation": "E. R. DeLong, D. M. DeLong, and D. L. Clarke-Pearson, \"Comparing the areas under two or more correlated receiver operating characteristic curves: a nonparametric approach,\" Biometrics, vol. 44, no. 3, pp. 837--845, 1988.",
+    "original_doi": "",
+    "resolved_doi": "10.2307/2531595",
+    "arxiv_id": "",
+    "openalex_id": "https://openalex.org/W2328176404",
+    "matched_title": "Comparing the Areas under Two or More Correlated Receiver Operating Characteristic Curves: A Nonparametric Approach",
+    "match_score": 1.05,
+    "landing_url": "https://doi.org/10.2307/2531595",
+    "fulltext_url": "",
+    "file_path": "",
+    "file_type": "",
+    "status": "unresolved",
+    "note": "No downloadable full text found automatically.",
+    "metadata": {
+      "crossref": {
+        "doi": "10.2307/2531595",
+        "title": "Comparing the Areas under Two or More Correlated Receiver Operating Characteristic Curves: A Nonparametric Approach",
+        "score": 1.05,
+        "url": "https://doi.org/10.2307/2531595"
+      },
+      "openalex": {
+        "id": "https://openalex.org/W2328176404",
+        "doi": "https://doi.org/10.2307/2531595",
+        "title": "Comparing the Areas under Two or More Correlated Receiver Operating Characteristic Curves: A Nonparametric Approach",
+        "display_name": "Comparing the Areas under Two or More Correlated Receiver Operating Characteristic Curves: A Nonparametric Approach",
+        "publication_year": 1988,
+        "publication_date": "1988-09-01",
+        "ids": {
+          "openalex": "https://openalex.org/W2328176404",
+          "doi": "https://doi.org/10.2307/2531595",
+          "mag": "2328176404",
+          "pmid": "https://pubmed.ncbi.nlm.nih.gov/3203132"
+        },
+        "language": "en",
+        "primary_location": {
+          "id": "doi:10.2307/2531595",
+          "is_oa": false,
+          "landing_page_url": "https://doi.org/10.2307/2531595",
+          "pdf_url": null,
+          "source": {
+            "id": "https://openalex.org/S8265502",
+            "display_name": "Biometrics",
+            "issn_l": "0006-341X",
+            "issn": [
+              "0006-341X",
+              "1541-0420"
+            ],
+            "is_oa": false,
+            "is_in_doaj": false,
+            "is_core": true,
+            "host_organization": "https://openalex.org/P4310311648",
+            "host_organization_name": "Oxford University Press",
+            "host_organization_lineage": [
+              "https://openalex.org/P4310311648",
+              "https://openalex.org/P4310311647"
+            ],
+            "host_organization_lineage_names": [
+              "Oxford University Press",
+              "University of Oxford"
+            ],
+            "type": "journal"
+          },
+          "license": null,
+          "license_id": null,
+          "version": "publishedVersion",
+          "is_accepted": true,
+          "is_published": true,
+          "raw_source_name": "Biometrics",
+          "raw_type": "journal-article"
+        },
+        "type": "article",
+        "indexed_in": [
+          "crossref",
+          "pubmed"
+        ],
+        "open_access": {
+          "is_oa": false,
+          "oa_status": "closed",
+          "oa_url": null,
+          "any_repository_has_fulltext": false
+        },
+        "authorships": [
+          {
+            "author_position": "first",
+            "author": {
+              "id": "https://openalex.org/A5071955362",
+              "display_name": "Elizabeth R. DeLong",
+              "orcid": "https://orcid.org/0000-0001-7166-1867"
+            },
+            "institutions": [],
+            "countries": [],
+            "is_corresponding": true,
+            "raw_author_name": "Elizabeth R. DeLong",
+            "raw_affiliation_strings": [
+              "Quintiles, Inc., Chapel Hill, North Carolina 27514"
+            ],
+            "affiliations": [
+              {
+                "raw_affiliation_string": "Quintiles, Inc., Chapel Hill, North Carolina 27514",
+                "institution_ids": []
+              }
+            ]
+          },
+          {
+            "author_position": "middle",
+            "author": {
+              "id": "https://openalex.org/A5109209191",
+              "display_name": "David M. DeLong",
+              "orcid": null
+            },
+            "institutions": [
+              {
+                "id": "https://openalex.org/I28927889",
+                "display_name": "IQVIA (United Kingdom)",
+                "ror": "https://ror.org/040g76k92",
+                "country_code": "GB",
+                "type": "company",
+                "lineage": [
+                  "https://openalex.org/I28927889",
+                  "https://openalex.org/I4210108991"
+                ]
+              }
+            ],
+            "countries": [
+              "GB"
+            ],
+            "is_corresponding": false,
+            "raw_author_name": "David M. DeLong",
+            "raw_affiliation_strings": [
+              "Quintiles Inc"
+            ],
+            "affiliations": [
+              {
+                "raw_affiliation_string": "Quintiles Inc",
+                "institution_ids": [
+                  "https://openalex.org/I28927889"
+                ]
+              }
+            ]
+          },
+          {
+            "author_position": "last",
+            "author": {
+              "id": "https://openalex.org/A5108455151",
+              "display_name": "Daniel L. Clarke‐Pearson",
+              "orcid": null
+            },
+            "institutions": [],
+            "countries": [],
+            "is_corresponding": false,
+            "raw_author_name": "Daniel L. Clarke-Pearson",
+            "raw_affiliation_strings": [],
+            "affiliations": []
+          }
+        ],
+        "institutions": [],
+        "countries_distinct_count": 1,
+        "institutions_distinct_count": 3,
+        "corresponding_author_ids": [
+          "https://openalex.org/A5071955362"
+        ],
+        "corresponding_institution_ids": [],
+        "apc_list": {
+          "value": 3710,
+          "currency": "USD",
+          "value_usd": 3710
+        },
+        "apc_paid": null,
+        "fwci": 4.874,
+        "has_fulltext": false,
+        "cited_by_count": 21825,
+        "citation_normalized_percentile": {
+          "value": 0.96429405,
+          "is_in_top_1_percent": false,
+          "is_in_top_10_percent": true
+        },
+        "cited_by_percentile_year": {
+          "min": 99,
+          "max": 100
+        },
+        "biblio": {
+          "volume": "44",
+          "issue": "3",
+          "first_page": "837",
+          "last_page": "837"
+        },
+        "is_retracted": false,
+        "is_paratext": false,
+        "is_xpac": false,
+        "primary_topic": {
+          "id": "https://openalex.org/T11871",
+          "display_name": "Advanced Statistical Methods and Models",
+          "score": 0.9871000051498413,
+          "subfield": {
+            "id": "https://openalex.org/subfields/2613",
+            "display_name": "Statistics and Probability"
+          },
+          "field": {
+            "id": "https://openalex.org/fields/26",
+            "display_name": "Mathematics"
+          },
+          "domain": {
+            "id": "https://openalex.org/domains/3",
+            "display_name": "Physical Sciences"
+          }
+        },
+        "topics": [
+          {
+            "id": "https://openalex.org/T11871",
+            "display_name": "Advanced Statistical Methods and Models",
+            "score": 0.9871000051498413,
+            "subfield": {
+              "id": "https://openalex.org/subfields/2613",
+              "display_name": "Statistics and Probability"
+            },
+            "field": {
+              "id": "https://openalex.org/fields/26",
+              "display_name": "Mathematics"
+            },
+            "domain": {
+              "id": "https://openalex.org/domains/3",
+              "display_name": "Physical Sciences"
+            }
+          },
+          {
+            "id": "https://openalex.org/T11186",
+            "display_name": "Hydrology and Drought Analysis",
+            "score": 0.9847999811172485,
+            "subfield": {
+              "id": "https://openalex.org/subfields/2306",
+              "display_name": "Global and Planetary Change"
+            },
+            "field": {
+              "id": "https://openalex.org/fields/23",
+              "display_name": "Environmental Science"
+            },
+            "domain": {
+              "id": "https://openalex.org/domains/3",
+              "display_name": "Physical Sciences"
+            }
+          },
+          {
+            "id": "https://openalex.org/T11490",
+            "display_name": "Hydrological Forecasting Using AI",
+            "score": 0.9805999994277954,
+            "subfield": {
+              "id": "https://openalex.org/subfields/2305",
+              "display_name": "Environmental Engineering"
+            },
+            "field": {
+              "id": "https://openalex.org/fields/23",
+              "display_name": "Environmental Science"
+            },
+            "domain": {
+              "id": "https://openalex.org/domains/3",
+              "display_name": "Physical Sciences"
+            }
+          }
+        ],
+        "keywords": [
+          {
+            "id": "https://openalex.org/keywords/receiver-operating-characteristic",
+            "display_name": "Receiver operating characteristic",
+            "score": 0.8940452337265015
+          },
+          {
+            "id": "https://openalex.org/keywords/nonparametric-statistics",
+            "display_name": "Nonparametric statistics",
+            "score": 0.86658775806427
+          },
+          {
+            "id": "https://openalex.org/keywords/statistics",
+            "display_name": "Statistics",
+            "score": 0.7211179733276367
+          },
+          {
+            "id": "https://openalex.org/keywords/mathematics",
+            "display_name": "Mathematics",
+            "score": 0.6552226543426514
+          },
+          {
+            "id": "https://openalex.org/keywords/variable",
+            "display_name": "Variable (mathematics)",
+            "score": 0.5811018347740173
+          },
+          {
+            "id": "https://openalex.org/keywords/covariance-matrix",
+            "display_name": "Covariance matrix",
+            "score": 0.4879850745201111
+          },
+          {
+            "id": "https://openalex.org/keywords/scale",
+            "display_name": "Scale (ratio)",
+            "score": 0.46676039695739746
+          },
+          {
+            "id": "https://openalex.org/keywords/covariance",
+            "display_name": "Covariance",
+            "score": 0.45522674918174744
+          },
+          {
+            "id": "https://openalex.org/keywords/statistical-hypothesis-testing",
+            "display_name": "Statistical hypothesis testing",
+            "score": 0.4303009510040283
+          },
+          {
+            "id": "https://openalex.org/keywords/econometrics",
+            "display_name": "Econometrics",
+            "score": 0.38762491941452026
+          },
+          {
+            "id": "https://openalex.org/keywords/mathematical-analysis",
+            "display_name": "Mathematical analysis",
+            "score": 0.08690384030342102
+          }
+        ],
+        "concepts": [
+          {
+            "id": "https://openalex.org/C58471807",
+            "wikidata": "https://www.wikidata.org/wiki/Q327120",
+            "display_name": "Receiver operating characteristic",
+            "level": 2,
+            "score": 0.8940452337265015
+          },
+          {
+            "id": "https://openalex.org/C102366305",
+            "wikidata": "https://www.wikidata.org/wiki/Q1097688",
+            "display_name": "Nonparametric statistics",
+            "level": 2,
+            "score": 0.86658775806427
+          },
+          {
+            "id": "https://openalex.org/C105795698",
+            "wikidata": "https://www.wikidata.org/wiki/Q12483",
+            "display_name": "Statistics",
+            "level": 1,
+            "score": 0.7211179733276367
+          },
+          {
+            "id": "https://openalex.org/C33923547",
+            "wikidata": "https://www.wikidata.org/wiki/Q395",
+            "display_name": "Mathematics",
+            "level": 0,
+            "score": 0.6552226543426514
+          },
+          {
+            "id": "https://openalex.org/C182365436",
+            "wikidata": "https://www.wikidata.org/wiki/Q50701",
+            "display_name": "Variable (mathematics)",
+            "level": 2,
+            "score": 0.5811018347740173
+          },
+          {
+            "id": "https://openalex.org/C185142706",
+            "wikidata": "https://www.wikidata.org/wiki/Q1134404",
+            "display_name": "Covariance matrix",
+            "level": 2,
+            "score": 0.4879850745201111
+          },
+          {
+            "id": "https://openalex.org/C2778755073",
+            "wikidata": "https://www.wikidata.org/wiki/Q10858537",
+            "display_name": "Scale (ratio)",
+            "level": 2,
+            "score": 0.46676039695739746
+          },
+          {
+            "id": "https://openalex.org/C178650346",
+            "wikidata": "https://www.wikidata.org/wiki/Q201984",
+            "display_name": "Covariance",
+            "level": 2,
+            "score": 0.45522674918174744
+          },
+          {
+            "id": "https://openalex.org/C87007009",
+            "wikidata": "https://www.wikidata.org/wiki/Q210832",
+            "display_name": "Statistical hypothesis testing",
+            "level": 2,
+            "score": 0.4303009510040283
+          },
+          {
+            "id": "https://openalex.org/C149782125",
+            "wikidata": "https://www.wikidata.org/wiki/Q160039",
+            "display_name": "Econometrics",
+            "level": 1,
+            "score": 0.38762491941452026
+          },
+          {
+            "id": "https://openalex.org/C134306372",
+            "wikidata": "https://www.wikidata.org/wiki/Q7754",
+            "display_name": "Mathematical analysis",
+            "level": 1,
+            "score": 0.08690384030342102
+          },
+          {
+            "id": "https://openalex.org/C62520636",
+            "wikidata": "https://www.wikidata.org/wiki/Q944",
+            "display_name": "Quantum mechanics",
+            "level": 1,
+            "score": 0.0
+          },
+          {
+            "id": "https://openalex.org/C121332964",
+            "wikidata": "https://www.wikidata.org/wiki/Q413",
+            "display_name": "Physics",
+            "level": 0,
+            "score": 0.0
+          }
+        ],
+        "mesh": [
+          {
+            "descriptor_ui": "D000465",
+            "descriptor_name": "Algorithms",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D000465",
+            "descriptor_name": "Algorithms",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D000465",
+            "descriptor_name": "Algorithms",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D000704",
+            "descriptor_name": "Analysis of Variance",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D000704",
+            "descriptor_name": "Analysis of Variance",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D000704",
+            "descriptor_name": "Analysis of Variance",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D005260",
+            "descriptor_name": "Female",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D005260",
+            "descriptor_name": "Female",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D005260",
+            "descriptor_name": "Female",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D006801",
+            "descriptor_name": "Humans",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D006801",
+            "descriptor_name": "Humans",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D006801",
+            "descriptor_name": "Humans",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D007415",
+            "descriptor_name": "Intestinal Obstruction",
+            "qualifier_ui": "Q000601",
+            "qualifier_name": "surgery",
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D007415",
+            "descriptor_name": "Intestinal Obstruction",
+            "qualifier_ui": "Q000601",
+            "qualifier_name": "surgery",
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D007415",
+            "descriptor_name": "Intestinal Obstruction",
+            "qualifier_ui": "Q000601",
+            "qualifier_name": "surgery",
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D010051",
+            "descriptor_name": "Ovarian Neoplasms",
+            "qualifier_ui": "Q000150",
+            "qualifier_name": "complications",
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D010051",
+            "descriptor_name": "Ovarian Neoplasms",
+            "qualifier_ui": "Q000150",
+            "qualifier_name": "complications",
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D010051",
+            "descriptor_name": "Ovarian Neoplasms",
+            "qualifier_ui": "Q000150",
+            "qualifier_name": "complications",
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D011237",
+            "descriptor_name": "Predictive Value of Tests",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": true
+          },
+          {
+            "descriptor_ui": "D011237",
+            "descriptor_name": "Predictive Value of Tests",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": true
+          },
+          {
+            "descriptor_ui": "D011237",
+            "descriptor_name": "Predictive Value of Tests",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": true
+          },
+          {
+            "descriptor_ui": "D012372",
+            "descriptor_name": "ROC Curve",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": true
+          },
+          {
+            "descriptor_ui": "D012372",
+            "descriptor_name": "ROC Curve",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": true
+          },
+          {
+            "descriptor_ui": "D012372",
+            "descriptor_name": "ROC Curve",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": true
+          },
+          {
+            "descriptor_ui": "D015233",
+            "descriptor_name": "Models, Statistical",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D015233",
+            "descriptor_name": "Models, Statistical",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          },
+          {
+            "descriptor_ui": "D015233",
+            "descriptor_name": "Models, Statistical",
+            "qualifier_ui": null,
+            "qualifier_name": null,
+            "is_major_topic": false
+          }
+        ],
+        "locations_count": 2,
+        "locations": [
+          {
+            "id": "doi:10.2307/2531595",
+            "is_oa": false,
+            "landing_page_url": "https://doi.org/10.2307/2531595",
+            "pdf_url": null,
+            "source": {
+              "id": "https://openalex.org/S8265502",
+              "display_name": "Biometrics",
+              "issn_l": "0006-341X",
+              "issn": [
+                "0006-341X",
+                "1541-0420"
+              ],
+              "is_oa": false,
+              "is_in_doaj": false,
+              "is_core": true,
+              "host_organization": "https://openalex.org/P4310311648",
+              "host_organization_name": "Oxford University Press",
+              "host_organization_lineage": [
+                "https://openalex.org/P4310311648",
+                "https://openalex.org/P4310311647"
+              ],
+              "host_organization_lineage_names": [
+                "Oxford University Press",
+                "University of Oxford"
+              ],
+              "type": "journal"
+            },
+            "license": null,
+            "license_id": null,
+            "version": "publishedVersion",
+            "is_accepted": true,
+            "is_published": true,
+            "raw_source_name": "Biometrics",
+            "raw_type": "journal-article"
+          },
+          {
+            "id": "pmid:3203132",
+            "is_oa": false,
+            "landing_page_url": "https://pubmed.ncbi.nlm.nih.gov/3203132",
+            "pdf_url": null,
+            "source": {
+              "id": "https://openalex.org/S4306525036",
+              "display_name": "PubMed",
+              "issn_l": null,
+              "issn": null,
+              "is_oa": false,
+              "is_in_doaj": false,
+              "is_core": false,
+              "host_organization": "https://openalex.org/I1299303238",
+              "host_organization_name": "National Institutes of Health",
+              "host_organization_lineage": [
+                "https://openalex.org/I1299303238"
+              ],
+              "host_organization_lineage_names": [],
+              "type": "repository"
+            },
+            "license": null,
+            "license_id": null,
+            "version": "publishedVersion",
+            "is_accepted": true,
+            "is_published": true,
+            "raw_source_name": "Biometrics",
+            "raw_type": null
+          }
+        ],
+        "best_oa_location": null,
+        "sustainable_development_goals": [],
+        "awards": [],
+        "funders": [
+          {
+            "id": "https://openalex.org/F4320309610",
+            "display_name": "Health Services Research and Development",
+            "ror": "https://ror.org/05rsv9s98"
+          }
+        ],
+        "has_content": {
+          "grobid_xml": false,
+          "pdf": false
+        },
+        "content_urls": null,
+        "referenced_works_count": 12,
+        "referenced_works": [
+          "https://openalex.org/W26510586",
+          "https://openalex.org/W81348628",
+          "https://openalex.org/W180768016",
+          "https://openalex.org/W1515026043",
+          "https://openalex.org/W1593111636",
+          "https://openalex.org/W1965902853",
+          "https://openalex.org/W1968114652",
+          "https://openalex.org/W1990534247",
+          "https://openalex.org/W2049172236",
+          "https://openalex.org/W2065230098",
+          "https://openalex.org/W2157825442",
+          "https://openalex.org/W3107868771"
+        ],
+        "related_works": [
+          "https://openalex.org/W2007016495",
+          "https://openalex.org/W4366404590",
+          "https://openalex.org/W2552050053",
+          "https://openalex.org/W1998476572",
+          "https://openalex.org/W2102383732",
+          "https://openalex.org/W2769360515",
+          "https://openalex.org/W4244710689",
+          "https://openalex.org/W1639914946",
+          "https://openalex.org/W2024421418",
+          "https://openalex.org/W305980334"
+        ],
+        "abstract_inverted_index": {
+          "Methods": [
+            0
+          ],
+          "of": [
+            1,
+            7,
+            11,
+            40,
+            44,
+            53,
+            73,
+            122,
+            134
+          ],
+          "evaluating": [
+            2
+          ],
+          "and": [
+            3,
+            19,
+            81
+          ],
+          "comparing": [
+            4
+          ],
+          "the": [
+            5,
+            41,
+            45,
+            51,
+            66,
+            74,
+            84,
+            88,
+            106,
+            119,
+            123,
+            132,
+            142
+          ],
+          "performance": [
+            6
+          ],
+          "diagnostic": [
+            8
+          ],
+          "tests": [
+            9,
+            16,
+            103
+          ],
+          "are": [
+            10,
+            17,
+            99
+          ],
+          "increasing": [
+            12
+          ],
+          "importance": [
+            13
+          ],
+          "as": [
+            14
+          ],
+          "new": [
+            15
+          ],
+          "developed": [
+            18
+          ],
+          "marketed.": [
+            20
+          ],
+          "When": [
+            21,
+            93
+          ],
+          "a": [
+            22,
+            33,
+            54,
+            128
+          ],
+          "test": [
+            23,
+            46
+          ],
+          "is": [
+            24,
+            62
+          ],
+          "based": [
+            25,
+            101
+          ],
+          "on": [
+            26,
+            32,
+            102,
+            105,
+            111,
+            144
+          ],
+          "an": [
+            27,
+            38,
+            149
+          ],
+          "observed": [
+            28,
+            75
+          ],
+          "variable": [
+            29,
+            76
+          ],
+          "that": [
+            30
+          ],
+          "lies": [
+            31
+          ],
+          "continuous": [
+            34
+          ],
+          "or": [
+            35,
+            95
+          ],
+          "graded": [
+            36
+          ],
+          "scale,": [
+            37
+          ],
+          "assessment": [
+            39
+          ],
+          "overall": [
+            42
+          ],
+          "value": [
+            43
+          ],
+          "can": [
+            47
+          ],
+          "be": [
+            48,
+            78
+          ],
+          "made": [
+            49
+          ],
+          "through": [
+            50
+          ],
+          "use": [
+            52
+          ],
+          "receiver": [
+            55
+          ],
+          "operating": [
+            56
+          ],
+          "characteristic": [
+            57
+          ],
+          "(ROC)": [
+            58
+          ],
+          "curve.": [
+            59
+          ],
+          "The": [
+            60
+          ],
+          "curve": [
+            61
+          ],
+          "constructed": [
+            63,
+            100
+          ],
+          "by": [
+            64,
+            140
+          ],
+          "varying": [
+            65
+          ],
+          "cutpoint": [
+            67
+          ],
+          "used": [
+            68
+          ],
+          "to": [
+            69,
+            131,
+            147
+          ],
+          "determine": [
+            70
+          ],
+          "which": [
+            71
+          ],
+          "values": [
+            72
+          ],
+          "will": [
+            77
+          ],
+          "considered": [
+            79
+          ],
+          "abnormal": [
+            80
+          ],
+          "then": [
+            82
+          ],
+          "plotting": [
+            83
+          ],
+          "resulting": [
+            85
+          ],
+          "sensitivities": [
+            86
+          ],
+          "against": [
+            87
+          ],
+          "corresponding": [
+            89
+          ],
+          "false": [
+            90
+          ],
+          "positive": [
+            91
+          ],
+          "rates.": [
+            92
+          ],
+          "two": [
+            94
+          ],
+          "more": [
+            96
+          ],
+          "empirical": [
+            97
+          ],
+          "curves": [
+            98,
+            114
+          ],
+          "performed": [
+            104
+          ],
+          "same": [
+            107
+          ],
+          "individuals,": [
+            108
+          ],
+          "statistical": [
+            109
+          ],
+          "analysis": [
+            110,
+            133
+          ],
+          "differences": [
+            112
+          ],
+          "between": [
+            113
+          ],
+          "must": [
+            115
+          ],
+          "take": [
+            116
+          ],
+          "into": [
+            117
+          ],
+          "account": [
+            118
+          ],
+          "correlated": [
+            120,
+            137
+          ],
+          "nature": [
+            121
+          ],
+          "data.": [
+            124
+          ],
+          "This": [
+            125
+          ],
+          "paper": [
+            126
+          ],
+          "presents": [
+            127
+          ],
+          "nonparametric": [
+            129
+          ],
+          "approach": [
+            130
+          ],
+          "areas": [
+            135
+          ],
+          "under": [
+            136
+          ],
+          "ROC": [
+            138
+          ],
+          "curves,": [
+            139
+          ],
+          "using": [
+            141
+          ],
+          "theory": [
+            143
+          ],
+          "generalized": [
+            145
+          ],
+          "U-statistics": [
+            146
+          ],
+          "generate": [
+            148
+          ],
+          "estimated": [
+            150
+          ],
+          "covariance": [
+            151
+          ],
+          "matrix.": [
+            152
+          ]
+        },
+        "counts_by_year": [
+          {
+            "year": 2026,
+            "cited_by_count": 338
+          },
+          {
+            "year": 2025,
+            "cited_by_count": 1573
+          },
+          {
+            "year": 2024,
+            "cited_by_count": 1819
+          },
+          {
+            "year": 2023,
+            "cited_by_count": 1732
+          },
+          {
+            "year": 2022,
+            "cited_by_count": 1972
+          },
+          {
+            "year": 2021,
+            "cited_by_count": 2081
+          },
+          {
+            "year": 2020,
+            "cited_by_count": 1762
+          },
+          {
+            "year": 2019,
+            "cited_by_count": 1393
+          },
+          {
+            "year": 2018,
+            "cited_by_count": 1200
+          },
+          {
+            "year": 2017,
+            "cited_by_count": 1079
+          },
+          {
+            "year": 2016,
+            "cited_by_count": 1001
+          },
+          {
+            "year": 2015,
+            "cited_by_count": 924
+          },
+          {
+            "year": 2014,
+            "cited_by_count": 779
+          },
+          {
+            "year": 2013,
+            "cited_by_count": 749
+          },
+          {
+            "year": 2012,
+            "cited_by_count": 620
+          }
+        ],
+        "updated_date": "2026-03-22T08:09:32.410652",
+        "created_date": "2025-10-10T00:00:00"
+      }
+    }
+  },
+  {
+    "key": "corvi2023diffusion",
+    "title": "On the detection of synthetic images generated by diffusion models",
+    "year": "2023",
+    "authors": "R. Corvi, D. Cozzolino, G. Zingarini, G. Poggi, K. Nagano, and L. Verdoliva",
+    "citation": "R. Corvi, D. Cozzolino, G. Zingarini, G. Poggi, K. Nagano, and L. Verdoliva, \"On the detection of synthetic images generated by diffusion models,\" in Proc. IEEE ICASSP, pp. 1--5, 2023.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/corvi2023diffusion.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "coco2014",
+    "title": "Microsoft COCO: Common objects in context",
+    "year": "2014",
+    "authors": "T.-Y. Lin et al.",
+    "citation": "T.-Y. Lin et al., \"Microsoft COCO: Common objects in context,\" in Proc. ECCV, LNCS 8693, pp. 740--755, 2014.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/coco2014.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "flickr30k2014",
+    "title": "From image descriptions to visual denotations: New similarity metrics for semantic inference over event descriptions",
+    "year": "2014",
+    "authors": "P. Young, A. Lai, M. Hodosh, and J. Hockenmaier",
+    "citation": "P. Young, A. Lai, M. Hodosh, and J. Hockenmaier, \"From image descriptions to visual denotations: New similarity metrics for semantic inference over event descriptions,\" Trans. Assoc. Comput. Linguist., vol. 2, pp. 67--78, 2014.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/flickr30k2014.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "boroumand2019srnet",
+    "title": "Deep residual network for steganalysis of digital images",
+    "year": "2019",
+    "authors": "M. Boroumand, M. Chen, and J. Fridrich",
+    "citation": "M. Boroumand, M. Chen, and J. Fridrich, \"Deep residual network for steganalysis of digital images,\" IEEE Trans. Inf. Forensics Security, vol. 14, no. 5, pp. 1181--1193, 2019.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/boroumand2019srnet.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "bas2011boss",
+    "title": "Break our steganographic system: The ins and outs of organizing BOSS",
+    "year": "2011",
+    "authors": "P. Bas, T. Filler, and T. Pevny",
+    "citation": "P. Bas, T. Filler, and T. Pevny, \"Break our steganographic system: The ins and outs of organizing BOSS,\" in Proc. 13th Int. Conf. Information Hiding, LNCS 6958, pp. 59--70, 2011.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/bas2011boss.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "zhang2011fsim",
+    "title": "FSIM: A feature similarity index for image quality assessment",
+    "year": "2011",
+    "authors": "L. Zhang, L. Zhang, X. Mou, and D. Zhang",
+    "citation": "L. Zhang, L. Zhang, X. Mou, and D. Zhang, \"FSIM: A feature similarity index for image quality assessment,\" IEEE Trans. Image Process., vol. 20, no. 8, pp. 2378--2386, 2011.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/zhang2011fsim.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "giboulot2020csm",
+    "title": "Effects and solutions of cover-source mismatch in image steganalysis",
+    "year": "2020",
+    "authors": "Q. Giboulot, R. Cogranne, D. Borghys, and P. Bas",
+    "citation": "Q. Giboulot, R. Cogranne, D. Borghys, and P. Bas, \"Effects and solutions of cover-source mismatch in image steganalysis,\" Signal Process.: Image Commun., vol. 86, art. 115888, 2020.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/giboulot2020csm.xml",
+    "file_type": "xml",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "mittal2012brisque",
+    "title": "No-reference image quality assessment in the spatial domain",
+    "year": "2012",
+    "authors": "A. Mittal, A. K. Moorthy, and A. C. Bovik",
+    "citation": "A. Mittal, A. K. Moorthy, and A. C. Bovik, \"No-reference image quality assessment in the spatial domain,\" IEEE Trans. Image Process., vol. 21, no. 12, pp. 4695--4708, 2012.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/mittal2012brisque.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "li2024aigiqa",
+    "title": "AIGIQA-20K: A large database for AI-generated image quality assessment",
+    "year": "2024",
+    "authors": "C. Li et al.",
+    "citation": "C. Li et al., \"AIGIQA-20K: A large database for AI-generated image quality assessment,\" in Proc. IEEE/CVF CVPR Workshops (NTIRE), pp. 6327--6336, 2024.",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/li2024aigiqa.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "diffusers",
+    "title": "diffusers: State-of-the-art diffusion models",
+    "year": "2022",
+    "authors": "P. von Platen et al.",
+    "citation": "P. von Platen et al., \"diffusers: State-of-the-art diffusion models,\" Hugging Face, Inc., 2022. https://github.com/huggingface/diffusers",
+    "original_doi": "",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/diffusers.zip",
+    "file_type": "zip",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "mereur2024deepfake",
+    "title": "Are deepfakes a game-changer in digital images steganography leveraging the cover-source mismatch?",
+    "year": "2024",
+    "authors": "A. Mereur, A. Mallet, and R. Cogranne",
+    "citation": "A. Mereur, A. Mallet, and R. Cogranne, \"Are deepfakes a game-changer in digital images steganography leveraging the cover-source mismatch?\" in Proc. 19th Int. Conf. Availability, Reliability and Security (ARES), 9 pages, 2024. DOI: 10.1145/3664476.3670893.",
+    "original_doi": "10.1145/3664476.3670893",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/mereur2024deepfake.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  },
+  {
+    "key": "mallet2024csm",
+    "title": "Cover-source mismatch in steganalysis: Systematic review",
+    "year": "2024",
+    "authors": "A. Mallet, M. Benes, and R. Cogranne",
+    "citation": "A. Mallet, M. Benes, and R. Cogranne, \"Cover-source mismatch in steganalysis: Systematic review,\" EURASIP J. Inf. Security, vol. 2024, art. 26, 2024. DOI: 10.1186/s13635-024-00171-6.",
+    "original_doi": "10.1186/s13635-024-00171-6",
+    "resolved_doi": "",
+    "arxiv_id": "",
+    "openalex_id": "",
+    "matched_title": "",
+    "match_score": 0.0,
+    "landing_url": "",
+    "fulltext_url": "",
+    "file_path": "/Users/davidwickerhf/Projects/university/project-proposal/docs/proposals/references/files/mallet2024csm.pdf",
+    "file_type": "pdf",
+    "status": "downloaded",
+    "note": "Using manually supplied local file already present in the references folder.",
+    "metadata": {}
+  }
+]

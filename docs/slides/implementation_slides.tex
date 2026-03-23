@@ -1,0 +1,626 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+% ---- Minimalist theme (same style family as midway slides) ----
+\usetheme{default}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{frametitle continuation}{}
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{enumerate items}[default]
+
+% ---- Font: TeX Gyre Heros ----
+\usepackage[T1]{fontenc}
+\usepackage{tgheros}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{microtype}
+
+% ---- Packages ----
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{listings}
+\usetikzlibrary{arrows.meta,positioning,calc,fit}
+
+% ---- Maastricht University colors ----
+\definecolor{umdark}{HTML}{001C3D}
+\definecolor{umorange}{HTML}{E84E10}
+\definecolor{umlight}{HTML}{4A90C4}
+\definecolor{umgray}{HTML}{6B7280}
+\definecolor{umbg}{HTML}{F8F9FA}
+\definecolor{umfaint}{HTML}{E5E7EB}
+
+% ---- Apply colors to Beamer ----
+\setbeamercolor{normal text}{fg=umdark}
+\setbeamercolor{frametitle}{fg=umdark}
+\setbeamercolor{title}{fg=umdark}
+\setbeamercolor{subtitle}{fg=umgray}
+\setbeamercolor{author}{fg=umgray}
+\setbeamercolor{date}{fg=umgray}
+\setbeamercolor{institute}{fg=umorange}
+\setbeamercolor{itemize item}{fg=umorange}
+\setbeamercolor{itemize subitem}{fg=umlight}
+\setbeamercolor{enumerate item}{fg=umorange}
+\setbeamercolor{block title}{bg=umdark,fg=white}
+\setbeamercolor{block body}{bg=umdark!5,fg=umdark}
+\setbeamercolor{block title alerted}{bg=umorange,fg=white}
+\setbeamercolor{block body alerted}{bg=umorange!8,fg=umdark}
+\setbeamercolor{block title example}{bg=umlight,fg=white}
+\setbeamercolor{block body example}{bg=umlight!8,fg=umdark}
+
+% ---- Listing style ----
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{umdark},
+  commentstyle=\color{umgray},
+  stringstyle=\color{umorange},
+  backgroundcolor=\color{umbg},
+  frame=single,
+  rulecolor=\color{umfaint},
+  breaklines=true,
+  showstringspaces=false,
+  columns=fullflexible
+}
+
+% ---- Frametitle style ----
+\setbeamertemplate{frametitle}{%
+  \vspace{0.35cm}%
+  \noindent\hspace*{0pt}%
+  \parbox{\textwidth}{%
+    {\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}\insertframetitle}%
+    \vspace{2pt}\\%
+    {\color{umorange}\rule{\textwidth}{1.2pt}}%
+  }%
+  \vspace{-2pt}%
+}
+\setbeamerfont{frametitle}{size=\large,series=\bfseries}
+\setbeamersize{text margin left=0.7cm,text margin right=0.7cm}
+
+% ---- Footline ----
+\setbeamertemplate{footline}{%
+  \hbox{%
+    \begin{beamercolorbox}[wd=\paperwidth,ht=2.2ex,dp=1ex]{footline}%
+      \hspace{1em}{\scriptsize\color{umgray}Implementation Blueprint -- Carrier Origin and Steganographic Detectability}%
+      \hfill%
+      {\scriptsize\color{umgray}\insertframenumber/\inserttotalframenumber}%
+      \hspace{1em}%
+    \end{beamercolorbox}%
+  }%
+}
+
+% ---- Metadata ----
+\title{Implementation Blueprint\\Carrier-Origin Steganography Study}
+\subtitle{From Theory to Concrete Pipeline Execution}
+\newcommand{\teamauthors}{Abdul Moiz Akbar \;|\; Malo Coquin \;|\; Daria Gjonbalaj \;|\; Nico Muller-Spath\\Jimena Narvaez del Cid \;|\; David Wicker \;|\; Nikolas Zouros}
+\author[Project 2.2 Team]{Project 2.2 Team}
+\institute{Department of Advanced Computing Sciences\\Maastricht University}
+\date{Project 2.2 \;|\; March 2026}
+
+\begin{document}
+
+% ============================================================
+\begin{frame}[plain]
+\vfill
+\begin{center}
+{\color{umorange}\rule{0.42\textwidth}{2pt}}\\[12pt]
+{\LARGE\bfseries\color{umdark}\inserttitle}\\[10pt]
+{\normalsize\color{umgray}\insertsubtitle}\\[16pt]
+{\small\color{umdark}\teamauthors}\\[8pt]
+{\small\color{umorange}\insertinstitute}\\[8pt]
+{\footnotesize\color{umgray}\insertdate}\\[12pt]
+{\color{umorange}\rule{0.42\textwidth}{2pt}}
+\end{center}
+\vfill
+\end{frame}
+
+% ============================================================
+\begin{frame}{Agenda}
+\begin{enumerate}
+\item Theoretical grounding and RQ-to-pipeline mapping
+\item Locked design, cardinalities, and naming contracts
+\item Stage-by-stage pipeline internals and function calls
+\item Data structures, manifests, and split/training logic
+\item Deferred-module contracts and implementation boundaries
+\item Execution commands, test strategy, and next implementation tasks
+\end{enumerate}
+\end{frame}
+
+% ============================================================
+\section{Theory to Design}
+
+\begin{frame}{Theoretical Core and Implementation Consequence}
+\small
+\begin{columns}[T]
+\begin{column}{0.54\textwidth}
+\begin{block}{Research claim}
+Carrier source distribution (real vs ML) may alter steganalysis detectability under matched embedding conditions.
+\end{block}
+\begin{block}{Design implication}
+The pipeline must control everything except source:
+\begin{itemize}
+\item same image shape and format (RGB, 512x512, PNG)
+\item same payload levels and encryption states
+\item same detector protocol and grouped folds
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.42\textwidth}
+\begin{alertblock}{Operational rule}
+\small
+Every artifact is keyed by \texttt{group\_id}, and all variants of the same semantic anchor stay grouped through splitting and evaluation.
+\end{alertblock}
+\begin{exampleblock}{Why this matters}
+\small
+Prevents leakage and lets us attribute performance differences to source/method/payload/encryption, not data contamination.
+\end{exampleblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{RQ Mapping to Pipeline Outputs}
+\scriptsize
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{@{}p{1.0cm}p{5.0cm}p{6.9cm}@{}}
+\toprule
+\textbf{RQ} & \textbf{Question} & \textbf{Pipeline output required} \\
+\midrule
+RQ1 & Real vs pooled ML detectability & Fold-wise prediction tables by source + AUC contrasts \\
+RQ2 & ML-A vs ML-B detectability & Source-specific metrics (\texttt{ml\_a}, \texttt{ml\_b}) \\
+RQ3 & Payload interaction & Metrics grouped by \texttt{payload\_level} (low/medium/high) \\
+RQ4 & Embedding interaction & Metrics grouped by \texttt{method} (lsb/dct) \\
+RQ5 & Encryption interaction & Metrics grouped by \texttt{encryption} (plain/encrypted) \\
+\bottomrule
+\end{tabular}
+\vspace{0.15cm}
+\begin{block}{Implementation interpretation}
+The code must produce consistent condition keys in every manifest and prediction row: 
+\texttt{group\_id, source, method, payload\_level, encryption, fold}.
+\end{block}
+\end{frame}
+
+% ============================================================
+\section{Locked Contracts}
+
+\begin{frame}{Locked Dataset Cardinalities}
+\small
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\begin{block}{Canonical unit}
+\texttt{group\_id} = one caption/prompt anchor
+\end{block}
+\begin{itemize}
+\item Groups: \textbf{500}
+\item Covers/group: \textbf{3} (real, ml\_a, ml\_b)
+\item Total covers: \textbf{1,500}
+\item Methods: \textbf{2} (lsb, dct)
+\item Payload levels: \textbf{3}
+\item Encryption states: \textbf{2}
+\end{itemize}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{alertblock}{Derived counts}
+\small
+Stego variants per cover =
+\[
+2 \times 3 \times 2 = 12
+\]
+Total stegos =
+\[
+1{,}500 \times 12 = 18{,}000
+\]
+Persisted images total =
+\[
+1{,}500 + 18{,}000 = 19{,}500
+\]
+\end{alertblock}
+\vspace{-0.1cm}
+{\scriptsize Consistency check: every cover row maps to exactly 12 stego rows.}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Naming and Path Contracts}
+\small
+\begin{block}{Filename templates}
+\begin{itemize}
+\item Cover: \texttt{g\{group\_id:04d\}\_\_src-\{source\}.png}
+\item Stego: \texttt{g\{group\_id:04d\}\_\_src-\{source\}\_\_m-\{method\}\_\_p-\{payload\}\_\_e-\{encryption\}.png}
+\item Payload: \texttt{g\{group\_id:04d\}\_\_p-\{payload\}\_\_e-\{encryption\}.bin}
+\end{itemize}
+\end{block}
+
+\begin{block}{Storage roots (project-relative in manifests)}
+\scriptsize
+\texttt{data/covers/\{real|ml\_a|ml\_b\}/...}\\
+\texttt{data/payloads/\{plain|encrypted\}/\{low|medium|high\}/...}\\
+\texttt{data/stego/\{lsb|dct\}/\{low|medium|high\}/\{plain|encrypted\}/\{source\}/...}
+\end{block}
+
+\begin{alertblock}{Git portability requirement}
+No absolute local paths in metadata. All path fields are relative to repository root.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Manifest Schemas Used by the Pipeline}
+\scriptsize
+\begin{itemize}
+\item \texttt{data/manifests/covers\_master.csv}
+\begin{itemize}
+\item \texttt{group\_id, source, dataset, orig\_id, caption\_id, caption\_text, image\_path, qc\_pass, qc\_score, seed}
+\end{itemize}
+\item \texttt{data/manifests/payload\_manifest.csv}
+\begin{itemize}
+\item \texttt{group\_id, payload\_level, encryption, payload\_path, payload\_bits, aes\_iv, aes\_key\_id, seed}
+\end{itemize}
+\item \texttt{data/manifests/stego\_manifest.csv}
+\begin{itemize}
+\item \texttt{group\_id, source, method, payload\_level, encryption, cover\_path, payload\_path, stego\_path, embed\_params, seed}
+\end{itemize}
+\item \texttt{results/splits/splits\_grouped5fold.json}
+\begin{itemize}
+\item per fold: \texttt{train\_group\_ids, val\_group\_ids, test\_group\_ids}
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\section{Pipeline Internals}
+
+\begin{frame}{Pipeline Modules and Responsibilities}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{Core modules}
+\begin{itemize}
+\item \texttt{src/pipeline/config.py}
+\item \texttt{src/pipeline/runner.py}
+\item \texttt{src/pipeline/cli.py}
+\item \texttt{src/common/contracts.py}
+\item \texttt{src/data/images.py}
+\item \texttt{src/data/manifests.py}
+\item \texttt{src/evaluation/splits.py}
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Design boundary}
+\begin{itemize}
+\item Runner owns file I/O and manifest flow.
+\item Deferred algorithms are closed-loop in-memory APIs.
+\item CLI is thin: parse args, call one runner stage, print output path.
+\end{itemize}
+\end{block}
+\begin{exampleblock}{Implemented stages}
+\scriptsize
+\texttt{init\_layout, standardize\_covers\_from\_index, build\_payload\_manifest, build\_stego\_manifest, create\_grouped\_splits, build\_srm\_training\_jobs, run\_embedding\_stage}
+\end{exampleblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{End-to-End Call Sequence (CLI -> Runner)}
+\scriptsize
+\begin{lstlisting}[language=bash]
+python3 -m src.pipeline.cli --project-root . init-layout
+python3 -m src.pipeline.cli --project-root . standardize-covers \
+  --input-index data/manifests/raw_cover_index_real.csv
+python3 -m src.pipeline.cli --project-root . build-payload-manifest \
+  --covers-manifest data/manifests/covers_master.csv
+python3 -m src.pipeline.cli --project-root . build-stego-manifest \
+  --covers-manifest data/manifests/covers_master.csv \
+  --payload-manifest data/manifests/payload_manifest.csv
+python3 -m src.pipeline.cli --project-root . create-splits \
+  --covers-manifest data/manifests/covers_master.csv
+python3 -m src.pipeline.cli --project-root . build-training-jobs \
+  --splits-json results/splits/splits_grouped5fold.json
+python3 -m src.pipeline.cli --project-root . run-embedding-stage \
+  --stego-manifest data/manifests/stego_manifest.csv
+\end{lstlisting}
+\begin{alertblock}{Execution note}
+\small
+\texttt{run-embedding-stage} is dry-run unless \texttt{--execute}. With execute enabled it calls deferred embedding functions.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Runner Stage Flow}
+\centering
+\begin{tikzpicture}[
+  scale=0.88, every node/.style={scale=0.88},
+  node distance=0.24cm,
+  stage/.style={draw=umdark,rounded corners=4pt,minimum width=4.2cm,minimum height=0.72cm,align=center,font=\scriptsize,fill=umlight!12},
+  arr/.style={-{Stealth[length=5pt]},thick,umorange}
+]
+\node[stage] (s1) {\texttt{init\_layout()}};
+\node[stage,below=of s1] (s2) {\texttt{standardize\_covers\_from\_index(input\_index\_csv)}};
+\node[stage,below=of s2] (s3) {\texttt{build\_payload\_manifest(covers\_manifest)}};
+\node[stage,below=of s3] (s4) {\texttt{build\_stego\_manifest(covers\_manifest, payload\_manifest)}};
+\node[stage,below=of s4] (s5) {\texttt{create\_grouped\_splits(covers\_manifest)}};
+\node[stage,below=of s5] (s6) {\texttt{build\_srm\_training\_jobs(splits\_json)}};
+\node[stage,below=of s6] (s7) {\texttt{run\_embedding\_stage(stego\_manifest, execute)}};
+
+\draw[arr] (s1) -- (s2);
+\draw[arr] (s2) -- (s3);
+\draw[arr] (s3) -- (s4);
+\draw[arr] (s4) -- (s5);
+\draw[arr] (s5) -- (s6);
+\draw[arr] (s6) -- (s7);
+\end{tikzpicture}
+\vspace{0.05cm}
+
+{\scriptsize Path fields in manifests are project-relative; runner resolves them at runtime.}
+\end{frame}
+
+\begin{frame}[fragile]{Critical Function Calls Inside runner.py}
+\tiny
+\begin{lstlisting}[language=Python]
+# Standardization stage
+standardize_and_save(input_path, output_path, size=config.image_size)
+
+# Payload generation stage
+payload_bytes = _generate_payload_bytes(payload_bits, rng)
+if encryption == "encrypted":
+    ciphertext = encrypt_payload_aes_256_cbc(payload_bytes, key=key, iv=iv)
+
+# Embedding execution stage
+if method == "lsb":
+    stego = embed_lsb(cover_image, payload_bytes, payload_level, prng_key)
+elif method == "dct":
+    stego = embed_dct_qim(cover_image, payload_bytes, payload_level, delta)
+
+# Split stage
+folds = generate_grouped_5fold_splits(group_ids, seed=split_seed)
+\end{lstlisting}
+{\scriptsize Deferred algorithms are invoked only here; runner provides paths, payloads, and execution context.}
+\end{frame}
+
+\begin{frame}{Data Ingestion for Real Images (Implemented)}
+\small
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\begin{block}{Module}
+\texttt{src/data/download\_real\_covers.py}
+\end{block}
+\begin{itemize}
+\item Pulls COCO + Flickr30k rows from HF dataset-server
+\item Filters to detailed captions
+\item Deterministic sampling with seed
+\item Downloads raw image bytes
+\item Standardizes to canonical real covers
+\item Writes metadata files for downstream stages
+\end{itemize}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{alertblock}{Outputs}
+\scriptsize
+\texttt{data/manifests/raw\_cover\_index\_real.csv}\\
+\texttt{data/manifests/covers\_master\_real.csv}\\
+\texttt{data/manifests/generation\_prompts.csv}\\
+\texttt{data/manifests/real\_download\_summary.json}
+\end{alertblock}
+\begin{exampleblock}{Current result}
+\small
+500 real covers generated:\\
+300 COCO + 200 Flickr30k.
+\end{exampleblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+\section{Training and Evaluation Logic}
+
+\begin{frame}{Grouped 5-Fold Strategy and Counts}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{Split rule}
+Split unit = \texttt{group\_id} (never individual image row)
+\end{block}
+\begin{itemize}
+\item 500 groups total
+\item Per fold: 100 test groups
+\item Remaining 400: 350 train + 50 validation
+\item Prevents leakage across real/ml\_a/ml\_b variants
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Per-method positives per fold}
+\scriptsize
+Train: \(350 \times 3 \times 6 = 6{,}300\)\\
+Val: \(50 \times 3 \times 6 = 900\)\\
+Test: \(100 \times 3 \times 6 = 1{,}800\)
+\end{block}
+\begin{alertblock}{SRM training scope}
+\small
+Per-method SRM models:\\
+\texttt{lsb} model + \texttt{dct} model for each fold\\
+\(2 \times 5 = 10\) training runs.
+\end{alertblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Detector Policy and Applicability}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{Confirmatory detectors}
+\begin{itemize}
+\item SRM+EC (trained, per-method)
+\item RS (LSB domain)
+\item Block-DCT shift test (DCT domain)
+\end{itemize}
+\end{block}
+\begin{exampleblock}{Sensitivity-only}
+\small
+\(\chi^2\) for LSB branch diagnostics.
+\end{exampleblock}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Evaluation table key}
+\scriptsize
+\texttt{fold, detector, group\_id, source, method, payload\_level, encryption, label, score}
+\end{block}
+\begin{alertblock}{Aggregation levels}
+\small
+fold -> detector -> condition -> source -> pooled summaries with uncertainty intervals.
+\end{alertblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+\section{Deferred Contracts}
+
+\begin{frame}[fragile]{Deferred Function Contracts (Closed-Loop)}
+\tiny
+\begin{lstlisting}[language=Python]
+# Encryption
+encrypt_payload_aes_256_cbc(payload: bytes, key: bytes, iv: bytes) -> bytes
+decrypt_payload_aes_256_cbc(ciphertext: bytes, key: bytes, iv: bytes) -> bytes
+
+# Embedding
+embed_lsb(cover_image: Image.Image, payload_bytes: bytes,
+          payload_level: str, prng_key: int) -> Image.Image
+embed_dct_qim(cover_image: Image.Image, payload_bytes: bytes,
+              payload_level: str, delta: float) -> Image.Image
+\end{lstlisting}
+\begin{alertblock}{Rule}
+{\scriptsize No reads/writes inside these functions. Runner supplies inputs and handles persistence.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]{Deferred Function Contracts: Detection and SRM}
+\tiny
+\begin{lstlisting}[language=Python]
+# Statistical detectors
+rs_analysis_score(image: Image.Image) -> float
+chi_square_score(image: Image.Image) -> float
+block_dct_shift_score(image: Image.Image) -> float
+
+# SRM model API
+train_srm_ec_model(training_input: SRMTrainingInput) -> SRMModelArtifact
+score_srm_ec_model(model: SRMModelArtifact,
+                   x_samples: Sequence[Sequence[float]]) -> list[float]
+\end{lstlisting}
+\begin{alertblock}{Rule}
+{\scriptsize Input/output only. Model training/inference functions return artifacts/scores and do not perform persistence.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{What Each Deferred Component Must Implement}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{Encryption module}
+\scriptsize
+Validate key/IV length, apply AES-256-CBC, return bytes; deterministic for fixed key+IV.
+\end{block}
+\begin{block}{LSB module}
+\scriptsize
+Map payload level to embedding intensity (k / pixel fraction), deterministic with \texttt{prng\_key}, return stego image.
+\end{block}
+\begin{block}{DCT module}
+\scriptsize
+Block DCT + QIM with \texttt{delta}; use payload-level coefficient fraction; return stego image.
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Statistical detectors}
+\scriptsize
+Consume one in-memory image, return scalar score calibrated for ROC/AUC ranking.
+\end{block}
+\begin{block}{SRM module}
+\scriptsize
+Train: feature vectors + labels -> model artifact\\
+Score: model artifact + feature vectors -> score vector
+\end{block}
+\begin{exampleblock}{Acceptance criteria}
+\scriptsize
+Shape checks, deterministic outputs under fixed seeds, no side effects, test coverage from contract tests.
+\end{exampleblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+\section{Quality and Verification}
+
+\begin{frame}{Testing Strategy Implemented in Repository}
+\small
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Test layers}
+\begin{itemize}
+\item Contract/unit tests (naming, path layout, image standardization)
+\item Stage integration tests (payload/stego/split/job generation)
+\item Blueprint integrity tests (cardinality, completeness, leakage)
+\item CLI tests (command routing and path resolution)
+\item Deferred-function contract tests (closed-loop signatures)
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.47\textwidth}
+\begin{alertblock}{Current status}
+\small
+\texttt{pytest} passing for the full suite.
+\end{alertblock}
+\begin{exampleblock}{What tests enforce}
+\scriptsize
+\begin{itemize}
+\item 500 groups, 1,500 covers, 18,000 stegos contracts
+\item exactly 12 stegos per cover
+\item grouped split disjointness and coverage
+\item no absolute local paths in manifests
+\end{itemize}
+\end{exampleblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Implementation Checklist for Collaborators}
+\small
+\begin{enumerate}
+\item Fill deferred closed-loop functions in:
+\texttt{src/embedding/*.py}, \texttt{src/detection/*.py}
+\item Keep function signatures and return types unchanged.
+\item Use runner-driven manifests for all inputs/outputs (no ad hoc file writes).
+\item Generate \texttt{ml\_a}/\texttt{ml\_b} covers from \texttt{generation\_prompts.csv}.
+\item Merge real+ML into final \texttt{covers\_master.csv}.
+\item Run pipeline stages and produce predictions/metrics artifacts.
+\item Validate all invariants with test suite before analysis.
+\end{enumerate}
+
+\begin{alertblock}{Definition of done for implementation}
+All manifests complete, all stego artifacts generated, all detector scores exported, fold-level and aggregated metrics reproducible.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Takeaway}
+\small
+\begin{block}{What is now solid}
+\begin{itemize}
+\item A decision-complete pipeline blueprint tied to concrete code modules
+\item Deterministic artifact contracts and grouped CV strategy
+\item Closed-loop deferred APIs with explicit boundaries
+\item Test scaffolding that guides remaining implementation work
+\end{itemize}
+\end{block}
+
+\begin{exampleblock}{Next milestone}
+Implement deferred algorithms and run full experiment matrix to answer RQ1--RQ5 with fold-wise uncertainty and source/method/payload/encryption contrasts.
+\end{exampleblock}
+\end{frame}
+
+\begin{frame}[plain]
+\vfill
+\begin{center}
+{\Large\bfseries\color{umdark}Thank You}\\[8pt]
+{\normalsize\color{umgray}Implementation discussion and task assignment}
+\end{center}
+\vfill
+\end{frame}
+
+\end{document}
