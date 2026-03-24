@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
 
 def encrypt_payload_aes_256_cbc(payload: bytes, key: bytes, iv: bytes) -> bytes:
     """Encrypt payload bytes with AES-256-CBC before embedding.
@@ -29,9 +31,21 @@ def encrypt_payload_aes_256_cbc(payload: bytes, key: bytes, iv: bytes) -> bytes:
     Reference to follow for implementation:
     - Standard AES-256-CBC cryptographic library semantics. The proposal does
       not introduce a custom cryptographic variant.
-    """
-    raise NotImplementedError("AES-256-CBC encryption is not implemented yet.")
+    """    
+    if len(key) != 32: 
+        raise ValueError("Key is not of the appropriate length.")
+        
+    if len(iv) != 16: 
+        raise ValueError("IV is not of the appropriate length.")
+    
+    padder = padding.PKCS7(128).padder()
+    padded_data = padder.update(payload) + padder.finalize()
 
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+
+    return ciphertext
 
 def decrypt_payload_aes_256_cbc(ciphertext: bytes, key: bytes, iv: bytes) -> bytes:
     """Decrypt AES-256-CBC ciphertext back to the original payload bytes.
@@ -41,4 +55,17 @@ def decrypt_payload_aes_256_cbc(ciphertext: bytes, key: bytes, iv: bytes) -> byt
     ``encrypt_payload_aes_256_cbc`` exactly, including key/IV validation and
     padding removal.
     """
-    raise NotImplementedError("AES-256-CBC decryption is not implemented yet.")
+    if len(key) != 32: 
+        raise ValueError("Key is not of the appropriate length.")
+        
+    if len(iv) != 16: 
+        raise ValueError("IV is not of the appropriate length.")
+    
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    decryptor = cipher.decryptor()
+    padded_plain = decryptor.update(ciphertext) + decryptor.finalize()
+    
+    unpadder = padding.PKCS7(128).unpadder()
+    plain = unpadder.update(padded_plain) + unpadder.finalize()
+
+    return plain
