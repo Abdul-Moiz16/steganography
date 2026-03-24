@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# reference: https://cryptography.io/en/latest/hazmat/primitives/symmetric-encryption/
+# reference: https://cryptography.io/en/latest/hazmat/primitives/padding/
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 
@@ -33,10 +35,10 @@ def encrypt_payload_aes_256_cbc(payload: bytes, key: bytes, iv: bytes) -> bytes:
       not introduce a custom cryptographic variant.
     """    
     if len(key) != 32: 
-        raise ValueError("Key is not of the appropriate length.")
+        raise ValueError("Key must be 32 bytes.")
         
     if len(iv) != 16: 
-        raise ValueError("IV is not of the appropriate length.")
+        raise ValueError("IV must be 16 bytes.")
     
     padder = padding.PKCS7(128).padder()
     padded_data = padder.update(payload) + padder.finalize()
