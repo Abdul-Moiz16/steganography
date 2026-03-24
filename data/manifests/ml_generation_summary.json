@@ -1,0 +1,13 @@
+{
+  "covers_master_ml_a_path": "data\\manifests\\covers_master_ml_a.csv",
+  "covers_master_ml_b_path": "data\\manifests\\covers_master_ml_b.csv",
+  "covers_master_ml_path": "data\\manifests\\covers_master_ml.csv",
+  "engine": "stub",
+  "ml_a_model_id": "stabilityai/stable-diffusion-xl-base-1.0",
+  "ml_b_model_id": "PixArt-alpha/PixArt-XL-2-1024-MS",
+  "rows_ml_a": 20,
+  "rows_ml_b": 20,
+  "rows_ml_total": 40,
+  "seed_base": 42,
+  "total_prompts_used": 20
+}
