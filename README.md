@@ -88,6 +88,149 @@ python3 -m src.pipeline.cli --project-root . plot-metrics
 
 `run-all` chains the same stages.
 
+## Prototype Walkthrough
+
+Use this when you want to reproduce the current repository workflow from scratch
+for the 60-image horizontal prototype described in `proposal_updated_3.tex`
+(`20 real + 20 ml_a + 20 ml_b`).
+
+### 1. Create and activate a virtual environment
+
+PowerShell:
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+### 2. Install dependencies
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+If you want to remove the PixArt warning about caption cleaning, you can also
+install:
+
+```powershell
+python -m pip install beautifulsoup4
+```
+
+### 3. Import the real-image prototype set
+
+The latest proposal uses COCO and Flickr30k. For the prototype, keep the same
+60/40 split as the full design:
+
+```powershell
+python -m src.data.download_real_covers --project-root . --coco-target 12 --flickr-target 8
+```
+
+Outputs:
+- `data/manifests/raw_cover_index_real.csv`
+- `data/manifests/covers_master_real.csv`
+- `data/manifests/generation_prompts.csv`
+- `data/manifests/real_download_summary.json`
+
+Artifacts written:
+- raw real images under `data/raw/real/...`
+- standardized grayscale covers under:
+  - `data/covers/spatial/real/...`
+  - `data/covers/frequency/real/...`
+
+### 4. Generate ML images
+
+Fast placeholder generation:
+
+```powershell
+python -m src.data.generate_ml_covers --project-root . --prompts-csv data/manifests/generation_prompts.csv --engine stub --max-groups 20
+```
+
+Real SDXL + PixArt generation:
+
+```powershell
+python -m src.data.generate_ml_covers --project-root . --prompts-csv data/manifests/generation_prompts.csv --engine diffusers --max-groups 20
+```
+
+Important notes:
+- local `diffusers` generation downloads the model weights on first use
+- on CPU-only machines this can be slow
+- for a smaller smoke test, try:
+
+```powershell
+python -m src.data.generate_ml_covers --project-root . --prompts-csv data/manifests/generation_prompts.csv --engine diffusers --max-groups 1 --num-inference-steps 5 --width 512 --height 512
+```
+
+ML outputs:
+- `data/manifests/covers_master_ml_a.csv`
+- `data/manifests/covers_master_ml_b.csv`
+- `data/manifests/covers_master_ml.csv`
+- `data/manifests/ml_generation_summary.json`
+
+Generated artifacts:
+- `data/covers/spatial/ml_a/...`
+- `data/covers/frequency/ml_a/...`
+- `data/covers/spatial/ml_b/...`
+- `data/covers/frequency/ml_b/...`
+
+### 5. Merge real + ML cover manifests
+
+```powershell
+python -m src.data.merge_covers_master --project-root . --expected-groups 20
+```
+
+This writes:
+- `data/manifests/covers_master.csv`
+
+For the prototype, the merged manifest should contain `60` rows total.
+
+### 6. Continue with the non-deferred pipeline stages
+
+Build the payload and stego manifests:
+
+```powershell
+python -m src.pipeline.cli --project-root . build-payload-manifest --covers-manifest data/manifests/covers_master.csv
+python -m src.pipeline.cli --project-root . build-stego-manifest --covers-manifest data/manifests/covers_master.csv --payload-manifest data/manifests/payload_manifest.csv
+```
+
+Dry-run the embedding stage:
+
+```powershell
+python -m src.pipeline.cli --project-root . run-embedding-stage --stego-manifest data/manifests/stego_manifest.csv
+```
+
+### 7. Know what is implemented vs deferred
+
+Implemented:
+- real-image download and prompt generation
+- ML cover generation
+- cover standardization and manifest writing
+- payload/stego manifest construction
+- metrics and plotting utilities
+
+Deferred and currently raising `NotImplementedError`:
+- AES encryption
+- spatial LSB embedding
+- DCT-LSB embedding
+- statistical detector scoring
+
+That means the current repo supports the data-preparation and manifest-building
+parts of the pipeline end-to-end, but not the real embedding/detector execution
+yet.
+
+## Image Rules
+
+The current proposal-aligned pipeline uses grayscale carriers all the way
+through the stored cover artifacts:
+- all real and ML covers are converted to grayscale
+- all stored covers are normalized to `512x512`
+- spatial branch outputs are PNG
+- frequency branch outputs are JPEG at quality `95`
+
+One logical `group_id` corresponds to the same caption concept across:
+- `real`
+- `ml_a` (`SDXL 1.0`)
+- `ml_b` (`PixArt-alpha`)
+
 ## Notes for Teammates
 
 - The default pipeline no longer includes SRM/SRM+EC.
