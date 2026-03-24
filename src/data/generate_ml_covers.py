@@ -7,8 +7,8 @@ This module builds canonical `ml_a` and `ml_b` cover images from
 manifest files under `data/manifests/`.
 
 Default backends:
-- ml_a: SDXL (`stabilityai/stable-diffusion-xl-base-1.0`)
-- ml_b: PixArt-alpha (`PixArt-alpha/PixArt-XL-2-1024-MS`)
+- ml_a: SDXL (`stabilityai/stable-diffusion-xl-base-1.0`) — UNet-based latent diffusion
+- ml_b: FLUX.1-schnell (`black-forest-labs/FLUX.1-schnell`) — DiT-based diffusion transformer
 
 For lightweight local testing, `engine="stub"` generates deterministic
 synthetic images without model dependencies.
@@ -31,7 +31,8 @@ from src.data.manifests import read_rows_csv, write_json, write_rows_csv
 
 
 SDXL_DEFAULT_MODEL_ID = "stabilityai/stable-diffusion-xl-base-1.0"
-PIXART_DEFAULT_MODEL_ID = "PixArt-alpha/PixArt-XL-2-1024-MS"
+FLUX_DEFAULT_MODEL_ID = "black-forest-labs/FLUX.1-schnell"
+
 
 
 FIELDNAMES = [
@@ -104,29 +105,84 @@ class StubTextToImageGenerator:
         return image
 
 
+class InferenceAPITextToImageGenerator:
+    """HuggingFace Inference API backend — no local model download needed."""
+
+    def __init__(self, model_id: str) -> None:
+        try:
+            from huggingface_hub import InferenceClient
+        except ImportError as exc:
+            raise RuntimeError(
+                "Inference API backend requires `huggingface_hub` to be installed."
+            ) from exc
+        self.model_id = model_id
+        self.client = InferenceClient(model=model_id)
+
+    def generate(
+        self,
+        *,
+        prompt: str,
+        seed: int,
+        width: int,
+        height: int,
+        num_inference_steps: int,
+        guidance_scale: float,
+        negative_prompt: str,
+    ) -> Image.Image:
+        import time
+
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                image = self.client.text_to_image(
+                    prompt,
+                    negative_prompt=negative_prompt or None,
+                    width=width,
+                    height=height,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    seed=seed,
+                )
+                if not isinstance(image, Image.Image):
+                    raise TypeError("Inference API did not return a PIL image.")
+                return image
+            except Exception as exc:
+                if attempt < max_retries - 1 and ("503" in str(exc) or "rate" in str(exc).lower()):
+                    wait = 2 ** attempt * 5
+                    print(f"  [inference_api] {exc} — retrying in {wait}s ...")
+                    time.sleep(wait)
+                else:
+                    raise
+
+
 class DiffusersTextToImageGenerator:
     """Diffusers-backed text-to-image generator with lazy imports."""
 
     def __init__(self, model_id: str, flavor: str) -> None:
         try:
             import torch
-            from diffusers import PixArtAlphaPipeline, StableDiffusionXLPipeline
+            from diffusers import FluxPipeline, StableDiffusionXLPipeline
         except Exception as exc:  # pragma: no cover - depends on local env
             raise RuntimeError(
                 "Diffusers backend requires `torch` and `diffusers` to be installed."
             ) from exc
 
         self._torch = torch
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        dtype = torch.float16 if self.device == "cuda" else torch.float32
+        if torch.cuda.is_available():
+            self.device = "cuda"
+        elif torch.backends.mps.is_available():
+            self.device = "mps"
+        else:
+            self.device = "cpu"
+        dtype = torch.float32 if self.device == "cpu" else torch.float16
 
         if flavor == "sdxl":
             kwargs: dict[str, object] = {"torch_dtype": dtype}
             if self.device == "cuda":
                 kwargs["variant"] = "fp16"
             self.pipe = StableDiffusionXLPipeline.from_pretrained(model_id, **kwargs)
-        elif flavor == "pixart":
-            self.pipe = PixArtAlphaPipeline.from_pretrained(model_id, torch_dtype=dtype)
+        elif flavor == "flux":
+            self.pipe = FluxPipeline.from_pretrained(model_id, torch_dtype=dtype)
         else:
             raise ValueError(f"Unknown diffusers flavor: {flavor}")
 
@@ -145,7 +201,9 @@ class DiffusersTextToImageGenerator:
         guidance_scale: float,
         negative_prompt: str,
     ) -> Image.Image:
-        generator = self._torch.Generator(device=self.device).manual_seed(seed)
+        # MPS does not support torch.Generator(device="mps"); use CPU generator.
+        gen_device = "cpu" if self.device == "mps" else self.device
+        generator = self._torch.Generator(device=gen_device).manual_seed(seed)
         output = self.pipe(
             prompt=prompt,
             negative_prompt=negative_prompt,
@@ -237,8 +295,11 @@ def _init_generator(
         if source == "ml_a":
             return DiffusersTextToImageGenerator(ml_a_model_id, flavor="sdxl")
         if source == "ml_b":
-            return DiffusersTextToImageGenerator(ml_b_model_id, flavor="pixart")
+            return DiffusersTextToImageGenerator(ml_b_model_id, flavor="flux")
         raise ValueError(f"Unsupported source: {source}")
+    if engine == "inference_api":
+        model_id = ml_a_model_id if source == "ml_a" else ml_b_model_id
+        return InferenceAPITextToImageGenerator(model_id)
     raise ValueError(f"Unsupported engine: {engine}")
 
 
@@ -264,7 +325,7 @@ def generate_ml_covers_from_prompts(
     prompts_csv: Path,
     engine: str = "diffusers",
     ml_a_model_id: str = SDXL_DEFAULT_MODEL_ID,
-    ml_b_model_id: str = PIXART_DEFAULT_MODEL_ID,
+    ml_b_model_id: str = FLUX_DEFAULT_MODEL_ID,
     negative_prompt: str = "",
     num_inference_steps: int = 30,
     guidance_scale: float = 7.0,
@@ -290,7 +351,7 @@ def generate_ml_covers_from_prompts(
 
     specs = {
         "ml_a": GeneratorSpec("ml_a", "SDXL", ml_a_model_id),
-        "ml_b": GeneratorSpec("ml_b", "PixArt-alpha", ml_b_model_id),
+        "ml_b": GeneratorSpec("ml_b", "FLUX.1-schnell", ml_b_model_id),
     }
     rows_ml_a: list[dict[str, object]] = []
     rows_ml_b: list[dict[str, object]] = []
@@ -382,7 +443,7 @@ def generate_ml_covers_from_prompts(
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate ml_a (SDXL) and ml_b (PixArt-alpha) covers from generation prompts."
+        description="Generate ml_a (SDXL) and ml_b (FLUX.1-schnell) covers from generation prompts."
     )
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     parser.add_argument(
@@ -390,9 +451,9 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("data/manifests/generation_prompts.csv"),
     )
-    parser.add_argument("--engine", choices=["diffusers", "stub"], default="diffusers")
+    parser.add_argument("--engine", choices=["diffusers", "inference_api", "stub"], default="diffusers")
     parser.add_argument("--ml-a-model-id", type=str, default=SDXL_DEFAULT_MODEL_ID)
-    parser.add_argument("--ml-b-model-id", type=str, default=PIXART_DEFAULT_MODEL_ID)
+    parser.add_argument("--ml-b-model-id", type=str, default=FLUX_DEFAULT_MODEL_ID)
     parser.add_argument("--negative-prompt", type=str, default="")
     parser.add_argument("--num-inference-steps", type=int, default=30)
     parser.add_argument("--guidance-scale", type=float, default=7.0)

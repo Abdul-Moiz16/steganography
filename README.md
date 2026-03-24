@@ -1,9 +1,72 @@
 # Carrier-Source Steganalysis Pipeline
 
+## Prototype Submission
+
+This section documents how the current codebase aligns with the prototype
+described in our submitted proposal
+([proposal_updated_3.pdf](docs/proposals/proposal_updated_3.pdf)), and any
+deviations discovered during implementation.
+
+### Proposal alignment
+
+The proposal defines two prototype stages:
+
+- **Vertical prototype**: validate each component in isolation on a small test
+  subset (spatial LSB with RS/chi-square/SP, and DCT-LSB with
+  chi-square/calibration chi-square).
+- **Horizontal prototype**: run the full pipeline end-to-end on a 60-image
+  subset (20 real + 20 ML-A + 20 ML-B) at medium payload.
+
+The current codebase implements the **horizontal prototype** path: real-image
+download, ML cover generation, cover standardization, manifest construction,
+payload/stego manifest building, and dry-run embedding. The embedding and
+detection algorithms themselves are still deferred (`NotImplementedError`),
+matching the vertical prototype scope for Phase 2.
+
+### Deviation: PixArt-alpha replaced by FLUX.1-schnell
+
+The proposal specifies **PixArt-alpha** (`PixArt-alpha/PixArt-XL-2-1024-MS`)
+as the ML-B generator. During prototype implementation we discovered that
+PixArt-alpha is not available on the HuggingFace Inference API and its model
+weights (~2.3 GB) download extremely slowly from the HuggingFace CDN, making
+both remote and local generation impractical within the prototype timeline.
+
+We replaced it with **FLUX.1-schnell** (`black-forest-labs/FLUX.1-schnell`).
+This preserves the experimental design because both PixArt-alpha and
+FLUX.1-schnell are **Diffusion Transformer (DiT)** architectures, which is
+the property that matters for RQ2 (contrasting UNet-based SDXL against a
+transformer-based generator). FLUX.1-schnell is additionally:
+
+- one of the most widely adopted DiT models, making the study more relevant
+- available on the HuggingFace Inference API, enabling remote generation
+  without local model downloads
+- well-maintained and actively supported by Black Forest Labs
+
+The `engine="inference_api"` backend was added so that both SDXL and FLUX
+images can be generated remotely via the HF Inference API, avoiding the need
+to download multi-GB model weights locally. Local generation via
+`engine="diffusers"` remains supported for reproducibility.
+
+### What is implemented vs deferred
+
+| Component | Status |
+|---|---|
+| Real-image download + prompt generation | Implemented |
+| ML cover generation (SDXL + FLUX, local and API) | Implemented |
+| Cover standardization + manifest writing | Implemented |
+| Payload/stego manifest construction | Implemented |
+| Metrics and plotting utilities | Implemented |
+| AES-256-CBC encryption | Deferred |
+| Spatial LSB embedding | Deferred |
+| DCT-LSB embedding | Deferred |
+| Statistical detector scoring | Deferred |
+
+---
+
 Repository scaffold for the final project proposal in [docs/proposals/proposal_updated_3.tex](docs/proposals/proposal_updated_3.tex).
 
 The codebase is now aligned only with the final proposal:
-- carrier sources: `real`, `ml_a` (SDXL 1.0), `ml_b` (PixArt-alpha)
+- carrier sources: `real`, `ml_a` (SDXL 1.0), `ml_b` (FLUX.1-schnell)
 - grayscale `512x512` carriers
 - spatial branch: sequential `LSB + PNG`
 - frequency branch: `DCT-LSB + JPEG Q=95`
@@ -109,14 +172,26 @@ python -m venv venv
 python -m pip install -r requirements.txt
 ```
 
-If you want to remove the PixArt warning about caption cleaning, you can also
-install:
+### 3. Authenticate with HuggingFace (for Inference API or model downloads)
 
 ```powershell
-python -m pip install beautifulsoup4
+python -c "from huggingface_hub import login; login()"
 ```
 
-### 3. Import the real-image prototype set
+Create a free token at https://huggingface.co/settings/tokens, paste it when
+prompted. This is required for the Inference API backend and speeds up model
+weight downloads.
+
+For local generation, optionally download model weights:
+
+```powershell
+python scripts/download_models.py
+```
+
+This caches SDXL and FLUX.1-schnell weights locally. Not needed if using
+`--engine inference_api`.
+
+### 4. Import the real-image prototype set
 
 The latest proposal uses COCO and Flickr30k. For the prototype, keep the same
 60/40 split as the full design:
@@ -137,7 +212,7 @@ Artifacts written:
   - `data/covers/spatial/real/...`
   - `data/covers/frequency/real/...`
 
-### 4. Generate ML images
+### 5. Generate ML images
 
 Fast placeholder generation:
 
@@ -145,19 +220,24 @@ Fast placeholder generation:
 python -m src.data.generate_ml_covers --project-root . --prompts-csv data/manifests/generation_prompts.csv --engine stub --max-groups 20
 ```
 
-Real SDXL + PixArt generation:
+Real SDXL + FLUX generation via Inference API (recommended, no local weights needed):
+
+```powershell
+python -m src.data.generate_ml_covers --project-root . --prompts-csv data/manifests/generation_prompts.csv --engine inference_api --max-groups 20
+```
+
+Local generation via diffusers (requires downloaded model weights):
 
 ```powershell
 python -m src.data.generate_ml_covers --project-root . --prompts-csv data/manifests/generation_prompts.csv --engine diffusers --max-groups 20
 ```
 
 Important notes:
-- local `diffusers` generation downloads the model weights on first use
-- on CPU-only machines this can be slow
+- on CPU-only machines local generation can be slow
 - for a smaller smoke test, try:
 
 ```powershell
-python -m src.data.generate_ml_covers --project-root . --prompts-csv data/manifests/generation_prompts.csv --engine diffusers --max-groups 1 --num-inference-steps 5 --width 512 --height 512
+python -m src.data.generate_ml_covers --project-root . --prompts-csv data/manifests/generation_prompts.csv --engine inference_api --max-groups 1 --num-inference-steps 5 --width 512 --height 512
 ```
 
 ML outputs:
@@ -172,7 +252,7 @@ Generated artifacts:
 - `data/covers/spatial/ml_b/...`
 - `data/covers/frequency/ml_b/...`
 
-### 5. Merge real + ML cover manifests
+### 6. Merge real + ML cover manifests
 
 ```powershell
 python -m src.data.merge_covers_master --project-root . --expected-groups 20
@@ -183,7 +263,7 @@ This writes:
 
 For the prototype, the merged manifest should contain `60` rows total.
 
-### 6. Continue with the non-deferred pipeline stages
+### 7. Continue with the non-deferred pipeline stages
 
 Build the payload and stego manifests:
 
@@ -198,7 +278,7 @@ Dry-run the embedding stage:
 python -m src.pipeline.cli --project-root . run-embedding-stage --stego-manifest data/manifests/stego_manifest.csv
 ```
 
-### 7. Know what is implemented vs deferred
+### 8. Know what is implemented vs deferred
 
 Implemented:
 - real-image download and prompt generation
@@ -229,7 +309,7 @@ through the stored cover artifacts:
 One logical `group_id` corresponds to the same caption concept across:
 - `real`
 - `ml_a` (`SDXL 1.0`)
-- `ml_b` (`PixArt-alpha`)
+- `ml_b` (`FLUX.1-schnell`)
 
 ## Notes for Teammates
 
