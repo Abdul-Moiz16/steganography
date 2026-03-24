@@ -15,6 +15,7 @@ synthetic images without model dependencies.
 """
 
 import argparse
+import gc
 import hashlib
 import json
 import random
@@ -223,23 +224,38 @@ def _build_cover_row(
     }
 
 
-def _init_generators(
+def _init_generator(
     *,
     engine: str,
+    source: str,
     ml_a_model_id: str,
     ml_b_model_id: str,
-) -> dict[str, TextToImageGenerator]:
+) -> TextToImageGenerator:
     if engine == "stub":
-        return {
-            "ml_a": StubTextToImageGenerator("ml_a"),
-            "ml_b": StubTextToImageGenerator("ml_b"),
-        }
+        return StubTextToImageGenerator(source)
     if engine == "diffusers":
-        return {
-            "ml_a": DiffusersTextToImageGenerator(ml_a_model_id, flavor="sdxl"),
-            "ml_b": DiffusersTextToImageGenerator(ml_b_model_id, flavor="pixart"),
-        }
+        if source == "ml_a":
+            return DiffusersTextToImageGenerator(ml_a_model_id, flavor="sdxl")
+        if source == "ml_b":
+            return DiffusersTextToImageGenerator(ml_b_model_id, flavor="pixart")
+        raise ValueError(f"Unsupported source: {source}")
     raise ValueError(f"Unsupported engine: {engine}")
+
+
+def _release_generator(generator: TextToImageGenerator) -> None:
+    """Best-effort cleanup to reduce peak memory between model families."""
+    pipe = getattr(generator, "pipe", None)
+    if pipe is not None:
+        del pipe
+    del generator
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
 
 
 def generate_ml_covers_from_prompts(
@@ -276,24 +292,24 @@ def generate_ml_covers_from_prompts(
         "ml_a": GeneratorSpec("ml_a", "SDXL", ml_a_model_id),
         "ml_b": GeneratorSpec("ml_b", "PixArt-alpha", ml_b_model_id),
     }
-    generators = _init_generators(
-        engine=engine,
-        ml_a_model_id=ml_a_model_id,
-        ml_b_model_id=ml_b_model_id,
-    )
-
     rows_ml_a: list[dict[str, object]] = []
     rows_ml_b: list[dict[str, object]] = []
     rows_ml_all: list[dict[str, object]] = []
 
-    for row in prompt_rows:
-        group_id = int(row["group_id"])
-        prompt = row["caption_text"]
+    for source in ("ml_a", "ml_b"):
+        generator = _init_generator(
+            engine=engine,
+            source=source,
+            ml_a_model_id=ml_a_model_id,
+            ml_b_model_id=ml_b_model_id,
+        )
+        spec = specs[source]
 
-        for source in ("ml_a", "ml_b"):
-            spec = specs[source]
+        for row in prompt_rows:
+            group_id = int(row["group_id"])
+            prompt = row["caption_text"]
             seed = _seed_for(group_id, source, seed_base)
-            generated = generators[source].generate(
+            generated = generator.generate(
                 prompt=prompt,
                 seed=seed,
                 width=width,
@@ -325,6 +341,8 @@ def generate_ml_covers_from_prompts(
                 rows_ml_a.append(manifest_row)
             else:
                 rows_ml_b.append(manifest_row)
+
+        _release_generator(generator)
 
     rows_ml_all.sort(key=lambda r: (int(r["group_id"]), r["source"]))
     rows_ml_a.sort(key=lambda r: int(r["group_id"]))
