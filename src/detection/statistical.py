@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from PIL import Image
 
+import numpy as np
+from scipy.stats import chi2
+
 
 def rs_analysis_score(image: Image.Image) -> float:
     """Return an RS-analysis score for one grayscale spatial image.
@@ -19,7 +22,6 @@ def rs_analysis_score(image: Image.Image) -> float:
 
 def chi_square_spatial_score(image: Image.Image) -> float:
     """Return the classical chi-square LSB score for one grayscale image.
-
     Intended implementation:
     - Follow Westfeld and Pfitzmann [westfeld1999chi].
     - Build the pairs-of-values histogram over spatial intensity values
@@ -28,7 +30,30 @@ def chi_square_spatial_score(image: Image.Image) -> float:
       LSB replacement.
     - Return one scalar score with larger values meaning stronger stego
       evidence.
-    """
+
+    """    
+    pixels = np.array(image.convert('L')).flatten() #convert to grayscale and convert to 1d array of intensity.
+    
+    counts= np.bincount(pixels, minlenght=256)
+
+    chi_stat= 0
+    degrees_of_frdm= 0
+
+    for k in range(128):
+        n_2k = counts[2 * k]
+        n_2k_plus_1 = counts[2 * k + 1]
+        
+        expected = (n_2k + n_2k_plus_1) / 2# Expected value under LSB  is the avrg of the pair
+        
+        if expected > 0:
+            chi_stat += ((n_2k - expected)**2) / expected # Chi-Square formula = sum((observed - expected)^2 / expected)
+            degrees_of_frdm += 1
+
+    p_value = chi2.cdf(chi_stat, df= degrees_of_frdm - 1)
+    stego_score = 1 - p_value
+    
+    return float(stego_score)
+    
     raise NotImplementedError("Spatial chi-square steganalysis is not implemented yet.")
 
 
