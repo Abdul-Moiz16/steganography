@@ -20,9 +20,11 @@ References
 """
 
 from __future__ import annotations
-
 from PIL import Image
-
+import numpy as np
+# reference: https://pypi.org/project/brisque/
+from brisque import BRISQUE
+import cv2
 
 def brisque_score(image: Image.Image) -> float:
     """Compute the BRISQUE score for a single grayscale image.
@@ -36,4 +38,7 @@ def brisque_score(image: Image.Image) -> float:
     BRISQUE score.  Lower values indicate better perceptual quality
     (typical natural images score 0--50).
     """
-    raise NotImplementedError("BRISQUE score is not implemented yet.")
+    img = np.array(image)
+    obj = BRISQUE(url=False)
+    score = obj.score(img)
+    return score

@@ -1,6 +1,6 @@
 # Core runtime
 Pillow>=10.0
-numpy>=1.24
+# numpy>=1.24
 scipy>=1.10
 scikit-image>=0.22
 scikit-learn>=1.4
@@ -24,4 +24,9 @@ pytest>=8.0
 matplotlib>=3.8
 
 # AES encryption
-cryptography >= 44.0.0
+cryptography>=44.0.0
+
+# Brisque metric
+brisque>=0.0.16
+numpy<2.0.0
+opencv-python==4.8.1.78
