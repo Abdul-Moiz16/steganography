@@ -26,7 +26,6 @@ from src.embedding.lsb import embed_lsb
             (b"jpeg-bytes", b"abc", 0.25),
             "JPEG DCT-LSB embedding",
         ),
-        (rs_analysis_score, (Image.new("L", (8, 8), color=0),), "RS analysis"),
         (
             sample_pairs_score,
             (Image.new("L", (8, 8), color=0),),
@@ -67,3 +66,9 @@ def test_chi_square_spatial_returns_float() -> None:
     score = chi_square_spatial_score(img)
     assert isinstance(score, float)
     assert 0.0 <= score <= 1.0
+
+
+def test_rs_analysis_returns_float() -> None:
+    img = Image.new("L", (64, 64), color=128)
+    score = rs_analysis_score(img)
+    assert isinstance(score, float)
