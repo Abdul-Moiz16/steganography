@@ -1,4 +1,4 @@
-from __future__ import annotations
+"""Re-exports all statistical steganalysis detectors.
 
 from PIL import Image
 import numpy as np

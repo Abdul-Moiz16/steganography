@@ -36,7 +36,7 @@ def test_build_payload_manifest_cardinality_and_fields(
     assert not Path(sample["payload_path"]).is_absolute()
 
 
-def test_build_payload_manifest_with_file_writes_hits_encryption_placeholder(
+def test_build_payload_manifest_with_file_writes_creates_payloads(
     project_root: Path,
     small_runner,
 ) -> None:
@@ -44,11 +44,16 @@ def test_build_payload_manifest_with_file_writes_hits_encryption_placeholder(
         project_root / "data" / "manifests" / "covers_master.csv", group_ids=[1, 2, 3, 4]
     )
 
-    with pytest.raises(NotImplementedError, match="AES-256-CBC encryption"):
-        small_runner.build_payload_manifest(
-            covers_manifest_path=covers_manifest,
-            write_payload_files=True,
-        )
+    out = small_runner.build_payload_manifest(
+        covers_manifest_path=covers_manifest,
+        write_payload_files=True,
+    )
+    rows = read_rows_csv(out)
+    # Verify payload files were actually written
+    for r in rows:
+        payload_path = project_root / r["payload_path"]
+        assert payload_path.exists(), f"Payload file not created: {payload_path}"
+        assert payload_path.stat().st_size > 0
 
 
 def test_build_stego_manifest_cardinality_and_condition_completeness(
@@ -117,9 +122,10 @@ def test_run_embedding_stage_dry_run_counts_rows(project_root: Path, small_runne
     assert small_runner.run_embedding_stage(stego_manifest_path=stego_manifest, execute=False) == 2
 
 
-def test_run_embedding_stage_execute_raises_on_placeholder(project_root: Path, small_runner) -> None:
+def test_run_embedding_stage_execute_produces_stego(project_root: Path, small_runner) -> None:
     cover = project_root / "tmp_cover.png"
     payload = project_root / "tmp_payload.bin"
+    stego_out = project_root / "out.png"
 
     create_image(cover)
     payload.write_bytes(b"\x01\x02\x03")
@@ -136,7 +142,7 @@ def test_run_embedding_stage_execute_raises_on_placeholder(project_root: Path, s
                 "encryption": "plain",
                 "cover_path": str(cover),
                 "payload_path": str(payload),
-                "stego_path": str(project_root / "out.png"),
+                "stego_path": str(stego_out),
                 "embed_params": "{\"bit_depth\": 1, \"fill_rate\": 0.25}",
                 "seed": "42",
             }
@@ -144,8 +150,9 @@ def test_run_embedding_stage_execute_raises_on_placeholder(project_root: Path, s
         fieldnames=STEGO_FIELDNAMES,
     )
 
-    with pytest.raises(NotImplementedError, match="Sequential grayscale LSB embedding"):
-        small_runner.run_embedding_stage(stego_manifest_path=stego_manifest, execute=True)
+    n = small_runner.run_embedding_stage(stego_manifest_path=stego_manifest, execute=True)
+    assert n == 1
+    assert stego_out.exists()
 
 
 def test_run_embedding_stage_execute_raises_on_unknown_method(project_root: Path, small_runner) -> None:

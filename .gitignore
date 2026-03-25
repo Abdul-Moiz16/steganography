@@ -25,3 +25,7 @@ venv/
 
 # Generated outputs
 /results/
+/models
+
+# Test output artifacts
+tests/output/

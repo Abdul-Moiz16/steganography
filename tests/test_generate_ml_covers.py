@@ -73,7 +73,7 @@ def test_generate_ml_covers_stub_creates_images_and_manifests(tmp_path: Path) ->
     assert {r["source"] for r in a_rows} == {"ml_a"}
     assert {r["source"] for r in b_rows} == {"ml_b"}
     assert {r["dataset"] for r in a_rows} == {"SDXL"}
-    assert {r["dataset"] for r in b_rows} == {"PixArt-alpha"}
+    assert {r["dataset"] for r in b_rows} == {"FLUX.1-schnell"}
 
     for row in ml_rows:
         spatial_path = tmp_path / row["spatial_path"]
