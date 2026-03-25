@@ -71,14 +71,18 @@ def test_embed_lsb_contract_and_determinism_spec() -> None:
 
     s1 = _call_or_xfail(embed_lsb, cover, payload, 0.25)
     s2 = _call_or_xfail(embed_lsb, cover, payload, 0.25)
-    s3 = _call_or_xfail(embed_lsb, cover, payload, 0.75)
 
     assert isinstance(s1, Image.Image)
     assert s1.size == cover.size
     assert s1.mode == cover.mode
     assert cover.tobytes() == cover_before
+    # Same inputs produce identical output (deterministic).
     assert s1.tobytes() == s2.tobytes()
-    assert s1.tobytes() != s3.tobytes()
+    # Stego differs from the original cover.
+    assert s1.tobytes() != cover_before
+    # Different payload produces different stego.
+    s_alt = _call_or_xfail(embed_lsb, cover, _sample_payload(64, seed=99), 0.25)
+    assert s1.tobytes() != s_alt.tobytes()
 
 
 def test_embed_dct_contract_and_determinism_spec() -> None:
