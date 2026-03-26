@@ -5,13 +5,15 @@ from __future__ import annotations
 Two profiles are defined:
 
 ``prototype``
-    60 images (20 per source), spatial LSB only, medium fill rate only,
+    20 groups downloaded per run (3 sources each = 60 images per run),
+    spatial LSB only, low fill rate only,
     plain + AES-256-CBC encryption — 6 conditions total.
     Used for rapid iteration and examiner-reproducible demonstration.
 
 ``full_design``
-    1500 images (500 per source), spatial LSB + DCT-LSB, all three fill
-    rates, plain + AES-256-CBC encryption — 36 conditions total.
+    500 groups downloaded per run (3 sources each = 1500 images per run),
+    spatial LSB + DCT-LSB, all three fill rates,
+    plain + AES-256-CBC encryption — 36 conditions total.
     Mirrors the full proposal_updated_3.tex experimental design.
 """
 
@@ -23,7 +25,8 @@ class RunProfile:
     """Static specification for one named experiment profile."""
 
     name: str
-    n_groups: int
+    n_groups: int        # groups sampled per run
+    pool_groups: int     # total groups in the download pool (>= n_groups)
     active_methods: tuple[str, ...]
     active_payload_levels: tuple[str, ...]
     description: str
@@ -45,34 +48,35 @@ class RunProfile:
 PROFILES: dict[str, RunProfile] = {
     "prototype": RunProfile(
         name="prototype",
-        # 20 unique caption-linked groups shared across all three sources.
-        # Total images = 20 groups × 3 sources = 60 images.
-        # Real breakdown: ~12 COCO + ~8 Flickr30k (all available real images).
+        # 20 unique caption-linked groups downloaded per run across all three sources.
+        # Per-run images = 20 groups × 3 sources = 60 images.
+        # Real breakdown: ~12 COCO + ~8 Flickr30k per run.
         n_groups=20,
+        pool_groups=20,
         active_methods=("lsb",),
         active_payload_levels=("low",),
         description=(
-            "Prototype run: 20 groups × 3 sources = 60 images "
+            "Prototype run: 20 groups downloaded per run; 20 groups × 3 sources = 60 images per run "
             "(real: ~12 COCO + ~8 Flickr30k / SDXL / FLUX), "
             "spatial LSB embedding only, low fill rate (0.25 bpp), "
-            "plain + AES-256-CBC encryption. 6 conditions total. "
-            "Covers manifest: data/manifests/covers_prototype.csv"
+            "plain + AES-256-CBC encryption. 6 conditions total."
         ),
     ),
     "full_design": RunProfile(
         name="full_design",
-        # 500 unique groups shared across all three sources.
-        # Total images = 500 groups × 3 sources = 1500 images.
+        # 500 unique groups per run shared across all three sources.
+        # Pool: 500 groups (pool_groups=500 — pool equals per-run sample for full design).
+        # Total images per run = 500 groups × 3 sources = 1500 images.
         # Real breakdown: 300 COCO + 200 Flickr30k.
         n_groups=500,
+        pool_groups=500,
         active_methods=("lsb", "dct"),
         active_payload_levels=("low", "medium", "high"),
         description=(
-            "Full design: 500 groups × 3 sources = 1500 images "
+            "Full design: 500 groups downloaded per run; 500 groups × 3 sources = 1500 images per run "
             "(real: 300 COCO + 200 Flickr30k / SDXL 1.0 / FLUX.1-schnell), "
             "spatial LSB + DCT-LSB embedding, all fill rates (0.25 / 0.50 / 0.75 bpp), "
-            "plain + AES-256-CBC encryption. 36 conditions total. "
-            "Covers manifest: data/manifests/covers_master.csv"
+            "plain + AES-256-CBC encryption. 36 conditions total."
         ),
     ),
 }

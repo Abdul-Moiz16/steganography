@@ -25,7 +25,7 @@ from typing import Protocol
 
 from PIL import Image
 
-from src.common.contracts import PipelinePaths
+from src.common.contracts import PipelinePaths, cover_filename
 from src.data.images import save_jpeg, save_png, standardize_image
 from src.data.manifests import read_rows_csv, write_json, write_rows_csv
 
@@ -334,11 +334,17 @@ def generate_ml_covers_from_prompts(
     image_size: tuple[int, int] = (512, 512),
     seed_base: int = 42,
     max_groups: int | None = None,
+    run_dir: Path | None = None,
 ) -> dict[str, Path]:
     """Generate `ml_a` and `ml_b` cover sets from a prompt manifest."""
     project_root = project_root.resolve()
     paths = PipelinePaths.from_project_root(project_root)
     paths.ensure_layout()
+
+    if run_dir is not None:
+        for src in ("ml_a", "ml_b"):
+            (run_dir / "covers" / src).mkdir(parents=True, exist_ok=True)
+        (run_dir / "manifests").mkdir(parents=True, exist_ok=True)
 
     prompts_path = _resolve_path(project_root, prompts_csv)
     prompt_rows = read_rows_csv(prompts_path)
@@ -383,8 +389,12 @@ def generate_ml_covers_from_prompts(
             )
 
             standardized = standardize_image(generated, size=image_size)
-            spatial_path = paths.cover_path(group_id, source, "spatial")  # type: ignore[arg-type]
-            frequency_path = paths.cover_path(group_id, source, "frequency")  # type: ignore[arg-type]
+            if run_dir is not None:
+                spatial_path = run_dir / "covers" / source / cover_filename(group_id, source, "spatial")
+                frequency_path = run_dir / "covers" / source / cover_filename(group_id, source, "frequency")
+            else:
+                spatial_path = paths.cover_path(group_id, source, "spatial")  # type: ignore[arg-type]
+                frequency_path = paths.cover_path(group_id, source, "frequency")  # type: ignore[arg-type]
             save_png(standardized, spatial_path)
             save_jpeg(standardized, frequency_path)
 
@@ -411,10 +421,16 @@ def generate_ml_covers_from_prompts(
     rows_ml_a.sort(key=lambda r: int(r["group_id"]))
     rows_ml_b.sort(key=lambda r: int(r["group_id"]))
 
-    ml_a_manifest = paths.manifests_dir / "covers_master_ml_a.csv"
-    ml_b_manifest = paths.manifests_dir / "covers_master_ml_b.csv"
-    ml_manifest = paths.manifests_dir / "covers_master_ml.csv"
-    summary_path = paths.manifests_dir / "ml_generation_summary.json"
+    if run_dir is not None:
+        ml_a_manifest = run_dir / "manifests" / "covers_ml_a.csv"
+        ml_b_manifest = run_dir / "manifests" / "covers_ml_b.csv"
+        ml_manifest = run_dir / "manifests" / "covers_ml.csv"
+        summary_path = run_dir / "manifests" / "ml_generation_summary.json"
+    else:
+        ml_a_manifest = paths.manifests_dir / "covers_master_ml_a.csv"
+        ml_b_manifest = paths.manifests_dir / "covers_master_ml_b.csv"
+        ml_manifest = paths.manifests_dir / "covers_master_ml.csv"
+        summary_path = paths.manifests_dir / "ml_generation_summary.json"
 
     write_rows_csv(ml_a_manifest, rows_ml_a, fieldnames=FIELDNAMES)
     write_rows_csv(ml_b_manifest, rows_ml_b, fieldnames=FIELDNAMES)

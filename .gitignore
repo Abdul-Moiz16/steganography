@@ -33,6 +33,10 @@ venv/
 /results/
 
 
+# Per-run cover image copies (regenerable from pool)
+runs/**/covers/**/*.png
+runs/**/covers/**/*.jpg
+
 # Test output artifacts
 tests/output/
 /node_modules

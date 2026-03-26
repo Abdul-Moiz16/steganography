@@ -124,7 +124,7 @@ def test_generate_ml_covers_stub_is_deterministic_for_same_seed(tmp_path: Path) 
         seed_base=77,
     )
     first_bytes = (
-        tmp_path / "data/covers/spatial/ml_a/g0001__src-ml_a.png"
+        tmp_path / "data/covers/ml_a/g0001__src-ml_a.png"
     ).read_bytes()
 
     generate_ml_covers_from_prompts(
@@ -137,7 +137,7 @@ def test_generate_ml_covers_stub_is_deterministic_for_same_seed(tmp_path: Path) 
         seed_base=77,
     )
     second_bytes = (
-        tmp_path / "data/covers/spatial/ml_a/g0001__src-ml_a.png"
+        tmp_path / "data/covers/ml_a/g0001__src-ml_a.png"
     ).read_bytes()
 
     assert first_bytes == second_bytes

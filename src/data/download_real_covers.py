@@ -12,7 +12,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
-from src.common.contracts import PipelinePaths
+from src.common.contracts import PipelinePaths, cover_filename
 from src.data.images import standardize_and_save_variants
 from src.data.manifests import write_rows_csv
 
@@ -359,11 +359,16 @@ def download_real_covers(
     image_size: tuple[int, int] = (512, 512),
     fetch_rows_fn: Callable[..., list[dict]] | None = None,
     fetch_bytes_fn: Callable[[str], bytes] | None = None,
+    run_dir: Path | None = None,
 ) -> dict[str, Path]:
     project_root = project_root.resolve()
     paths = PipelinePaths.from_project_root(project_root)
     paths.ensure_layout()
     fetch_bytes = fetch_bytes_fn or _request_bytes
+
+    if run_dir is not None:
+        (run_dir / "covers" / "real").mkdir(parents=True, exist_ok=True)
+        (run_dir / "manifests").mkdir(parents=True, exist_ok=True)
 
     specs = [
         DatasetSpec(
@@ -412,12 +417,21 @@ def download_real_covers(
         unit="img",
     ):
         group_id = idx
-        raw_path = _raw_image_path(paths, group_id, candidate.dataset, candidate.image_url)
+        if run_dir is not None:
+            dataset_slug = candidate.dataset.lower().replace(" ", "")
+            ext = _url_extension(candidate.image_url)
+            raw_path = run_dir / "raw" / "real" / dataset_slug / f"g{group_id:04d}__src-real{ext}"
+        else:
+            raw_path = _raw_image_path(paths, group_id, candidate.dataset, candidate.image_url)
         raw_path.parent.mkdir(parents=True, exist_ok=True)
         raw_path.write_bytes(fetch_bytes(candidate.image_url))
 
-        spatial_path = paths.cover_path(group_id, "real", "spatial")
-        frequency_path = paths.cover_path(group_id, "real", "frequency")
+        if run_dir is not None:
+            spatial_path = (run_dir / "covers" / "real") / cover_filename(group_id, "real", "spatial")
+            frequency_path = (run_dir / "covers" / "real") / cover_filename(group_id, "real", "frequency")
+        else:
+            spatial_path = paths.cover_path(group_id, "real", "spatial")
+            frequency_path = paths.cover_path(group_id, "real", "frequency")
         standardize_and_save_variants(
             raw_path,
             spatial_path,
@@ -445,10 +459,16 @@ def download_real_covers(
 
     raw_rows, cover_rows, prompt_rows = _build_rows(records)
 
-    raw_index_path = paths.manifests_dir / "raw_cover_index_real.csv"
-    covers_real_path = paths.manifests_dir / "covers_master_real.csv"
-    prompts_path = paths.manifests_dir / "generation_prompts.csv"
-    summary_path = paths.manifests_dir / "real_download_summary.json"
+    if run_dir is not None:
+        covers_real_path = run_dir / "manifests" / "covers_real.csv"
+        prompts_path = run_dir / "manifests" / "generation_prompts.csv"
+        raw_index_path = run_dir / "manifests" / "raw_cover_index_real.csv"
+        summary_path = run_dir / "manifests" / "real_download_summary.json"
+    else:
+        raw_index_path = paths.manifests_dir / "raw_cover_index_real.csv"
+        covers_real_path = paths.manifests_dir / "covers_master_real.csv"
+        prompts_path = paths.manifests_dir / "generation_prompts.csv"
+        summary_path = paths.manifests_dir / "real_download_summary.json"
 
     write_rows_csv(
         raw_index_path,

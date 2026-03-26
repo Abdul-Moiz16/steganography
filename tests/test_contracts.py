@@ -3,10 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.common.contracts import (
-    COVER_BRANCHES,
-    ENCRYPTION_STATES,
-    METHODS,
-    PAYLOAD_LEVELS,
     SOURCES,
     PipelinePaths,
     cover_branch_for_method,
@@ -36,13 +32,14 @@ def test_pipeline_paths_builders(project_root: Path) -> None:
     assert paths.data_root == project_root / "data"
     assert paths.results_root == project_root / "results"
 
+    # Cover path: data/covers/{source}/{filename}  (no spatial/frequency sub-dir)
     assert (
         paths.cover_path(1, "real", "spatial")
-        == project_root / "data" / "covers" / "spatial" / "real" / "g0001__src-real.png"
+        == project_root / "data" / "covers" / "real" / "g0001__src-real.png"
     )
     assert (
         paths.cover_path(1, "real", "frequency")
-        == project_root / "data" / "covers" / "frequency" / "real" / "g0001__src-real.jpg"
+        == project_root / "data" / "covers" / "real" / "g0001__src-real.jpg"
     )
     assert (
         paths.payload_path(1, "low", "plain")
@@ -65,20 +62,8 @@ def test_ensure_layout_creates_expected_directories(project_root: Path) -> None:
     paths = PipelinePaths.from_project_root(project_root)
     paths.ensure_layout()
 
-    for branch in COVER_BRANCHES:
-        for source in SOURCES:
-            assert paths.covers_dir(branch, source).is_dir()
-
-    for encryption in ENCRYPTION_STATES:
-        for payload in PAYLOAD_LEVELS:
-            assert paths.payload_dir(encryption, payload).is_dir()
-
-    for method in METHODS:
-        for payload in PAYLOAD_LEVELS:
-            for encryption in ENCRYPTION_STATES:
-                for source in SOURCES:
-                    assert paths.stego_dir(method, payload, encryption, source).is_dir()
-
+    # Only manifests and per-source cover dirs are pre-created; stego/payload dirs
+    # are created on-demand per run.
     assert paths.manifests_dir.is_dir()
-    assert paths.predictions_dir.is_dir()
-    assert paths.metrics_dir.is_dir()
+    for source in SOURCES:
+        assert paths.covers_dir(source).is_dir()

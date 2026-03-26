@@ -154,24 +154,14 @@ _PROFILE_N_GROUPS: dict[str, int] = {
 }
 
 _PROFILE_COCO_TARGET: dict[str, int] = {
-    "prototype":   12,
+    "prototype":   12,   # 12 of 20 real groups per run
     "full_design": 300,
 }
 
 _PROFILE_FLICKR_TARGET: dict[str, int] = {
-    "prototype":   8,
+    "prototype":    8,   # 8 of 20 real groups per run
     "full_design": 200,
 }
-
-_PROFILE_COVERS_MANIFEST: dict[str, str] = {
-    "prototype":   "data/manifests/covers_prototype.csv",
-    "full_design": "data/manifests/covers_master.csv",
-}
-
-_REAL_MANIFEST = "data/manifests/covers_master_real.csv"
-_ML_A_MANIFEST = "data/manifests/covers_master_ml_a.csv"
-_ML_B_MANIFEST = "data/manifests/covers_master_ml_b.csv"
-_PROMPTS_CSV   = "data/manifests/generation_prompts.csv"
 
 
 # ── HF token resolution ───────────────────────────────────────────────────────
@@ -239,78 +229,82 @@ def _row_count(path: Path) -> int:
         return sum(1 for _ in csv.DictReader(f))
 
 
-# ── Stage 1: real covers ──────────────────────────────────────────────────────
+# ── Per-run cover preparation ─────────────────────────────────────────────────
 
-def _ensure_real_covers(project_root: Path, n_groups: int, profile: str) -> None:
-    """Download and standardize real covers if the manifest is missing or incomplete."""
-    manifest = project_root / _REAL_MANIFEST
-    current  = _row_count(manifest)
-    if current >= n_groups:
-        print(f"  ✓ Real covers already present ({current} rows).")
-        return
+def _prepare_run_covers(
+    project_root: Path,
+    run_dir: Path,
+    n_groups: int,
+    ml_engine: str,
+    profile: str,
+    seed: int,
+) -> Path:
+    """Download and generate covers for this run into run_dir/covers/.
 
-    coco_n    = _PROFILE_COCO_TARGET[profile]
-    flickr_n  = _PROFILE_FLICKR_TARGET[profile]
-    print(f"  Downloading {coco_n} COCO + {flickr_n} Flickr30k covers …")
-    from src.data.download_real_covers import download_real_covers
-    download_real_covers(
-        project_root=project_root,
-        coco_target=coco_n,
-        flickr_target=flickr_n,
+    Returns path to run_dir/manifests/covers.csv.
+    Idempotent: if covers.csv already has n_groups*3 rows, skips all steps.
+    """
+    covers_csv = run_dir / "manifests" / "covers.csv"
+    if covers_csv.exists() and _row_count(covers_csv) >= n_groups * 3:
+        print(f"  ✓ Run covers already present ({_row_count(covers_csv)} rows).")
+        return covers_csv
+
+    real_manifest = run_dir / "manifests" / "covers_real.csv"
+    prompts_csv   = run_dir / "manifests" / "generation_prompts.csv"
+    ml_a_manifest = run_dir / "manifests" / "covers_ml_a.csv"
+    ml_b_manifest = run_dir / "manifests" / "covers_ml_b.csv"
+
+    # ── Step 1: real covers ────────────────────────────────────────────────
+    if real_manifest.exists() and _row_count(real_manifest) >= n_groups:
+        print(f"  [1/3] ✓ Real covers already downloaded.")
+    else:
+        coco_n   = _PROFILE_COCO_TARGET[profile]
+        flickr_n = _PROFILE_FLICKR_TARGET[profile]
+        print(f"  [1/3] Downloading {coco_n} COCO + {flickr_n} Flickr30k covers (seed={seed}) …")
+        from src.data.download_real_covers import download_real_covers
+        download_real_covers(
+            project_root=project_root,
+            coco_target=coco_n,
+            flickr_target=flickr_n,
+            seed=seed,
+            run_dir=run_dir,
+        )
+
+    # ── Step 2: ML covers ──────────────────────────────────────────────────
+    ml_ready = (
+        ml_a_manifest.exists() and _row_count(ml_a_manifest) >= n_groups
+        and ml_b_manifest.exists() and _row_count(ml_b_manifest) >= n_groups
     )
-    print(f"  → {manifest}")
+    if ml_ready:
+        print(f"  [2/3] ✓ ML covers already generated.")
+    else:
+        if not prompts_csv.exists():
+            print("  Error: generation_prompts.csv not found — real covers must be downloaded first.")
+            sys.exit(1)
+        print(f"  [2/3] Generating ML covers (engine={ml_engine}) …")
+        from src.data.generate_ml_covers import generate_ml_covers_from_prompts
+        generate_ml_covers_from_prompts(
+            project_root=project_root,
+            prompts_csv=prompts_csv,
+            engine=ml_engine,
+            max_groups=n_groups,
+            seed_base=seed,
+            run_dir=run_dir,
+        )
 
-
-# ── Stage 2: ML covers ────────────────────────────────────────────────────────
-
-def _ensure_ml_covers(project_root: Path, n_groups: int, ml_engine: str) -> None:
-    """Generate ML covers (SDXL + FLUX) if manifests are missing or incomplete."""
-    ml_a = project_root / _ML_A_MANIFEST
-    ml_b = project_root / _ML_B_MANIFEST
-    if _row_count(ml_a) >= n_groups and _row_count(ml_b) >= n_groups:
-        print(f"  ✓ ML covers already present ({_row_count(ml_a)} rows each).")
-        return
-
-    prompts_csv = project_root / _PROMPTS_CSV
-    if not prompts_csv.exists():
-        print("  Error: generation_prompts.csv not found — real covers must be downloaded first.")
-        sys.exit(1)
-
-    print(f"  Generating ML covers for {n_groups} groups (engine={ml_engine}) …")
-    from src.data.generate_ml_covers import generate_ml_covers_from_prompts
-    generate_ml_covers_from_prompts(
-        project_root=project_root,
-        prompts_csv=prompts_csv,
-        engine=ml_engine,
-        max_groups=n_groups,
-    )
-    print(f"  → {ml_a}")
-    print(f"  → {ml_b}")
-
-
-# ── Stage 3: merged covers manifest ──────────────────────────────────────────
-
-def _ensure_covers_manifest(project_root: Path, n_groups: int, profile: str) -> Path:
-    """Merge component manifests into the profile covers manifest if missing."""
-    out     = project_root / _PROFILE_COVERS_MANIFEST[profile]
-    needed  = n_groups * 3  # real + ml_a + ml_b
-    current = _row_count(out)
-    if current >= needed:
-        print(f"  ✓ Covers manifest already present ({current} rows).")
-        return out
-
-    print(f"  Merging covers manifest ({n_groups} groups × 3 sources = {needed} rows) …")
+    # ── Step 3: merge manifests ────────────────────────────────────────────
+    print(f"  [3/3] Merging covers manifest ({n_groups} groups × 3 sources = {n_groups * 3} rows) …")
     from src.data.merge_covers_master import merge_covers_master
-    out = merge_covers_master(
+    covers_csv = merge_covers_master(
         project_root=project_root,
-        real_manifest=Path(_REAL_MANIFEST),
-        ml_a_manifest=Path(_ML_A_MANIFEST),
-        ml_b_manifest=Path(_ML_B_MANIFEST),
-        output_manifest=out,
+        real_manifest=real_manifest,
+        ml_a_manifest=ml_a_manifest,
+        ml_b_manifest=ml_b_manifest,
+        output_manifest=covers_csv,
         expected_groups=n_groups,
     )
-    print(f"  → {out}")
-    return out
+    print(f"  → {covers_csv}")
+    return covers_csv
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -346,38 +340,39 @@ def main() -> None:
     n_groups     = _PROFILE_N_GROUPS[profile]
     project_root = Path(__file__).parent.resolve()
 
-    print(f"\n{'='*60}")
-    print(f"Profile  : {profile}")
-    print(f"Groups   : {n_groups} × 3 sources = {n_groups * 3} images")
-    print(f"{'='*60}\n")
-
-    # ── Step 1: real covers ───────────────────────────────────────────────────
-    print("[1/3] Real covers")
-    _ensure_real_covers(project_root, n_groups, profile)
-
-    # ── Step 2: ML covers ─────────────────────────────────────────────────────
-    print("[2/3] ML covers")
-    _resolve_hf_token(project_root, profile, args.ml_engine)
-    _ensure_ml_covers(project_root, n_groups, args.ml_engine)
-
-    # ── Step 3: combined covers manifest ─────────────────────────────────────
-    print("[3/3] Covers manifest")
-    covers_manifest = _ensure_covers_manifest(project_root, n_groups, profile)
-
-    print(f"\nAll covers ready — starting pipeline …\n")
-
-    # ── Resolve run dir up-front so we can print results afterward ────────────
     from src.pipeline.config import PipelineConfig
     from src.pipeline.runner import PipelineRunner
 
-    config    = PipelineConfig.from_profile(project_root, profile)
-    runner    = PipelineRunner(config)
-    run_dir   = (
+    config = PipelineConfig.from_profile(project_root, profile)
+    runner = PipelineRunner(config)
+
+    # ── Generate cover seed and create run directory ──────────────────────────
+    import random as _rand
+    cover_seed = _rand.randrange(2**31)
+
+    run_dir = (
         project_root / "runs" / args.run_id
         if args.run_id
         else runner._next_run_dir(profile)
     )
+    run_dir.mkdir(parents=True, exist_ok=True)
     run_id_str = run_dir.name
+
+    print(f"\n{'='*60}")
+    print(f"Profile  : {profile}")
+    print(f"Groups   : {n_groups} groups × 3 sources = {n_groups * 3} images")
+    print(f"Run dir  : {run_dir}")
+    print(f"{'='*60}\n")
+
+    # ── Resolve HF token ──────────────────────────────────────────────────────
+    _resolve_hf_token(project_root, profile, args.ml_engine)
+
+    # ── Prepare covers for this run ───────────────────────────────────────────
+    print("Preparing covers for this run …")
+    covers_manifest = _prepare_run_covers(
+        project_root, run_dir, n_groups, args.ml_engine, profile, cover_seed
+    )
+    print(f"\nCovers ready — starting pipeline …\n")
 
     # ── Run pipeline ──────────────────────────────────────────────────────────
     cli_args = [
@@ -386,6 +381,7 @@ def main() -> None:
         "--profile",         profile,
         "--covers-manifest", str(covers_manifest),
         "--run-id",          run_id_str,
+        "--cover-seed",      str(cover_seed),
         "--execute-embeddings",
         "--execute-detectors",
         "--skip-unimplemented",

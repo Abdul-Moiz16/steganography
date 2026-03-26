@@ -165,6 +165,12 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Generate summary AUC figures after metric aggregation.",
     )
+    p_all.add_argument(
+        "--cover-seed",
+        type=int,
+        default=None,
+        help="Cover selection seed (recorded in config.json for reproducibility).",
+    )
     return parser
 
 
@@ -263,6 +269,7 @@ def main() -> None:
             generate_figures=args.generate_figures,
             run_dir=run_dir,
             profile_name=profile_name,
+            cover_seed=getattr(args, "cover_seed", None),
         )
         print(f"Payload manifest: {out['payload_manifest']}")
         print(f"Stego manifest: {out['stego_manifest']}")

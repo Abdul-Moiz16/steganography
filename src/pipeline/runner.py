@@ -15,7 +15,6 @@ import hashlib
 import json
 import random
 import secrets
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -550,6 +549,7 @@ class PipelineRunner:
         generate_figures: bool = False,
         run_dir: Path | None = None,
         profile_name: str | None = None,
+        cover_seed: int | None = None,
     ) -> dict[str, Path | int]:
         """Run all non-deferred mainline pipeline stages in sequence.
 
@@ -571,7 +571,10 @@ class PipelineRunner:
             payload_root    = run_dir / "payloads"
             for d in (manifests_out, predictions_out, metrics_out, figures_out):
                 d.mkdir(parents=True, exist_ok=True)
-            self._save_run_config(run_dir, profile_name)
+            if cover_seed is None:
+                import random as _r
+                cover_seed = _r.randrange(2**31)
+            self._save_run_config(run_dir, profile_name, cover_seed=cover_seed)
         else:
             manifests_out   = self.paths.manifests_dir
             predictions_out = self.paths.predictions_dir
@@ -582,19 +585,17 @@ class PipelineRunner:
 
         resolved_covers = self._resolve_manifest_path(covers_manifest_path)
 
-        # Copy covers manifest into run dir for a complete, self-contained record
-        if run_dir is not None:
-            covers_snapshot = manifests_out / "covers.csv"
-            shutil.copy2(resolved_covers, covers_snapshot)
+        # Covers are already placed in run_dir by run.py before pipeline starts
+        active_covers = resolved_covers
 
         payload_manifest = self.build_payload_manifest(
-            covers_manifest_path=resolved_covers,
+            covers_manifest_path=active_covers,
             output_manifest_path=manifests_out / "payload_manifest.csv",
             write_payload_files=execute_embeddings,
             payload_root=payload_root,
         )
         stego_manifest = self.build_stego_manifest(
-            covers_manifest_path=resolved_covers,
+            covers_manifest_path=active_covers,
             payload_manifest_path=payload_manifest,
             output_manifest_path=manifests_out / "stego_manifest.csv",
             stego_root=stego_root,
@@ -645,7 +646,7 @@ class PipelineRunner:
         stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         return runs_root / f"{profile_name}_{stamp}"
 
-    def _save_run_config(self, run_dir: Path, profile_name: str | None) -> None:
+    def _save_run_config(self, run_dir: Path, profile_name: str | None, cover_seed: int | None = None) -> None:
         """Snapshot config + timestamp into *run_dir*/config.json."""
         run_dir.mkdir(parents=True, exist_ok=True)
         snapshot = {
@@ -662,6 +663,7 @@ class PipelineRunner:
             "primary_lsb_bit_depth": self.config.primary_lsb_bit_depth,
             "payload_fill_rates": self.config.payload_fill_rates,
             "aes_key_id": self.config.aes_key_id,
+            "cover_seed": cover_seed,
         }
         write_json(run_dir / "config.json", snapshot)
 

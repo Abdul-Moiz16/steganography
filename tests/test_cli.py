@@ -25,10 +25,10 @@ def test_cli_init_layout(monkeypatch, capsys, tmp_path: Path) -> None:
     out = capsys.readouterr().out
 
     assert "Layout initialized" in out
-    assert (tmp_path / "data" / "covers" / "spatial" / "real").is_dir()
-    assert (tmp_path / "data" / "covers" / "frequency" / "real").is_dir()
-    assert (tmp_path / "results" / "metrics").is_dir()
-    assert (tmp_path / "results" / "figures").is_dir()
+    assert (tmp_path / "data" / "covers" / "real").is_dir()
+    assert (tmp_path / "data" / "covers" / "ml_a").is_dir()
+    assert (tmp_path / "data" / "covers" / "ml_b").is_dir()
+    assert (tmp_path / "data" / "manifests").is_dir()
 
 
 def test_cli_run_embedding_stage_dry_run(monkeypatch, capsys, tmp_path: Path) -> None:
