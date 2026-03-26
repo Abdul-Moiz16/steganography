@@ -95,8 +95,12 @@ function uniqueValues(list, key) {
 
 function updateNavState() {
     var activePage = STATE.page === 'run-detail' ? 'runs' : STATE.page;
-    var el = document.getElementById('nav-runs');
-    if (el) el.classList.toggle('active', activePage === 'runs');
+    var runsEl     = document.getElementById('nav-runs');
+    var docsEl     = document.getElementById('nav-docs');
+    var proposalEl = document.getElementById('nav-proposal');
+    if (runsEl)     runsEl.classList.toggle('active',     activePage === 'runs');
+    if (docsEl)     docsEl.classList.toggle('active',     activePage === 'docs');
+    if (proposalEl) proposalEl.classList.toggle('active', activePage === 'proposal');
 }
 
 function go(page, runId) {
@@ -199,9 +203,646 @@ function render() {
         return;
     }
 
+    if (STATE.page === 'docs') {
+        hideSidebar();
+        el.innerHTML = renderDocsPage();
+        initDocsSpy();
+        return;
+    }
+
+    if (STATE.page === 'proposal') {
+        hideSidebar();
+        el.innerHTML = renderProposalPage();
+        return;
+    }
+
     hideSidebar();
     el.innerHTML = '';
 }
+
+// ── Documentation page ──────────────────────────────────────────────────────
+
+var _CHILD_PARENT = {};
+var DOCS_TOC = [
+    { id: 'overview',   label: 'Overview' },
+    { id: 'platform',   label: 'Platform Architecture' },
+    { id: 'structure',  label: 'Directory Structure' },
+    { id: 'pipeline',   label: 'Pipeline Stages', children: [
+        { id: 'stage-init',      label: 'Init Layout' },
+        { id: 'stage-covers',    label: 'Standardize Covers' },
+        { id: 'stage-manifests', label: 'Build Manifests' },
+        { id: 'stage-embedding', label: 'Run Embedding' },
+        { id: 'stage-detectors', label: 'Run Detectors' },
+        { id: 'stage-metrics',   label: 'Compute Metrics' }
+    ]},
+    { id: 'embedding',  label: 'Embedding Methods', children: [
+        { id: 'lsb-seq',    label: 'LSB Sequential' },
+        { id: 'lsb-keyed',  label: 'LSB Keyed' },
+        { id: 'dct-lsb',    label: 'DCT LSB (Planned)' }
+    ]},
+    { id: 'detectors',  label: 'Detectors', children: [
+        { id: 'det-rs',          label: 'RS Analysis' },
+        { id: 'det-chi-spatial', label: 'Chi-Square Spatial' },
+        { id: 'det-sample',      label: 'Sample Pairs' },
+        { id: 'det-chi-dct',     label: 'Chi-Square DCT' },
+        { id: 'det-calib',       label: 'Calibration Chi-Square' }
+    ]},
+    { id: 'encryption', label: 'Encryption' },
+    { id: 'refs',        label: 'References' }
+];
+(function() {
+    DOCS_TOC.forEach(function(item) {
+        (item.children || []).forEach(function(c) { _CHILD_PARENT[c.id] = item.id; });
+    });
+})();
+
+/* ── HTML micro-helpers ── */
+function _ds(id, html)  { return '<section class="docs-section" id="' + id + '">' + html + '</section>'; }
+function _dh1(t)        { return '<h1 class="docs-h1">' + t + '</h1>'; }
+function _dh2(t)        { return '<h2 class="docs-h2">' + t + '</h2>'; }
+function _dh3(t)        { return '<h3 class="docs-h3">' + t + '</h3>'; }
+function _dp(t)         { return '<p class="docs-p">' + t + '</p>'; }
+function _dpre(t)       { return '<pre class="docs-pre"><code>' + t + '</code></pre>'; }
+function _dbadge(t, c)  { return '<span class="docs-badge docs-badge--' + (c || 'default') + '">' + t + '</span>'; }
+function _dref(k)       { return '<sup>[<a class="docs-ref-link" href="#ref-' + k + '">' + k + '</a>]</sup>'; }
+
+function renderDocsPage() {
+    var tocItems = DOCS_TOC.map(function(item) {
+        var sub = (item.children || []).map(function(c) {
+            return '<a class="docs-toc-link docs-toc-child" href="#' + c.id + '">' + escapeHtml(c.label) + '</a>';
+        }).join('');
+        return '<a class="docs-toc-link" href="#' + item.id + '">' + escapeHtml(item.label) + '</a>' + sub;
+    }).join('');
+
+    var toc = '<nav class="docs-toc" id="docs-toc">' +
+        '<div class="docs-toc-title">Contents</div>' + tocItems +
+    '</nav>';
+
+    var main = '<article class="docs-main" id="docs-main">' +
+        _docsOverview() + _docsPlatform() + _docsStructure() +
+        _docsPipeline() + _docsEmbedding() + _docsDetectors() +
+        _docsEncryption() + _docsRefs() +
+    '</article>';
+
+    return '<div class="docs-layout">' + toc + main + '</div>';
+}
+
+function _docsOverview() {
+    return _ds('overview',
+        _dh1('Stego Explorer &mdash; Documentation') +
+        _dh2('Overview') +
+        _dp('Stego Explorer is a self-contained pipeline browser and experiment launcher for Maastricht University Project 2.2 (Spring 2026). It lets you launch pipeline runs, monitor execution in real time via streaming logs, and explore detection results across all experimental conditions.') +
+        _dp('The central question is whether the <em>source</em> of the carrier image changes how detectable steganographic embedding is. Three carrier sources are compared: real photographs (COCO/Flickr30k), ML-A (SDXL&nbsp;1.0), and ML-B (PixArt-&alpha; per proposal; FLUX.1-schnell in the prototype &mdash; see Proposal Divergences). Five research questions structure the study:') +
+        '<ul class="docs-list">' +
+            '<li><strong>RQ1 &mdash; Carrier Source (real vs.&nbsp;ML)</strong>: Does carrier source (real photographs vs.&nbsp;ML-generated images) affect steganographic detectability under matched embedding settings? ML-A and ML-B are pooled into one ML group for this comparison.</li>' +
+            '<li><strong>RQ2 &mdash; Generator Effect Within ML</strong>: Within ML-generated carriers, does the choice of generator (ML-A vs.&nbsp;ML-B) affect detectability?</li>' +
+            '<li><strong>RQ3 &mdash; Payload Interaction</strong>: Does payload size change the detectability gap between carrier sources?</li>' +
+            '<li><strong>RQ4 &mdash; Embedding Branch</strong>: Do the spatial branch (LSB+PNG) and the frequency branch (DCT-LSB+JPEG) show different carrier-source effects? Each branch bundles embedding with its file format.</li>' +
+            '<li><strong>RQ5 &mdash; Encryption Invariance</strong>: Does AES-256-CBC encryption of the payload affect detectability? Encrypted payloads resemble random bitstreams, so no AUC change is expected &mdash; a positive result would indicate the detector reacts to payload structure rather than embedding distortion.</li>' +
+        '</ul>'
+    );
+}
+
+function _docsPlatform() {
+    return _ds('platform',
+        _dh2('Platform Architecture') +
+        _dp('The viewer is a single-file Python HTTP server (<code>viewer.py</code>) built on the standard library\'s <code>http.server.BaseHTTPRequestHandler</code> and <code>socketserver.ThreadingMixIn</code>. No external web framework is required.') +
+        _dh3('Backend (viewer.py)') +
+        '<ul class="docs-list">' +
+            '<li><strong>Static serving</strong> &mdash; Files under <code>/public/</code> are served with MIME-appropriate cache headers.</li>' +
+            '<li><strong>REST API</strong> &mdash; <code>GET /api/runs</code>, <code>GET /api/runs/&lt;id&gt;/detail</code>, <code>DELETE /api/runs/&lt;id&gt;</code>, <code>POST /api/pipeline/start</code>, <code>POST /api/pipeline/kill/&lt;job&gt;</code>.</li>' +
+            '<li><strong>Log streaming</strong> &mdash; <code>GET /api/pipeline/stream/&lt;job_id&gt;</code> streams subprocess stdout as Server-Sent Events.</li>' +
+            '<li><strong>Cross-instance sync</strong> &mdash; <code>GET /api/events</code> broadcasts filesystem change events to all connected browsers. A background thread polls the <code>runs/</code> directory mtime every 2 seconds and emits a <code>refresh</code> event on any change.</li>' +
+            '<li><strong>Multi-instance safety</strong> &mdash; Run IDs embed the server port (e.g. <code>prototype_20260312_p8765</code>). A <code>.running</code> marker file prevents deletion of active runs from any instance.</li>' +
+        '</ul>' +
+        _dh3('Frontend (public/)') +
+        '<ul class="docs-list">' +
+            '<li><strong>app.js</strong> &mdash; SPA router, API client, all page renderers, launch drawer, and educational carousel.</li>' +
+            '<li><strong>charts.js</strong> &mdash; ROC curve and score distribution renderers using the Canvas 2D API.</li>' +
+            '<li><strong>style.css</strong> &mdash; All styles with dark/light theming via CSS custom properties and <code>html.dark</code> / <code>html.light</code> class toggles stored in <code>localStorage</code>.</li>' +
+        '</ul>'
+    );
+}
+
+function _docsStructure() {
+    return _ds('structure',
+        _dh2('Directory Structure') +
+        _dp('All experiment source code lives under <code>src/</code>. Pipeline run outputs are written to <code>runs/</code> (git-ignored). The viewer web app lives in <code>public/</code>.') +
+        _dpre(
+'steganography/\n' +
+'├── src/\n' +
+'│   ├── common/          shared contracts and utilities\n' +
+'│   ├── data/            raw cover index CSVs\n' +
+'│   ├── detection/       steganalysis detectors\n' +
+'│   │   ├── rs_analysis.py\n' +
+'│   │   ├── chi_square_spatial.py\n' +
+'│   │   ├── chi_square_dct.py\n' +
+'│   │   ├── calibration_chi_square.py\n' +
+'│   │   ├── sample_pairs.py\n' +
+'│   │   └── statistical.py      re-exports all detectors\n' +
+'│   ├── embedding/       steganographic methods\n' +
+'│   │   ├── lsb.py              LSB sequential + keyed\n' +
+'│   │   ├── dct.py              DCT-LSB (planned)\n' +
+'│   │   └── encryption.py       AES-256-CBC payload encryption\n' +
+'│   ├── evaluation/      ROC / AUC computation helpers\n' +
+'│   ├── metrics/         image quality metrics (PSNR, SSIM)\n' +
+'│   └── pipeline/        orchestration layer\n' +
+'│       ├── cli.py              argparse entry point\n' +
+'│       ├── config.py           constants (image size, fill rates)\n' +
+'│       ├── profile.py          run profiles (prototype / full_design)\n' +
+'│       └── runner.py           PipelineRunner: all I/O and stage logic\n' +
+'├── runs/                pipeline outputs (git-ignored)\n' +
+'├── docs/                project documents and proposals\n' +
+'├── public/              viewer web application\n' +
+'└── viewer.py            self-contained HTTP server + SPA host'
+        )
+    );
+}
+
+function _docsPipeline() {
+    return _ds('pipeline',
+        _dh2('Pipeline Stages') +
+        _dp('The experiment pipeline is split into discrete CLI stages invoked via <code>python -m src.pipeline.cli &lt;command&gt;</code>. Each stage is idempotent and writes to a canonical artifact layout. The viewer\'s <strong>Launch Run</strong> button runs <code>run-all</code> with the selected profile.') +
+        _dp('Two run profiles are defined in <code>src/pipeline/profile.py</code>. Conditions = sources(3) &times; methods &times; payload levels &times; encryptions(2).') +
+        '<table class="docs-table">' +
+            '<thead><tr><th>Profile</th><th>Groups</th><th>Images/run</th><th>Methods</th><th>Payload fill rates</th><th>Conditions</th></tr></thead>' +
+            '<tbody>' +
+                '<tr><td><code>prototype</code></td><td>20</td><td>60</td><td>lsb</td><td>low (0.25)</td><td>6</td></tr>' +
+                '<tr><td><code>full_design</code></td><td>500</td><td>1500</td><td>lsb, dct</td><td>low / medium / high (0.25 / 0.50 / 0.75)</td><td>36</td></tr>' +
+            '</tbody>' +
+        '</table>' +
+        _dp('Cover sources per group: <strong>REAL</strong> (photograph from COCO / Flickr30k), <strong>ML-A</strong> (SDXL 1.0, real-photo reference), <strong>ML-B</strong> (FLUX.1-schnell, AI-image reference).') +
+
+        _ds('stage-init', _dh3('1 &middot; init-layout') +
+            _dp('Creates the expected directory tree under the run root: <code>covers/</code>, <code>payloads/</code>, <code>stego/</code>, <code>predictions/</code>, <code>metrics/</code>, <code>figures/</code>. Safe to re-run.') +
+            _dpre('python -m src.pipeline.cli init-layout')) +
+
+        _ds('stage-covers', _dh3('2 &middot; standardize-covers') +
+            _dp('Reads a raw cover index CSV (<code>--input-index</code>) and for each image writes a grayscale 512&times;512 PNG variant (for spatial LSB) and a grayscale 512&times;512 JPEG Q=95 variant (for DCT-LSB). Outputs <code>covers_master.csv</code>.') +
+            _dpre('python -m src.pipeline.cli standardize-covers \\\n  --input-index data/cover_index.csv')) +
+
+        _ds('stage-manifests', _dh3('3 &amp; 4 &middot; Build Manifests') +
+            _dp('<strong>build-payload-manifest</strong> generates pseudo-random payload bytes at each active fill rate (seeded by <code>payload_seed=42</code>) and writes the manifest. <code>--write-files</code> materialises the payload binary files to disk.') +
+            _dp('<strong>build-stego-manifest</strong> computes the Cartesian product of covers &times; methods &times; payload levels &times; encryption variants (plain, aes256cbc), producing one row per embedding job.') +
+            _dpre('python -m src.pipeline.cli build-payload-manifest \\\n  --covers-manifest covers_master.csv\npython -m src.pipeline.cli build-stego-manifest \\\n  --covers-manifest covers_master.csv \\\n  --payload-manifest payload_manifest.csv')) +
+
+        _ds('stage-embedding', _dh3('5 &middot; run-embedding-stage') +
+            _dp('For each row in the stego manifest: loads the cover image, optionally encrypts the payload with AES-256-CBC, embeds it using the specified method (<code>lsb</code> or <code>dct</code>), and writes the stego image. Without <code>--execute</code> it is a dry run that counts rows only.') +
+            _dpre('python -m src.pipeline.cli run-embedding-stage \\\n  --stego-manifest stego_manifest.csv --execute')) +
+
+        _ds('stage-detectors', _dh3('6 &middot; run-detectors') +
+            _dp('Runs every active detector against every stego and cover image. Writes one prediction row per (image, detector) pair to <code>predictions.csv</code>. <code>--skip-unimplemented</code> silently skips any detector that raises <code>NotImplementedError</code> (used by the prototype profile).') +
+            _dpre('python -m src.pipeline.cli run-detectors \\\n  --stego-manifest stego_manifest.csv --execute --skip-unimplemented')) +
+
+        _ds('stage-metrics', _dh3('7 &middot; compute-metrics') +
+            _dp('Aggregates detector predictions into four metric tables: per-detector (ROC-AUC, EER, accuracy at Youden\'s J), per-condition, per-source, and quality metrics (PSNR/SSIM if a pre-computed CSV is supplied). These populate the Results and Conditions tabs in the viewer.') +
+            _dpre('python -m src.pipeline.cli compute-metrics \\\n  --predictions predictions.csv')) +
+
+        _dh3('8 &middot; plot-metrics') +
+        _dp('Generates AUC summary figures: AUC by source/detector and AUC by method/detector. Written to <code>results/figures/</code>.') +
+        _dpre('python -m src.pipeline.cli plot-metrics') +
+
+        _dh3('run-all') +
+        _dp('Convenience command that runs all stages in sequence. Accepts <code>--profile</code> to scope the config, <code>--execute-embeddings</code> and <code>--execute-detectors</code> flags, and <code>--generate-figures</code>. This is the command the viewer\'s Launch panel calls.')
+    );
+}
+
+function _docsEmbedding() {
+    return _ds('embedding',
+        _dh2('Embedding Methods') +
+
+        _ds('lsb-seq', _dh3('LSB Sequential') +
+            _dbadge('IMPLEMENTED', 'ok') +
+            _dp('The primary embedding method. Converts the cover image to 8-bit grayscale, flattens to row-major order, and overwrites the LSB(s) of the first <code>floor(N &times; fill_rate)</code> pixels with payload bits. Sequential order is intentional — it ensures RS analysis, chi-square, and Sample Pairs detectors observe the expected statistical pattern.') +
+            _dpre(
+'embed_lsb(\n' +
+'    cover_image   : Image.Image,\n' +
+'    payload_bytes : bytes,\n' +
+'    fill_rate     : float,   # 0.25 | 0.50 | 0.75\n' +
+'    *,\n' +
+'    bit_depth     : int = 1  # bits per pixel replaced\n' +
+') -> Image.Image'
+            ) +
+            _dp('Embedding for each pixel position <em>i</em>:') +
+            _dpre(
+'mask     = ~((1 << bit_depth) - 1) & 0xFF   # clears target bits\n' +
+'stego[i] = (cover[i] & mask) | payload_bits[i]'
+            )
+        ) +
+
+        _ds('lsb-keyed', _dh3('LSB Keyed') +
+            _dbadge('IMPLEMENTED — OPTIONAL EXTENSION', 'warn') +
+            _dp('An extension provided in <code>src/embedding/lsb.py</code> but <strong>not used by either run profile</strong>. It shuffles embedding positions using a SHA-256-derived PRNG seed, spreading distortion uniformly but breaking the sequential-order assumption of training-free detectors. The main pipeline always uses sequential LSB.') +
+            _dpre(
+'embed_lsb_keyed(\n' +
+'    cover_image   : Image.Image,\n' +
+'    payload_bytes : bytes,\n' +
+'    fill_rate     : float,\n' +
+'    *,\n' +
+'    bit_depth     : int = 1,\n' +
+'    key           : str      # passphrase used as PRNG seed\n' +
+') -> Image.Image'
+            ) +
+            _dp('Key derivation: <code>seed = int(sha256(key.encode("utf-8")).hexdigest(), 16)</code>. A <code>random.Random(seed)</code> instance shuffles the full pixel index list; the first <code>usable_pixels</code> positions are used for embedding.')
+        ) +
+
+        _ds('dct-lsb', _dh3('DCT LSB (JSteg-style)') +
+            _dbadge('PLANNED', 'warn') +
+            _dp('JSteg-style LSB replacement in quantised DCT coefficients of JPEG images. DC coefficients and zero-valued AC coefficients are skipped to avoid introducing new non-zero values. Embedding traverses 8&times;8 blocks in row-major order, using the first <code>fill_rate</code> fraction of eligible AC coefficients as positions. Modified coefficients are re-entropy-coded without a second quantization pass.') +
+            _dpre(
+'embed_dct_lsb_jpeg(\n' +
+'    cover_jpeg_bytes : bytes,\n' +
+'    payload_bytes    : bytes,\n' +
+'    fill_rate        : float,\n' +
+'    *,\n' +
+'    jpeg_quality     : int = 95\n' +
+') -> bytes   # JPEG bytes'
+            ) +
+            _dp('References: ' + _dref('westfeld1999') + ' ' + _dref('fridrich2003'))
+        )
+    );
+}
+
+function _docsDetectors() {
+    return _ds('detectors',
+        _dh2('Steganalysis Detectors') +
+        _dp('All detectors return a single float score where <strong>higher values indicate stronger evidence of embedding</strong>. Cover images produce low scores; stego images ideally produce high scores. ROC-AUC and EER are computed from the score distributions.') +
+
+        _ds('det-rs', _dh3('RS Analysis') +
+            _dbadge('IMPLEMENTED', 'ok') +
+            _dp('Pixels are extracted as non-overlapping 2&times;2 blocks (flattened to 4-element vectors). Smoothness <em>f</em> of each block is the sum of absolute differences between adjacent elements. Two masks are then applied to each block:') +
+            '<ul class="docs-list">' +
+                '<li><strong>Positive mask</strong> &mdash; XOR positions 1 and 2 (0-indexed) with 1, flipping their LSB.</li>' +
+                '<li><strong>Negative mask</strong> &mdash; at positions 1 and 2: subtract 1 if the value is even, add 1 if odd.</li>' +
+            '</ul>' +
+            _dp('Each block is classified by comparing its post-mask smoothness to <em>f</em>:') +
+            '<ul class="docs-list">' +
+                '<li><strong>Regular (R)</strong> &mdash; smoothness increases after masking</li>' +
+                '<li><strong>Singular (S)</strong> &mdash; smoothness decreases after masking</li>' +
+            '</ul>' +
+            _dp('In an unmodified image R<sub>m</sub>&nbsp;&asymp;&nbsp;R<sub>&minus;m</sub> and S<sub>m</sub>&nbsp;&asymp;&nbsp;S<sub>&minus;m</sub>. LSB replacement disrupts this balance. Score:') +
+            _dpre('score = |R_m \u2212 R_\u2212m| + |S_m \u2212 S_\u2212m|') +
+            _dp('Computed independently per colour channel; the maximum channel score is returned. ' + _dref('fridrich2001'))
+        ) +
+
+        _ds('det-chi-spatial', _dh3('Chi-Square Spatial') +
+            _dbadge('IMPLEMENTED', 'ok') +
+            _dp('For each of the 128 value pairs (2k,&thinsp;2k+1), the expected count under full LSB replacement is the average of the two observed histogram bins. The chi-square statistic accumulates one term per valid pair (where E&nbsp;&gt;&nbsp;0) using only the even-valued bin:') +
+            _dpre(
+'E         = (n[2k] + n[2k+1]) / 2\n' +
+'\u03c7\u00b2 += (n[2k] \u2212 E)\u00b2 / E       # one term per pair\n' +
+'df        = valid pairs \u2212 1\n' +
+'score     = chi2.sf(\u03c7\u00b2, df)   # survival function: high = evidence of embedding'
+            ) +
+            _dp('A cover image has unbalanced pairs (high &chi;&sup2;, low survival probability, low score). An LSB-embedded image has balanced pairs (low &chi;&sup2;, high survival probability, high score). ' + _dref('westfeld1999'))
+        ) +
+
+        _ds('det-sample', _dh3('Sample Pairs Analysis') +
+            _dbadge('IMPLEMENTED', 'ok') +
+            _dp('Analyses the trace multiset T of adjacent pixel pairs across the image in row-major order. T counts pairs (u,&thinsp;v) where one value is even and the other is odd. Sequential LSB embedding predictably shifts these counts. The embedding rate &beta; is estimated by solving a quadratic derived from the shifted multiset statistics.') +
+            _dpre(
+'sample_pairs_score(\n' +
+'    image : Image.Image\n' +
+') -> float'
+            ) +
+            _dp(_dref('dumitrescu2003'))
+        ) +
+
+        _ds('det-chi-dct', _dh3('Chi-Square DCT') +
+            _dbadge('NOT YET IMPLEMENTED', 'err') +
+            _dp('Applies the same chi-square pairs-of-values test as the spatial variant, but to quantised DCT coefficients of a JPEG image. DC coefficients are excluded; only non-zero AC values are tested. Targeted at stego images produced by DCT-LSB embedding.') +
+            _dpre(
+'chi_square_dct_score(\n' +
+'    jpeg_bytes : bytes\n' +
+') -> float'
+            ) +
+            _dp(_dref('westfeld1999'))
+        ) +
+
+        _ds('det-calib', _dh3('Calibration Chi-Square') +
+            _dbadge('NOT YET IMPLEMENTED', 'err') +
+            _dp('Improves on the DCT chi-square by constructing a calibration reference: the suspect JPEG is cropped by a non-block-aligned offset (typically 4 pixels), re-compressed at the same quality factor, and its DCT histogram is compared against the original. This subtracts the natural DCT statistics shared by both, leaving only embedding artefacts.') +
+            _dpre(
+'calibration_chi_square_score(\n' +
+'    jpeg_bytes   : bytes,\n' +
+'    *,\n' +
+'    jpeg_quality : int = 95\n' +
+') -> float'
+            ) +
+            _dp(_dref('fridrich2003'))
+        )
+    );
+}
+
+function _docsEncryption() {
+    return _ds('encryption',
+        _dh2('Encryption') +
+        _dp('Before embedding, the payload can optionally be encrypted with AES-256-CBC. This is controlled by the <em>encryption</em> column of the stego manifest &mdash; each job specifies <code>plain</code> or <code>aes256cbc</code>.') +
+        _dpre(
+'encrypt_payload_aes_256_cbc(\n' +
+'    payload : bytes,\n' +
+'    key     : bytes,   # exactly 32 bytes\n' +
+'    iv      : bytes    # exactly 16 bytes (CBC IV)\n' +
+') -> bytes'
+        ) +
+        '<ul class="docs-list">' +
+            '<li>AES-256 in CBC mode with PKCS#7 padding (128-bit blocks), using the <code>cryptography</code> library.</li>' +
+            '<li>IV is derived deterministically: <code>SHA-256(f"{group_id}:{payload_level}".encode())[:16]</code>. This makes ciphertext fully reproducible for a fixed group and payload level without storing the IV separately.</li>' +
+            '<li>The payload itself is a <strong>pseudo-random bitstream</strong> generated by the pipeline (seeded by <code>payload_seed=42</code>). The plain variant embeds this bitstream directly; the encrypted variant embeds its AES-256-CBC ciphertext.</li>' +
+            '<li>Encryption is an in-memory operation; <code>PipelineRunner</code> handles all file I/O.</li>' +
+            '<li>Since both the plaintext payload and the ciphertext are statistically close to uniform random bytes, the detectability difference between the two encryption conditions measures only the overhead introduced by PKCS#7 block alignment (RQ5).</li>' +
+        '</ul>'
+    );
+}
+
+function _docsRefs() {
+    return _ds('refs',
+        _dh2('References') +
+        '<ol class="docs-ref-list">' +
+            '<li id="ref-fridrich2001"><strong>[fridrich2001]</strong> Fridrich, J., Goljan, M., and Du, R. &ldquo;Reliable detection of LSB steganography in color and grayscale images.&rdquo; <em>IEEE Multimedia</em>, vol.&nbsp;8, no.&nbsp;4, pp.&nbsp;22&ndash;28, 2001.</li>' +
+            '<li id="ref-westfeld1999"><strong>[westfeld1999]</strong> Westfeld, A. and Pfitzmann, A. &ldquo;Attacks on steganographic systems.&rdquo; Proc. <em>Information Hiding (IH)</em>, LNCS 1768, pp.&nbsp;61&ndash;76, 1999.</li>' +
+            '<li id="ref-dumitrescu2003"><strong>[dumitrescu2003]</strong> Dumitrescu, S., Wu, X., and Wang, Z. &ldquo;Detection of LSB steganography via sample pair analysis.&rdquo; <em>IEEE Trans. Signal Process.</em>, vol.&nbsp;51, no.&nbsp;7, pp.&nbsp;1995&ndash;2007, 2003.</li>' +
+            '<li id="ref-fridrich2003"><strong>[fridrich2003]</strong> Fridrich, J., Goljan, M., and Hogea, D. &ldquo;Steganalysis of JPEG images: breaking the F5 algorithm.&rdquo; Proc. <em>Information Hiding (IH)</em>, LNCS 2578, pp.&nbsp;310&ndash;323, 2003.</li>' +
+        '</ol>'
+    );
+}
+
+function initDocsSpy() {
+    var links    = document.querySelectorAll('.docs-toc-link');
+    var sections = document.querySelectorAll('.docs-section[id]');
+    if (!sections.length) return;
+
+    /* Smooth scroll on TOC clicks */
+    links.forEach(function(a) {
+        a.addEventListener('click', function(e) {
+            e.preventDefault();
+            var target = document.getElementById(a.getAttribute('href').slice(1));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    /* Scroll spy */
+    var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (!entry.isIntersecting) return;
+            links.forEach(function(l) { l.classList.remove('active'); });
+            var id = entry.target.id;
+            var a = document.querySelector('.docs-toc-link[href="#' + id + '"]');
+            if (a) {
+                a.classList.add('active');
+                var parentId = _CHILD_PARENT[id];
+                if (parentId) {
+                    var pa = document.querySelector('.docs-toc-link[href="#' + parentId + '"]');
+                    if (pa) pa.classList.add('active');
+                }
+            }
+        });
+    }, { rootMargin: '-8% 0px -78% 0px', threshold: 0 });
+
+    sections.forEach(function(s) { obs.observe(s); });
+}
+
+var PROPOSAL_DIVERGENCES = [
+    {
+        title: 'Image Generation Model',
+        proposed: 'PixArt-\u03b1',
+        actual: 'FLUX',
+        reason: 'No hosted PixelArt model was available on the HuggingFace Inference API, and running models locally was not feasible for most team members. FLUX was chosen as the nearest accessible alternative.'
+    },
+    {
+        title: 'Vertical Prototype Coverage',
+        proposed: 'LSB + DCT',
+        actual: 'LSB only',
+        reason: 'The proposal states the vertical prototype validates both the LSB and DCT embedding branches. In practice, only the LSB branch is validated in depth for the prototype. DCT will be included in the full design run.'
+    },
+    {
+        title: 'Prototype Payload Level',
+        proposed: 'Medium',
+        actual: 'Low',
+        reason: 'The prototype pipeline uses low payload capacity to establish a clean baseline with minimal distortion. Medium and high levels will be re-introduced in the full design run once the detection pipeline is validated.'
+    }
+];
+
+function renderProposalPage() {
+    var cards = PROPOSAL_DIVERGENCES.map(function(d) {
+        return '<div class="div-card">' +
+            '<div class="div-card-badge">DIVERGENCE</div>' +
+            '<div class="div-card-title">' + escapeHtml(d.title) + '</div>' +
+            '<div class="div-card-diff">' +
+                '<span class="div-proposed">' + escapeHtml(d.proposed) + '</span>' +
+                '<span class="div-arrow">→</span>' +
+                '<span class="div-actual">' + escapeHtml(d.actual) + '</span>' +
+            '</div>' +
+            '<div class="div-card-reason">' + escapeHtml(d.reason) + '</div>' +
+        '</div>';
+    }).join('');
+
+    return '<div class="proposal-page">' +
+        '<div class="proposal-header">' +
+            '<div class="proposal-header-left">' +
+                '<div class="proposal-header-title">Project Proposal</div>' +
+                '<div class="proposal-header-sub">Approved midway proposal — February 2026. The prototype implementation diverges from this plan in the following ways.</div>' +
+            '</div>' +
+            '<div class="div-cards">' + cards + '</div>' +
+        '</div>' +
+        '<iframe class="proposal-embed" src="/public/proposal.html"></iframe>' +
+    '</div>';
+}
+
+// ── Educational carousel (shown on empty runs page) ──────────────────────────
+
+var EDU_SLIDES = [
+    {
+        tag: 'PROJECT OVERVIEW',
+        title: 'Research Questions',
+        body: 'Does the source of carrier image affect steganographic detectability? We test three sources — real photographs, ML-generated images using a real photo as reference, and ML-generated images using an AI image as reference — and measure whether statistical detectors behave differently across them.',
+        visual: '<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">' +
+            '<rect x="8" y="14" width="68" height="34" rx="5" fill="rgba(102,217,160,0.12)" stroke="rgba(102,217,160,0.35)" stroke-width="1.2"/>' +
+            '<text x="42" y="28" text-anchor="middle" font-size="8.5" fill="#66d9a0" font-family="monospace" font-weight="700">REAL</text>' +
+            '<text x="42" y="41" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,0.45)">photograph</text>' +
+            '<rect x="8" y="58" width="68" height="34" rx="5" fill="rgba(130,120,255,0.12)" stroke="rgba(130,120,255,0.35)" stroke-width="1.2"/>' +
+            '<text x="42" y="72" text-anchor="middle" font-size="8.5" fill="#8278ff" font-family="monospace" font-weight="700">ML-A</text>' +
+            '<text x="42" y="85" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,0.45)">real reference</text>' +
+            '<rect x="8" y="102" width="68" height="34" rx="5" fill="rgba(240,192,80,0.12)" stroke="rgba(240,192,80,0.35)" stroke-width="1.2"/>' +
+            '<text x="42" y="116" text-anchor="middle" font-size="8.5" fill="#f0c050" font-family="monospace" font-weight="700">ML-B</text>' +
+            '<text x="42" y="129" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,0.45)">AI reference</text>' +
+            '<line x1="76" y1="31" x2="108" y2="66" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="3,2"/>' +
+            '<line x1="76" y1="75" x2="108" y2="75" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="3,2"/>' +
+            '<line x1="76" y1="119" x2="108" y2="84" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="3,2"/>' +
+            '<rect x="108" y="54" width="52" height="42" rx="5" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.15)" stroke-width="1.2"/>' +
+            '<text x="134" y="71" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.5)">LSB</text>' +
+            '<text x="134" y="83" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.5)">embed</text>' +
+            '<line x1="160" y1="75" x2="185" y2="75" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>' +
+            '<polygon points="185,71 193,75 185,79" fill="rgba(255,255,255,0.2)"/>' +
+            '<rect x="193" y="54" width="58" height="42" rx="5" fill="rgba(99,179,255,0.1)" stroke="rgba(99,179,255,0.3)" stroke-width="1.2"/>' +
+            '<text x="222" y="71" text-anchor="middle" font-size="8" fill="rgba(99,179,255,0.8)">Detect?</text>' +
+            '<text x="222" y="85" text-anchor="middle" font-size="18" fill="rgba(99,179,255,0.6)">?</text>' +
+        '</svg>'
+    },
+    {
+        tag: 'EMBEDDING METHOD',
+        title: 'How LSB Embedding Works',
+        body: 'Least Significant Bit replacement encodes a secret bit by overwriting the final bit of a pixel. A pixel of 150 (10010110₂) with a secret bit 1 becomes 151 (10010111₂). The ±1 change is invisible to the eye, but creates statistical regularities that trained detectors can measure.',
+        visual: '<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">' +
+            '<text x="8" y="22" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">Cover pixel  150₁₀</text>' +
+            // 8 bit boxes for 10010110
+            ['1','0','0','1','0','1','1','0'].map(function(b,i){
+                var x = 8 + i*28; var isLSB = i===7;
+                return '<rect x="'+x+'" y="28" width="24" height="24" rx="3" fill="'+(isLSB?'rgba(99,179,255,0.18)':'rgba(255,255,255,0.06)')+'" stroke="'+(isLSB?'rgba(99,179,255,0.5)':'rgba(255,255,255,0.15)')+'" stroke-width="1.2"/>' +
+                       '<text x="'+(x+12)+'" y="45" text-anchor="middle" font-size="11" fill="'+(isLSB?'rgba(99,179,255,0.9)':'rgba(255,255,255,0.6)')+'" font-family="monospace" font-weight="600">'+b+'</text>';
+            }).join('') +
+            '<text x="8" y="76" font-size="8" fill="rgba(255,255,255,0.25)" font-family="monospace">bit 7 (MSB)                bit 0 (LSB)</text>' +
+            '<text x="8" y="100" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">Stego pixel  151₁₀</text>' +
+            ['1','0','0','1','0','1','1','1'].map(function(b,i){
+                var x = 8 + i*28; var isLSB = i===7;
+                return '<rect x="'+x+'" y="106" width="24" height="24" rx="3" fill="'+(isLSB?'rgba(102,217,160,0.25)':'rgba(255,255,255,0.06)')+'" stroke="'+(isLSB?'rgba(102,217,160,0.7)':'rgba(255,255,255,0.15)')+'" stroke-width="1.2"/>' +
+                       '<text x="'+(x+12)+'" y="123" text-anchor="middle" font-size="11" fill="'+(isLSB?'#66d9a0':'rgba(255,255,255,0.6)')+'" font-family="monospace" font-weight="600">'+b+'</text>';
+            }).join('') +
+            '<text x="216" y="62" font-size="18" fill="rgba(240,192,80,0.7)">↓</text>' +
+            '<text x="205" y="91" font-size="8" fill="rgba(240,192,80,0.5)" font-family="monospace">secret bit</text>' +
+        '</svg>'
+    },
+    {
+        tag: 'DETECTOR · RS ANALYSIS',
+        title: 'Regular-Singular (RS) Analysis',
+        body: 'Pixels are partitioned into groups of 4. A flipping mask (+1/−1) is applied, and each group is classified as Regular (lower variance after flip), Singular (higher variance), or Unusable. In a clean image R ≈ R̄ and S ≈ S̄. LSB replacement predictably shifts these counts, revealing embedding.',
+        visual: '<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">' +
+            // pixel group
+            '<text x="8" y="18" font-size="8.5" fill="rgba(255,255,255,0.35)" font-family="monospace">Pixel group (4 px)</text>' +
+            [148,151,149,150].map(function(v,i){
+                var x = 8+i*46;
+                return '<rect x="'+x+'" y="24" width="38" height="28" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>' +
+                       '<text x="'+(x+19)+'" y="43" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.7)" font-family="monospace">'+v+'</text>';
+            }).join('') +
+            '<text x="8" y="68" font-size="8.5" fill="rgba(255,255,255,0.35)" font-family="monospace">Apply mask  [+1,−1,+1,−1]</text>' +
+            [149,150,150,149].map(function(v,i){
+                var x = 8+i*46;
+                return '<rect x="'+x+'" y="74" width="38" height="28" rx="4" fill="rgba(130,120,255,0.1)" stroke="rgba(130,120,255,0.3)" stroke-width="1"/>' +
+                       '<text x="'+(x+19)+'" y="93" text-anchor="middle" font-size="10" fill="rgba(130,120,255,0.9)" font-family="monospace">'+v+'</text>';
+            }).join('') +
+            '<text x="8" y="122" font-size="8" fill="rgba(255,255,255,0.3)">Variance decreased →</text>' +
+            '<rect x="152" y="110" width="60" height="22" rx="4" fill="rgba(102,217,160,0.12)" stroke="rgba(102,217,160,0.35)" stroke-width="1.2"/>' +
+            '<text x="182" y="125" text-anchor="middle" font-size="9.5" fill="#66d9a0" font-weight="700">REGULAR</text>' +
+        '</svg>'
+    },
+    {
+        tag: 'DETECTOR · CHI-SQUARE',
+        title: 'Chi-Square Spatial Attack',
+        body: 'LSB replacement pairs up pixel values that differ only in their final bit (2k ↔ 2k+1). In a natural image these pairs have different frequencies; embedding equalises them toward a 50/50 split. The chi-square statistic quantifies how far the observed pair frequencies deviate from this expected equipartition.',
+        visual: '<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">' +
+            '<text x="14" y="16" font-size="8.5" fill="rgba(255,255,255,0.35)" font-family="monospace">Cover image pairs</text>' +
+            // bars for cover (unequal pairs)
+            [[14,62],[20,38],[18,28],[24,48],[16,34],[22,44],[12,18],[20,32]].map(function(pair,i){
+                var x = 14+i*28; var h1=pair[0]*1.1; var h2=pair[1]*1.1; var base=130;
+                return '<rect x="'+x+'" y="'+(base-h1)+'" width="10" height="'+h1+'" rx="1" fill="rgba(99,179,255,0.5)"/>' +
+                       '<rect x="'+(x+12)+'" y="'+(base-h2)+'" width="10" height="'+h2+'" rx="1" fill="rgba(99,179,255,0.25)"/>';
+            }).join('') +
+            '<line x1="14" y1="130" x2="248" y2="130" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>' +
+            '<text x="14" y="145" font-size="7.5" fill="rgba(99,179,255,0.6)" font-family="monospace">2k vs 2k+1 pairs — natural distribution</text>' +
+        '</svg>'
+    },
+    {
+        tag: 'DETECTOR · SAMPLE PAIRS',
+        title: 'Sample Pairs Analysis',
+        body: 'Analyses the multiset statistics of adjacent pixel pairs across the image. Sequential LSB embedding predictably shifts the count of pairs where one value is even and the other odd (the "trace" multiset). The estimated embedding rate β is derived directly from these shifted counts.',
+        visual: '<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">' +
+            '<text x="8" y="16" font-size="8.5" fill="rgba(255,255,255,0.35)" font-family="monospace">Adjacent pixel pairs</text>' +
+            // 4x3 grid of pairs
+            [
+                [148,151],[150,149],[147,152],[151,148],
+                [149,150],[152,151],[148,149],[150,151],
+                [151,152],[147,148],[150,149],[152,153]
+            ].map(function(pair,i){
+                var col=i%4; var row=Math.floor(i/4);
+                var x=8+col*60; var y=26+row*36;
+                var isOddEven = (pair[0]%2===0 && pair[1]%2===1)||(pair[0]%2===1 && pair[1]%2===0);
+                return '<rect x="'+x+'" y="'+y+'" width="24" height="22" rx="3" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>' +
+                       '<text x="'+(x+12)+'" y="'+(y+15)+'" text-anchor="middle" font-size="8.5" fill="rgba(255,255,255,'+(pair[0]%2===1?'0.75':'0.45')+')" font-family="monospace">'+pair[0]+'</text>' +
+                       '<rect x="'+(x+28)+'" y="'+y+'" width="24" height="22" rx="3" fill="'+(isOddEven?'rgba(240,192,80,0.15)':'rgba(255,255,255,0.06)')+'" stroke="'+(isOddEven?'rgba(240,192,80,0.4)':'rgba(255,255,255,0.12)')+'" stroke-width="1"/>' +
+                       '<text x="'+(x+40)+'" y="'+(y+15)+'" text-anchor="middle" font-size="8.5" fill="'+(isOddEven?'rgba(240,192,80,0.9)':'rgba(255,255,255,0.45)')+'" font-family="monospace">'+pair[1]+'</text>';
+            }).join('') +
+            '<text x="8" y="142" font-size="7.5" fill="rgba(240,192,80,0.6)">highlighted = odd/even pairs (trace multiset)</text>' +
+        '</svg>'
+    },
+    {
+        tag: 'EXPERIMENTAL DESIGN',
+        title: 'Pipeline at a Glance',
+        body: 'The prototype validates the full pipeline at small scale: 20 image groups, 1 embedding method (LSB), 1 payload level, 3 statistical detectors. The full design run scales to 500 groups, 2 methods, 3 payload levels, and 5 detectors — producing ~15,000 individual detection scores per run.',
+        visual: '<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">' +
+            // Row labels
+            '<text x="10" y="26" font-size="8" fill="rgba(102,217,160,0.7)" font-family="monospace" font-weight="700">PROTOTYPE</text>' +
+            '<text x="10" y="92" font-size="8" fill="rgba(99,179,255,0.7)" font-family="monospace" font-weight="700">FULL DESIGN</text>' +
+            // Divider
+            '<line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>' +
+            // Prototype stats: 4 cells
+            [
+                ['20','groups'],['1','method'],['1','payload'],['3','detectors']
+            ].map(function(s,i){
+                var x = 10 + i*60;
+                return '<text x="'+(x+22)+'" y="47" text-anchor="middle" font-size="18" fill="rgba(102,217,160,0.9)" font-family="monospace" font-weight="700">'+s[0]+'</text>' +
+                       '<text x="'+(x+22)+'" y="57" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,0.3)" font-family="monospace">'+s[1]+'</text>';
+            }).join('') +
+            // Full design stats: 4 cells
+            [
+                ['500','groups'],['2','methods'],['3','payloads'],['5','detectors']
+            ].map(function(s,i){
+                var x = 10 + i*60;
+                return '<text x="'+(x+22)+'" y="115" text-anchor="middle" font-size="18" fill="rgba(99,179,255,0.9)" font-family="monospace" font-weight="700">'+s[0]+'</text>' +
+                       '<text x="'+(x+22)+'" y="125" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,0.3)" font-family="monospace">'+s[1]+'</text>';
+            }).join('') +
+        '</svg>'
+    }
+];
+
+var _eduTimer = null;
+var _eduIdx = 0;
+
+function buildEduCarousel() {
+    var dots = EDU_SLIDES.map(function(_, i) {
+        return '<button class="edu-dot' + (i === 0 ? ' active' : '') + '" onclick="eduGoTo(' + i + ')"></button>';
+    }).join('');
+
+    var slides = EDU_SLIDES.map(function(s) {
+        return '<div class="edu-slide">' +
+            '<div class="edu-visual">' + s.visual + '</div>' +
+            '<div class="edu-text">' +
+                '<div class="edu-tag">' + escapeHtml(s.tag) + '</div>' +
+                '<div class="edu-title">' + escapeHtml(s.title) + '</div>' +
+                '<div class="edu-body">' + escapeHtml(s.body) + '</div>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+
+    return '<div class="edu-section">' +
+        '<div class="edu-label">While you wait — project primer</div>' +
+        '<div class="edu-carousel" id="edu-carousel">' +
+            '<div class="edu-track" id="edu-track">' + slides + '</div>' +
+            '<button class="edu-arrow edu-prev" onclick="eduPrev()" aria-label="Previous">&#8249;</button>' +
+            '<button class="edu-arrow edu-next" onclick="eduNext()" aria-label="Next">&#8250;</button>' +
+            '<div class="edu-dots">' + dots + '</div>' +
+        '</div>' +
+    '</div>';
+}
+
+function initEduCarousel() {
+    _eduIdx = 0;
+    clearInterval(_eduTimer);
+    _eduTimer = setInterval(function() { eduNext(); }, 7000);
+}
+
+function eduGoTo(idx) {
+    _eduIdx = (idx + EDU_SLIDES.length) % EDU_SLIDES.length;
+    var track = document.getElementById('edu-track');
+    if (track) track.style.transform = 'translateX(-' + (_eduIdx * 100) + '%)';
+    document.querySelectorAll('.edu-dot').forEach(function(d, i) {
+        d.classList.toggle('active', i === _eduIdx);
+    });
+    clearInterval(_eduTimer);
+    _eduTimer = setInterval(function() { eduNext(); }, 7000);
+}
+
+function eduNext() { eduGoTo(_eduIdx + 1); }
+function eduPrev() { eduGoTo(_eduIdx - 1); }
 
 async function renderRunsList(el, token) {
     try {
@@ -216,7 +857,9 @@ async function renderRunsList(el, token) {
                     '<div class="empty-actions">' +
                         '<button class="btn btn-primary" onclick="openLaunchPanel()">' + icon('add') + ' New Run</button>' +
                     '</div>' +
-                '</div>';
+                '</div>' +
+                buildEduCarousel();
+            initEduCarousel();
             return;
         }
 
@@ -255,7 +898,9 @@ async function renderRunsList(el, token) {
                     '<div class="glass-panel-head"><div class="glass-panel-title">Analysis Tip</div></div>' +
                     '<div class="glass-panel-body">' + tip + '</div>' +
                 '</div>' +
-            '</div>';
+            '</div>' +
+            buildEduCarousel();
+        initEduCarousel();
     } catch (error) {
         if (token !== STATE.renderToken) return;
         el.innerHTML = renderError(error.message, 'Retry', 'render()');
