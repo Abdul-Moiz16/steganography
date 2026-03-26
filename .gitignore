@@ -29,3 +29,4 @@ venv/
 
 # Test output artifacts
 tests/output/
+/node_modules
