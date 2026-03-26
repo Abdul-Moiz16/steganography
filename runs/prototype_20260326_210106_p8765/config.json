@@ -1,0 +1,27 @@
+{
+  "active_methods": [
+    "lsb"
+  ],
+  "active_payload_levels": [
+    "low"
+  ],
+  "aes_key_id": "aes256cbc-v1",
+  "cover_seed": 1245708340,
+  "embed_seed": 42,
+  "image_size": [
+    512,
+    512
+  ],
+  "jpeg_quality": 95,
+  "n_groups": 20,
+  "payload_fill_rates": {
+    "high": 0.75,
+    "low": 0.25,
+    "medium": 0.5
+  },
+  "payload_seed": 42,
+  "primary_lsb_bit_depth": 1,
+  "profile": "prototype",
+  "split_seed": 42,
+  "timestamp": "2026-03-26T20:07:33Z"
+}
