@@ -8,7 +8,25 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/public/style.css?v=9">
+    <!-- Stylesheets (split from style.css) -->
+    <link rel="stylesheet" href="/public/css/variables.css?v=10">
+    <link rel="stylesheet" href="/public/css/reset.css?v=10">
+    <link rel="stylesheet" href="/public/css/topbar.css?v=10">
+    <link rel="stylesheet" href="/public/css/sidebar.css?v=10">
+    <link rel="stylesheet" href="/public/css/layout.css?v=10">
+    <link rel="stylesheet" href="/public/css/buttons.css?v=10">
+    <link rel="stylesheet" href="/public/css/cards.css?v=10">
+    <link rel="stylesheet" href="/public/css/table.css?v=10">
+    <link rel="stylesheet" href="/public/css/results.css?v=10">
+    <link rel="stylesheet" href="/public/css/gallery.css?v=10">
+    <link rel="stylesheet" href="/public/css/conditions.css?v=10">
+    <link rel="stylesheet" href="/public/css/launch.css?v=10">
+    <link rel="stylesheet" href="/public/css/docs.css?v=10">
+    <link rel="stylesheet" href="/public/css/carousel.css?v=10">
+    <link rel="stylesheet" href="/public/css/proposal.css?v=10">
+    <link rel="stylesheet" href="/public/css/dialogs.css?v=10">
+    <link rel="stylesheet" href="/public/css/animations.css?v=10">
+    <link rel="stylesheet" href="/public/css/run-detail.css?v=10">
 </head>
 <body>
     <!-- Top nav -->
@@ -125,7 +143,27 @@
         </div>
     </div>
 
-    <script src="/public/charts.js?v=9"></script>
-    <script src="/public/app.js?v=9"></script>
+    <!-- Chart helpers (Canvas 2D) -->
+    <script src="/public/charts.js?v=10"></script>
+
+    <!-- Application scripts (split from app.js, load order matters) -->
+    <script src="/public/js/state.js?v=10"></script>
+    <script src="/public/js/utils.js?v=10"></script>
+    <script src="/public/js/sidebar.js?v=10"></script>
+    <script src="/public/js/search.js?v=10"></script>
+    <script src="/public/js/router.js?v=10"></script>
+    <script src="/public/js/docs.js?v=10"></script>
+    <script src="/public/js/proposal.js?v=10"></script>
+    <script src="/public/js/carousel.js?v=10"></script>
+    <script src="/public/js/runs-list.js?v=10"></script>
+    <script src="/public/js/results.js?v=10"></script>
+    <script src="/public/js/run-detail.js?v=10"></script>
+    <script src="/public/js/gallery.js?v=10"></script>
+    <script src="/public/js/conditions.js?v=10"></script>
+    <script src="/public/js/launch.js?v=10"></script>
+    <script src="/public/js/streaming.js?v=10"></script>
+    <script src="/public/js/dialogs.js?v=10"></script>
+    <script src="/public/js/theme.js?v=10"></script>
+    <script src="/public/js/init.js?v=10"></script>
 </body>
 </html>

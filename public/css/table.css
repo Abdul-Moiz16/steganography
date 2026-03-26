@@ -1,0 +1,269 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tables
+   Data table, AUC badges, config table, metrics table
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ── Data table ───────────────────────────────────────────────────────────── */
+
+.data-table-wrap {
+    background: var(--surface-cont);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    border: 1px solid rgba(43, 70, 128, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.data-table thead tr {
+    background: var(--surface-cont-lo);
+}
+
+.data-table th {
+    padding: 14px 16px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--secondary-dim);
+}
+
+.data-table th:first-child { padding-left: 24px; }
+.data-table th:last-child { padding-right: 24px; text-align: right; }
+
+.data-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(43, 70, 128, 0.05);
+    font-size: 13px;
+}
+
+.data-table td:first-child { padding-left: 24px; }
+.data-table td:last-child { padding-right: 24px; text-align: right; }
+
+.data-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.data-table tbody tr:hover { background: var(--surface-cont-hi); }
+
+.data-table .row-dimmed {
+    opacity: 0.35;
+    transition: opacity 0.2s ease;
+}
+
+.data-table .row-dimmed:hover { opacity: 1; }
+
+.data-table .row-active {
+    background: rgba(240, 192, 80, 0.04);
+    border-left: 2px solid rgba(240, 192, 80, 0.4);
+}
+
+.run-live-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 6px rgba(240, 192, 80, 0.7);
+    margin-right: 7px;
+    vertical-align: middle;
+    animation: lpPulse 1.2s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+.profile-tag--dim {
+    opacity: 0.5;
+    font-style: italic;
+}
+
+.run-name {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--on-surface);
+    letter-spacing: -0.2px;
+}
+
+.run-name strong {
+    display: block;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--on-surface);
+}
+
+.run-sub-id {
+    font-size: 10px;
+    font-family: monospace;
+    color: var(--secondary-dim);
+    opacity: 0.6;
+    margin-top: 1px;
+}
+
+.profile-tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 99px;
+    background: rgba(123, 208, 255, 0.08);
+    border: 1px solid rgba(123, 208, 255, 0.15);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cell-mono {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--on-surface);
+}
+
+.cell-dim {
+    font-size: 12px;
+    color: var(--secondary-dim);
+}
+
+
+/* ── AUC badges ───────────────────────────────────────────────────────────── */
+
+.auc-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 12px;
+    border-radius: var(--radius);
+    white-space: nowrap;
+    font-family: var(--headline);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.auc-high {
+    background: rgba(123, 208, 255, 0.1);
+    border: 1px solid rgba(123, 208, 255, 0.3);
+    color: var(--primary);
+    box-shadow: 0 0 15px -3px rgba(123, 208, 255, 0.35);
+}
+
+.auc-mid {
+    background: rgba(240, 192, 80, 0.1);
+    border: 1px solid rgba(240, 192, 80, 0.25);
+    color: var(--amber);
+}
+
+.auc-low {
+    background: rgba(238, 125, 119, 0.1);
+    border: 1px solid rgba(238, 125, 119, 0.2);
+    color: var(--error);
+}
+
+.no-results {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--secondary);
+    font-style: italic;
+}
+
+.no-results .material-symbols-outlined { font-size: 10px; }
+
+.no-results span:last-child {
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+}
+
+.table-footer {
+    background: var(--surface-cont-lo);
+    padding: 10px 24px;
+    font-size: 10px;
+    font-family: monospace;
+    color: var(--secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.table-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.table-footer-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgba(43, 70, 128, 0.3);
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--secondary-dim);
+    cursor: default;
+    font-size: 12px;
+}
+
+
+/* ── Config table ─────────────────────────────────────────────────────────── */
+
+.config-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.config-table tr:last-child td { border-bottom: none; }
+
+.config-table td {
+    padding: 11px 20px;
+    border-bottom: 1px solid rgba(43, 70, 128, 0.08);
+}
+
+.config-table td:first-child {
+    color: var(--secondary-dim);
+    width: 180px;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.config-table td:last-child {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--on-surface);
+}
+
+
+/* ── Metrics table ────────────────────────────────────────────────────────── */
+
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.metrics-table th {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(43, 70, 128, 0.1);
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--secondary-dim);
+}
+
+.metrics-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(43, 70, 128, 0.05);
+}
+
+.metrics-table tr:last-child td { border-bottom: none; }
+.metrics-table tr.cond-row:hover td { background: var(--surface-cont-hi); cursor: pointer; }

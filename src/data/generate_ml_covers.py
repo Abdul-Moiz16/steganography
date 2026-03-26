@@ -19,9 +19,19 @@ import gc
 import hashlib
 import json
 import random
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+
+# Force UTF-8 console output on Windows (avoids UnicodeEncodeError on
+# restrictive codepages such as cp1253).
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 from PIL import Image
 

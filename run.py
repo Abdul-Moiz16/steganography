@@ -49,6 +49,15 @@ import os
 import sys
 from pathlib import Path
 
+# Force UTF-8 console output on Windows (avoids UnicodeEncodeError with
+# non-ASCII characters like ×, …, ✓ on restrictive codepages such as cp1253).
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 
 # ── Results summary ───────────────────────────────────────────────────────────
 

@@ -1,0 +1,66 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Foldable Condition Rows
+   Expandable detail rows in metrics tables
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ── Foldable condition rows ── */
+
+.cond-row td:first-child { user-select: none; }
+
+.cond-arrow {
+    font-size: 18px !important;
+    vertical-align: middle;
+    margin-right: 4px;
+    color: var(--secondary);
+    transition: transform 0.2s ease;
+}
+
+.cond-detail-wrap {
+    display: none;
+}
+
+.cond-detail-wrap.cond-open {
+    display: table-row;
+}
+
+.cond-detail-wrap > td {
+    padding: 0 !important;
+    border-bottom: 2px solid rgba(43, 70, 128, 0.08) !important;
+    background: var(--surface);
+}
+
+.cond-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.cond-detail-table td {
+    padding: 6px 16px;
+    border-bottom: 1px solid rgba(43, 70, 128, 0.04);
+}
+
+.cond-detail-metric:last-child td { border-bottom: none; }
+
+html.light .cond-detail-wrap > td {
+    background: #f9fafb;
+    border-bottom-color: #e5e7eb !important;
+}
+
+html.light .cond-detail-table td { border-bottom-color: #f0f0f0; }
+
+.auc-inline { display: flex; align-items: center; gap: 8px; }
+
+.auc-fill {
+    height: 5px;
+    border-radius: 3px;
+    min-width: 3px;
+    opacity: 0.75;
+}
+
+.auc-num {
+    font-family: monospace;
+    font-weight: 600;
+    font-size: 12px;
+    min-width: 44px;
+}

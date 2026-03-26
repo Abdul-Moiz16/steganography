@@ -26,6 +26,15 @@ from pathlib import Path
 from socketserver import ThreadingMixIn
 from urllib.parse import parse_qs, urlparse
 
+# Force UTF-8 console output on Windows (avoids UnicodeEncodeError on
+# restrictive codepages such as cp1253).
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 PROJECT_ROOT = Path(__file__).parent.resolve()
 PUBLIC_DIR = PROJECT_ROOT / "public"
 RUNS_DIR = PROJECT_ROOT / "runs"

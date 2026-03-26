@@ -1,0 +1,126 @@
+/* ==========================================================================
+   Proposal page styles
+   Extracted from style.css
+   ========================================================================== */
+
+
+/* ── Proposal page ────────────────────────────────────────────────────────── */
+
+.proposal-page {
+    display: flex;
+    flex-direction: column;
+    /* escape the .content padding so the viewer fills the full viewport width */
+    margin: -28px -32px -48px;
+}
+
+.proposal-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 16px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--outline-dim);
+    flex-shrink: 0;
+}
+
+.proposal-header-left {
+    flex-shrink: 0;
+    min-width: 220px;
+    max-width: 260px;
+}
+
+.proposal-header-title {
+    font-family: var(--headline);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--on-surface);
+    margin-bottom: 4px;
+}
+
+.proposal-header-sub {
+    font-size: 11px;
+    color: var(--secondary);
+    line-height: 1.5;
+}
+
+.div-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    flex: 1;
+}
+
+.div-card {
+    background: rgba(240, 192, 80, 0.05);
+    border: 1px solid rgba(240, 192, 80, 0.18);
+    border-radius: var(--radius-xl);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 220px;
+    max-width: 320px;
+    flex: 1;
+}
+
+.div-card-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-family: var(--headline);
+}
+
+.div-card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--on-surface);
+}
+
+.div-card-diff {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-family: monospace;
+}
+
+.div-proposed {
+    color: var(--secondary);
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+.div-arrow {
+    color: var(--amber);
+    font-size: 13px;
+}
+
+.div-actual {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.div-card-reason {
+    font-size: 11px;
+    color: var(--secondary);
+    line-height: 1.5;
+}
+
+.proposal-embed {
+    width: 100%;
+    border: none;
+    display: block;
+    /* tall enough for at least one A4 page at fit-width zoom */
+    height: max(calc(100vh - var(--topbar-h) - 190px), 1050px);
+}
+
+
+/* ── Proposal light-mode overrides ── */
+
+html.light .proposal-header { background: #fff; border-bottom-color: #e0e0e8; }
+html.light .div-card { background: rgba(99,102,241,0.04); border-color: rgba(99,102,241,0.18); }
+html.light .div-card-badge { color: #b45309; }
+html.light .div-arrow { color: #b45309; }
+html.light .div-actual { color: var(--primary); }

@@ -1,0 +1,21 @@
+/* ==========================================================================
+   Animations
+   Extracted from style.css
+   ========================================================================== */
+
+
+/* ── Animations ───────────────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.bento-card, .data-table-wrap, .chart-box, .card, .group-card, .launch-form, .glass-panel {
+    animation: fadeIn 0.25s ease both;
+}
+
+.bento-card:nth-child(2) { animation-delay: 0.03s; }
+.bento-card:nth-child(3) { animation-delay: 0.06s; }
+.bento-card:nth-child(4) { animation-delay: 0.09s; }
+.glass-panel:nth-child(2) { animation-delay: 0.05s; }
