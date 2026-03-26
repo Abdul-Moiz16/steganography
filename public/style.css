@@ -2590,10 +2590,11 @@ canvas { display: block; width: 100% !important; }
 
 .docs-layout {
     display: grid;
-    grid-template-columns: 224px 1fr;
+    grid-template-columns: 224px minmax(0, 800px);
     min-height: calc(100vh - var(--topbar-h));
     margin: -28px -32px -48px; /* escape .content padding */
     align-items: start;
+    justify-content: center;
 }
 
 .docs-toc {

@@ -228,12 +228,11 @@ var DOCS_TOC = [
     { id: 'platform',   label: 'Platform Architecture' },
     { id: 'structure',  label: 'Directory Structure' },
     { id: 'pipeline',   label: 'Pipeline Stages', children: [
-        { id: 'stage-init',      label: 'Init Layout' },
-        { id: 'stage-covers',    label: 'Standardize Covers' },
-        { id: 'stage-manifests', label: 'Build Manifests' },
-        { id: 'stage-embedding', label: 'Run Embedding' },
-        { id: 'stage-detectors', label: 'Run Detectors' },
-        { id: 'stage-metrics',   label: 'Compute Metrics' }
+        { id: 'stage-covers',    label: 'Download Real Covers' },
+        { id: 'stage-manifests', label: 'Generate ML Covers' },
+        { id: 'stage-embedding', label: 'Merge Covers Manifest' },
+        { id: 'stage-detectors', label: 'run-all (embedding + detection)' },
+        { id: 'stage-metrics',   label: 'Compute & Plot Metrics' }
     ]},
     { id: 'embedding',  label: 'Embedding Methods', children: [
         { id: 'lsb-seq',    label: 'LSB Sequential' },
@@ -298,7 +297,7 @@ function _docsOverview() {
             '<li><strong>RQ2 &mdash; Generator Effect Within ML</strong>: Within ML-generated carriers, does the choice of generator (ML-A vs.&nbsp;ML-B) affect detectability?</li>' +
             '<li><strong>RQ3 &mdash; Payload Interaction</strong>: Does payload size change the detectability gap between carrier sources?</li>' +
             '<li><strong>RQ4 &mdash; Embedding Branch</strong>: Do the spatial branch (LSB+PNG) and the frequency branch (DCT-LSB+JPEG) show different carrier-source effects? Each branch bundles embedding with its file format.</li>' +
-            '<li><strong>RQ5 &mdash; Encryption Invariance</strong>: Does AES-256-CBC encryption of the payload affect detectability? Encrypted payloads resemble random bitstreams, so no AUC change is expected &mdash; a positive result would indicate the detector reacts to payload structure rather than embedding distortion.</li>' +
+            '<li><strong>RQ5 &mdash; Encryption Invariance</strong>: Does AES-256-CBC encryption of the payload affect detectability? Encrypted payloads should look like random bitstreams, so we expect no difference. A positive result here would suggest the detector is reacting to payload structure rather than to embedding distortion itself.</li>' +
         '</ul>'
     );
 }
@@ -362,48 +361,41 @@ function _docsStructure() {
 function _docsPipeline() {
     return _ds('pipeline',
         _dh2('Pipeline Stages') +
-        _dp('The experiment pipeline is split into discrete CLI stages invoked via <code>python -m src.pipeline.cli &lt;command&gt;</code>. Each stage is idempotent and writes to a canonical artifact layout. The viewer\'s <strong>Launch Run</strong> button runs <code>run-all</code> with the selected profile.') +
+        _dp('The viewer\'s <strong>Launch Run</strong> button calls <code>python run.py &lt;profile&gt;</code>. This is the single user-facing entry point. It handles cover acquisition, then delegates to the internal <code>src.pipeline.cli run-all</code> command for the embedding and detection stages. All outputs are self-contained under <code>runs/{profile}_{timestamp}/</code>.') +
         _dp('Two run profiles are defined in <code>src/pipeline/profile.py</code>. Conditions = sources(3) &times; methods &times; payload levels &times; encryptions(2).') +
         '<table class="docs-table">' +
-            '<thead><tr><th>Profile</th><th>Groups</th><th>Images/run</th><th>Methods</th><th>Payload fill rates</th><th>Conditions</th></tr></thead>' +
+            '<thead><tr><th>Profile</th><th>Groups</th><th>Images/run</th><th>Methods</th><th>Fill rates</th><th>Conditions</th></tr></thead>' +
             '<tbody>' +
-                '<tr><td><code>prototype</code></td><td>20</td><td>60</td><td>lsb</td><td>low (0.25)</td><td>6</td></tr>' +
-                '<tr><td><code>full_design</code></td><td>500</td><td>1500</td><td>lsb, dct</td><td>low / medium / high (0.25 / 0.50 / 0.75)</td><td>36</td></tr>' +
+                '<tr><td><code>prototype</code></td><td>20</td><td>60</td><td>lsb</td><td>low (0.25 bpp)</td><td>6</td></tr>' +
+                '<tr><td><code>full_design</code></td><td>500</td><td>1500</td><td>lsb, dct</td><td>low / medium / high</td><td>36</td></tr>' +
             '</tbody>' +
         '</table>' +
-        _dp('Cover sources per group: <strong>REAL</strong> (photograph from COCO / Flickr30k), <strong>ML-A</strong> (SDXL 1.0, real-photo reference), <strong>ML-B</strong> (FLUX.1-schnell, AI-image reference).') +
+        _dp('Cover sources per group: <strong>REAL</strong> (COCO / Flickr30k photograph), <strong>ML-A</strong> (SDXL 1.0), <strong>ML-B</strong> (FLUX.1-schnell in prototype &amp; full_design &mdash; PixArt-&alpha; per proposal, see Proposal Divergences).') +
 
-        _ds('stage-init', _dh3('1 &middot; init-layout') +
-            _dp('Creates the expected directory tree under the run root: <code>covers/</code>, <code>payloads/</code>, <code>stego/</code>, <code>predictions/</code>, <code>metrics/</code>, <code>figures/</code>. Safe to re-run.') +
-            _dpre('python -m src.pipeline.cli init-layout')) +
+        _ds('stage-covers', _dh3('1 &middot; Download real covers') +
+            _dp('<code>run.py</code> calls <code>src.data.download_real_covers</code> to fetch COCO + Flickr30k images via the HuggingFace Datasets API. Images are written to <code>run_dir/covers/real/</code> and indexed in <code>run_dir/manifests/covers_real.csv</code>. Idempotent: skipped if the manifest already has enough rows.') +
+            _dpre('# prototype: 12 COCO + 8 Flickr30k\n# full_design: 300 COCO + 200 Flickr30k')) +
 
-        _ds('stage-covers', _dh3('2 &middot; standardize-covers') +
-            _dp('Reads a raw cover index CSV (<code>--input-index</code>) and for each image writes a grayscale 512&times;512 PNG variant (for spatial LSB) and a grayscale 512&times;512 JPEG Q=95 variant (for DCT-LSB). Outputs <code>covers_master.csv</code>.') +
-            _dpre('python -m src.pipeline.cli standardize-covers \\\n  --input-index data/cover_index.csv')) +
+        _ds('stage-manifests', _dh3('2 &middot; Generate ML covers') +
+            _dp('Calls <code>src.data.generate_ml_covers</code> to produce SDXL 1.0 (ML-A) and FLUX.1-schnell (ML-B) images from the real-image captions. Engine is selectable: <code>inference_api</code> (HuggingFace Inference API, default), <code>diffusers</code> (local GPU), or <code>stub</code> (synthetic, no GPU).') +
+            _dpre('python run.py prototype --ml-engine inference_api\npython run.py prototype --ml-engine stub')) +
 
-        _ds('stage-manifests', _dh3('3 &amp; 4 &middot; Build Manifests') +
-            _dp('<strong>build-payload-manifest</strong> generates pseudo-random payload bytes at each active fill rate (seeded by <code>payload_seed=42</code>) and writes the manifest. <code>--write-files</code> materialises the payload binary files to disk.') +
-            _dp('<strong>build-stego-manifest</strong> computes the Cartesian product of covers &times; methods &times; payload levels &times; encryption variants (plain, aes256cbc), producing one row per embedding job.') +
-            _dpre('python -m src.pipeline.cli build-payload-manifest \\\n  --covers-manifest covers_master.csv\npython -m src.pipeline.cli build-stego-manifest \\\n  --covers-manifest covers_master.csv \\\n  --payload-manifest payload_manifest.csv')) +
+        _ds('stage-embedding', _dh3('3 &middot; Merge covers manifest') +
+            _dp('Merges <code>covers_real.csv</code>, <code>covers_ml_a.csv</code>, and <code>covers_ml_b.csv</code> into a single <code>run_dir/manifests/covers.csv</code> with standardized grayscale 512&times;512 PNG (spatial) and JPEG Q=95 (frequency) variants for each image.')) +
 
-        _ds('stage-embedding', _dh3('5 &middot; run-embedding-stage') +
-            _dp('For each row in the stego manifest: loads the cover image, optionally encrypts the payload with AES-256-CBC, embeds it using the specified method (<code>lsb</code> or <code>dct</code>), and writes the stego image. Without <code>--execute</code> it is a dry run that counts rows only.') +
-            _dpre('python -m src.pipeline.cli run-embedding-stage \\\n  --stego-manifest stego_manifest.csv --execute')) +
+        _ds('stage-detectors', _dh3('4 &middot; run-all (via src.pipeline.cli)') +
+            _dp('With the covers manifest ready, <code>run.py</code> invokes <code>src.pipeline.cli run-all</code> which runs four sub-stages in sequence:') +
+            '<ol class="docs-list">' +
+                '<li><strong>build-payload-manifest</strong> &mdash; generates pseudo-random payload bytes (seed=42) for each fill rate and encryption variant. The Cartesian product of groups &times; payload levels &times; encryptions is one row per payload artifact.</li>' +
+                '<li><strong>build-stego-manifest</strong> &mdash; cross-joins covers &times; methods &times; payload levels &times; encryptions into one row per embedding job (the full experimental design table).</li>' +
+                '<li><strong>run-embedding-stage</strong> &mdash; for each stego manifest row: encrypts the payload if required (AES-256-CBC), embeds it using the specified method, and writes the stego image to <code>run_dir/stego/</code>.</li>' +
+                '<li><strong>run-detectors</strong> &mdash; scores every active detector against every stego and cover image. Writes <code>run_dir/predictions/predictions.csv</code>. <code>--skip-unimplemented</code> silently skips detectors that raise <code>NotImplementedError</code>.</li>' +
+            '</ol>') +
 
-        _ds('stage-detectors', _dh3('6 &middot; run-detectors') +
-            _dp('Runs every active detector against every stego and cover image. Writes one prediction row per (image, detector) pair to <code>predictions.csv</code>. <code>--skip-unimplemented</code> silently skips any detector that raises <code>NotImplementedError</code> (used by the prototype profile).') +
-            _dpre('python -m src.pipeline.cli run-detectors \\\n  --stego-manifest stego_manifest.csv --execute --skip-unimplemented')) +
-
-        _ds('stage-metrics', _dh3('7 &middot; compute-metrics') +
-            _dp('Aggregates detector predictions into four metric tables: per-detector (ROC-AUC, EER, accuracy at Youden\'s J), per-condition, per-source, and quality metrics (PSNR/SSIM if a pre-computed CSV is supplied). These populate the Results and Conditions tabs in the viewer.') +
-            _dpre('python -m src.pipeline.cli compute-metrics \\\n  --predictions predictions.csv')) +
-
-        _dh3('8 &middot; plot-metrics') +
-        _dp('Generates AUC summary figures: AUC by source/detector and AUC by method/detector. Written to <code>results/figures/</code>.') +
-        _dpre('python -m src.pipeline.cli plot-metrics') +
-
-        _dh3('run-all') +
-        _dp('Convenience command that runs all stages in sequence. Accepts <code>--profile</code> to scope the config, <code>--execute-embeddings</code> and <code>--execute-detectors</code> flags, and <code>--generate-figures</code>. This is the command the viewer\'s Launch panel calls.')
+        _ds('stage-metrics', _dh3('5 &middot; compute-metrics &amp; plot-metrics') +
+            _dp('<strong>compute-metrics</strong> aggregates predictions into four CSV tables under <code>run_dir/metrics/</code>: per-detector (ROC-AUC, EER, accuracy at Youden\'s J), per-condition, per-source, and quality metrics. These drive the Results and Conditions tabs in the viewer.') +
+            _dp('<strong>plot-metrics</strong> (optional, <code>--generate-figures</code>) generates AUC summary figures: AUC by source/detector and AUC by method/detector, written to <code>run_dir/figures/</code>.')
+        )
     );
 }
 
