@@ -130,6 +130,14 @@ def _list_runs() -> list[dict]:
             aucs = [float(r["roc_auc"]) for r in det_metrics if r.get("roc_auc")]
             if aucs:
                 best_auc = max(aucs)
+        # Source effect delta (ML avg AUC - Real avg AUC)
+        source_delta = None
+        src_metrics = _read_csv(d / "metrics" / "source_metrics.csv")
+        if src_metrics:
+            real_aucs = [float(r["roc_auc"]) for r in src_metrics if r.get("source") == "real" and r.get("roc_auc")]
+            ml_aucs = [float(r["roc_auc"]) for r in src_metrics if r.get("source") != "real" and r.get("roc_auc")]
+            if real_aucs and ml_aucs:
+                source_delta = sum(ml_aucs) / len(ml_aucs) - sum(real_aucs) / len(real_aucs)
         # .running marker written at launch, removed on completion/kill — visible to all instances
         is_active = (d / ".running").exists()
         is_killed = (d / ".killed").exists()
@@ -138,11 +146,20 @@ def _list_runs() -> list[dict]:
             "config": config,
             "has_results": has_results,
             "best_auc": best_auc,
+            "source_delta": source_delta,
             "n_detectors": len({r["detector"] for r in det_metrics}),
             "is_active": is_active,
             "is_killed": is_killed,
         })
     return runs
+
+
+def _get_predictions(run_id: str) -> list:
+    run_dir = RUNS_DIR / run_id
+    pred_path = run_dir / "predictions" / "predictions.csv"
+    if not pred_path.exists():
+        return []
+    return _read_csv(pred_path)
 
 
 def _get_run_detail(run_id: str) -> dict:
@@ -163,6 +180,7 @@ def _get_run_detail(run_id: str) -> dict:
     det_metrics = _read_csv(run_dir / "metrics" / "detector_metrics.csv")
     src_metrics = _read_csv(run_dir / "metrics" / "source_metrics.csv")
     cond_metrics = _read_csv(run_dir / "metrics" / "condition_metrics.csv")
+    quality_metrics = _read_csv(run_dir / "metrics" / "quality_metrics.csv")
     covers_rows = _read_csv(run_dir / "manifests" / "covers.csv")
 
     # Group covers by group_id
@@ -176,7 +194,7 @@ def _get_run_detail(run_id: str) -> dict:
     covers = sorted(cover_map.values(), key=lambda x: int(x["group_id"]))
     return {
         "config": config,
-        "metrics": {"detector": det_metrics, "source": src_metrics, "condition": cond_metrics},
+        "metrics": {"detector": det_metrics, "source": src_metrics, "condition": cond_metrics, "quality": quality_metrics},
         "covers": covers,
         "has_results": bool(det_metrics),
         "is_killed": (run_dir / ".killed").exists(),
@@ -206,6 +224,9 @@ class Handler(BaseHTTPRequestHandler):
             self._json(_list_runs())
         elif p.startswith("/api/runs/") and p.endswith("/detail"):
             self._json(_get_run_detail(p[10:-7]))
+        elif p.startswith("/api/runs/") and p.endswith("/predictions"):
+            run_id = p[len("/api/runs/"):-len("/predictions")]
+            self._json(_get_predictions(run_id))
         elif p == "/api/image":
             self._serve_image(qs.get("path", [""])[0])
         elif p == "/api/system/check":

@@ -43,4 +43,11 @@ def psnr(cover: Image.Image, stego: Image.Image) -> float:
     ValueError
         If the images have different sizes.
     """
-    raise NotImplementedError("PSNR is not implemented yet.")
+    if cover.size != stego.size:
+        raise ValueError(f"Size mismatch: {cover.size} vs {stego.size}")
+    c = np.asarray(cover.convert("L"), dtype=np.float64)
+    s = np.asarray(stego.convert("L"), dtype=np.float64)
+    mse = np.mean((c - s) ** 2)
+    if mse == 0.0:
+        return float("inf")
+    return 10.0 * np.log10(255.0 ** 2 / mse)

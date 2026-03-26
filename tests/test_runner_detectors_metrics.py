@@ -179,9 +179,9 @@ def test_run_detector_stage_skip_unimplemented(tmp_path: Path) -> None:
     )
 
     preds = read_rows_csv(pred_path)
-    # chi_square_spatial and rs_analysis are now implemented;
-    # sample_pairs is still a stub and should be skipped.
-    implemented = [p for p in preds if p["detector"] in ("chi_square_spatial", "rs")]
-    for p in preds:
-        assert p["detector"] != "sample_pairs"
-    assert len(implemented) >= 1
+    # rs, chi_square_spatial, and sample_pairs are all implemented;
+    # skip_unimplemented only drops detectors that raise NotImplementedError.
+    detectors_found = {p["detector"] for p in preds}
+    assert "rs" in detectors_found
+    assert "chi_square_spatial" in detectors_found
+    assert "sample_pairs" in detectors_found

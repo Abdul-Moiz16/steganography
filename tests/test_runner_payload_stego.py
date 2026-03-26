@@ -184,3 +184,83 @@ def test_run_embedding_stage_execute_raises_on_unknown_method(project_root: Path
 
     with pytest.raises(ValueError, match="Unknown method"):
         small_runner.run_embedding_stage(stego_manifest_path=stego_manifest, execute=True)
+
+
+def test_run_embedding_stage_writes_quality_metrics(project_root: Path, small_runner) -> None:
+    """Quality metrics CSV is written when quality_metrics_path is provided."""
+    cover = project_root / "tmp_cover.png"
+    payload = project_root / "tmp_payload.bin"
+    stego_out = project_root / "out.png"
+
+    create_image(cover)
+    payload.write_bytes(b"\x01" * 10)  # 80 bits < 96-bit capacity of 24×16 @ 25% fill
+
+    stego_manifest = project_root / "data" / "manifests" / "stego_manifest.csv"
+    write_rows_csv(
+        stego_manifest,
+        rows=[
+            {
+                "group_id": "1",
+                "source": "real",
+                "method": "lsb",
+                "payload_level": "low",
+                "encryption": "plain",
+                "cover_path": str(cover),
+                "payload_path": str(payload),
+                "stego_path": str(stego_out),
+                "embed_params": '{"bit_depth": 1, "fill_rate": 0.25}',
+                "seed": "42",
+            }
+        ],
+        fieldnames=STEGO_FIELDNAMES,
+    )
+
+    quality_path = project_root / "quality_metrics_raw.csv"
+    small_runner.run_embedding_stage(
+        stego_manifest_path=stego_manifest,
+        execute=True,
+        quality_metrics_path=quality_path,
+    )
+
+    assert quality_path.exists()
+    rows = read_rows_csv(quality_path)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["group_id"] == "1"
+    assert row["method"] == "lsb"
+    assert row["psnr"] != "" and float(row["psnr"]) > 0
+    assert row["ssim"] != "" and 0.0 <= float(row["ssim"]) <= 1.0
+
+
+def test_run_embedding_stage_no_quality_path_no_file(project_root: Path, small_runner) -> None:
+    """Without quality_metrics_path no quality file is written."""
+    cover = project_root / "tmp_cover2.png"
+    payload = project_root / "tmp_payload2.bin"
+    stego_out = project_root / "out2.png"
+
+    create_image(cover)
+    payload.write_bytes(b"\x02" * 10)  # 80 bits < 96-bit capacity of 24×16 @ 25% fill
+
+    stego_manifest = project_root / "data" / "manifests" / "stego_manifest2.csv"
+    write_rows_csv(
+        stego_manifest,
+        rows=[
+            {
+                "group_id": "2",
+                "source": "ml_a",
+                "method": "lsb",
+                "payload_level": "low",
+                "encryption": "plain",
+                "cover_path": str(cover),
+                "payload_path": str(payload),
+                "stego_path": str(stego_out),
+                "embed_params": '{"bit_depth": 1, "fill_rate": 0.25}',
+                "seed": "42",
+            }
+        ],
+        fieldnames=STEGO_FIELDNAMES,
+    )
+
+    quality_path = project_root / "should_not_exist.csv"
+    small_runner.run_embedding_stage(stego_manifest_path=stego_manifest, execute=True)
+    assert not quality_path.exists()

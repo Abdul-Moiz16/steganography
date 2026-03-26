@@ -51,6 +51,8 @@ from src.evaluation.metrics import (
     try_parse_score,
 )
 from src.evaluation.plots import generate_metrics_figures
+from src.metrics.psnr import psnr as _compute_psnr
+from src.metrics.ssim import ssim as _compute_ssim
 from src.pipeline.config import PipelineConfig
 
 
@@ -299,16 +301,22 @@ class PipelineRunner:
         self,
         stego_manifest_path: Path,
         execute: bool = False,
+        quality_metrics_path: Path | None = None,
     ) -> int:
         """Create stego artifacts from manifest rows.
 
         With ``execute=False`` this is a dry-run counter only.
+        When *quality_metrics_path* is provided and *execute* is True, PSNR and
+        SSIM are computed for each LSB pair and written to that path.
         """
         from tqdm import tqdm
 
         rows = read_rows_csv(stego_manifest_path)
         if not execute:
             return len(rows)
+
+        quality_rows: list[dict] = []
+        _QUALITY_FIELDS = ["group_id", "source", "method", "payload_level", "encryption", "psnr", "ssim", "fsim"]
 
         for row in tqdm(rows, desc="Embedding", unit="img"):
             payload_bytes = self._resolve_manifest_path(row["payload_path"]).read_bytes()
@@ -325,6 +333,18 @@ class PipelineRunner:
                     bit_depth=int(params["bit_depth"]),
                 )
                 save_png(stego, stego_path)
+                if quality_metrics_path is not None:
+                    psnr_val, ssim_val = self._compute_quality_pair(cover_image, stego)
+                    quality_rows.append({
+                        "group_id": row["group_id"],
+                        "source": row["source"],
+                        "method": method,
+                        "payload_level": row["payload_level"],
+                        "encryption": row["encryption"],
+                        "psnr": "" if psnr_val is None else psnr_val,
+                        "ssim": "" if ssim_val is None else ssim_val,
+                        "fsim": "",
+                    })
             elif method == "dct":
                 cover_jpeg_bytes = load_bytes(self._resolve_manifest_path(row["cover_path"]))
                 stego_bytes = embed_dct_lsb_jpeg(
@@ -336,7 +356,26 @@ class PipelineRunner:
                 save_bytes(stego_bytes, stego_path)
             else:
                 raise ValueError(f"Unknown method: {method}")
+
+        if quality_metrics_path is not None and quality_rows:
+            quality_metrics_path.parent.mkdir(parents=True, exist_ok=True)
+            write_rows_csv(quality_metrics_path, quality_rows, fieldnames=_QUALITY_FIELDS)
+
         return len(rows)
+
+    def _compute_quality_pair(
+        self, cover: "Image.Image", stego: "Image.Image"
+    ) -> "tuple[float | None, float | None]":
+        """Return (psnr, ssim) for a cover/stego pair; None on any error."""
+        try:
+            p = _compute_psnr(cover, stego)
+        except Exception:
+            p = None
+        try:
+            s = _compute_ssim(cover, stego)
+        except Exception:
+            s = None
+        return p, s
 
     def run_detector_stage(
         self,
@@ -600,9 +639,11 @@ class PipelineRunner:
             output_manifest_path=manifests_out / "stego_manifest.csv",
             stego_root=stego_root,
         )
+        raw_quality_path = manifests_out / "quality_metrics_raw.csv"
         embedding_rows = self.run_embedding_stage(
             stego_manifest_path=stego_manifest,
             execute=execute_embeddings,
+            quality_metrics_path=raw_quality_path if execute_embeddings else None,
         )
         predictions = self.run_detector_stage(
             stego_manifest_path=stego_manifest,
@@ -610,10 +651,15 @@ class PipelineRunner:
             execute=execute_detectors,
             skip_unimplemented=skip_unimplemented,
         )
+        effective_quality_input = (
+            raw_quality_path
+            if execute_embeddings and raw_quality_path.exists()
+            else quality_metrics_input
+        )
         metrics_outputs = self.compute_metrics_from_predictions(
             predictions_path=predictions,
             metrics_dir=metrics_out,
-            quality_metrics_input=quality_metrics_input,
+            quality_metrics_input=effective_quality_input,
         )
 
         out: dict[str, Path | int] = {

@@ -1,0 +1,10 @@
+detector,source,n_samples,n_pos,n_neg,roc_auc,eer,accuracy_at_youden_j,fpr_at_fixed_fnr
+chi_square_spatial,ml_a,80,40,40,0.6425,0.4,0.675,0.85
+chi_square_spatial,ml_b,80,40,40,0.69375,0.4,0.675,0.75
+chi_square_spatial,real,80,40,40,0.7,0.4,0.7,0.5
+rs,ml_a,80,40,40,1.0,0.0,1.0,0.0
+rs,ml_b,80,40,40,1.0,0.0,1.0,0.0
+rs,real,80,40,40,0.985,0.05,0.95,0.05
+sample_pairs,ml_a,80,40,40,1.0,0.0,1.0,0.0
+sample_pairs,ml_b,80,40,40,1.0,0.0,1.0,0.0
+sample_pairs,real,80,40,40,0.9675,0.05,0.975,0.05

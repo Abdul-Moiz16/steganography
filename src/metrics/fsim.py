@@ -32,8 +32,8 @@ def fsim(cover: Image.Image, stego: Image.Image) -> float:
         raise ValueError("Images size don't match")
 
     #Convert first to grayscale and then to numpy 
-    cover_to_np= np.array(cover.covert("L"))
-    stego_to_np = np.array(stego.covert("L"))
+    cover_to_np= np.array(cover.convert("L"))
+    stego_to_np = np.array(stego.convert("L"))
 
 
     #piq expects tensor in (B, C, H, W) format with values in [0, 1]

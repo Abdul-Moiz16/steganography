@@ -1,16 +1,19 @@
 # `src/evaluation` Guide
 
-`evaluation/` contains metric aggregation and plotting helpers.
+`evaluation/` aggregates detector predictions into experiment-level metrics.
 
-## Scope
+## Aggregation Levels
 
-- total groups: `500`
-- evaluation is run on the full study table
-- metrics are aggregated by detector, by condition, and by source
+- **Per-detector**: overall ROC-AUC, EER, accuracy across all conditions
+- **Per-source**: ROC-AUC broken down by carrier source (real, ML-A, ML-B)
+- **Per-condition**: ROC-AUC for each (detector × method × payload × encryption)
+- **Per-group quality**: PSNR and SSIM measuring embedding imperceptibility
 
 ## Outputs
 
-- `results/metrics/detector_metrics.csv`
-- `results/metrics/source_metrics.csv`
-- `results/metrics/*.csv`
-- `results/figures/*.png`
+Written to `runs/{run_id}/metrics/`:
+
+- `detector_metrics.csv` — aggregated per detector
+- `source_metrics.csv` — per detector × source
+- `condition_metrics.csv` — per detector × method × payload level × encryption
+- `quality_metrics.csv` — PSNR/SSIM per group × source × condition

@@ -26,11 +26,6 @@ from src.embedding.lsb import embed_lsb
             (b"jpeg-bytes", b"abc", 0.25),
             "JPEG DCT-LSB embedding",
         ),
-        (
-            sample_pairs_score,
-            (Image.new("L", (8, 8), color=0),),
-            "Sample Pairs",
-        ),
         (chi_square_dct_score, (b"jpeg-bytes",), "DCT chi-square"),
         (
             calibration_chi_square_score,

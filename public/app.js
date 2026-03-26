@@ -117,6 +117,12 @@ function go(page, runId) {
     STATE.page = page;
     STATE.runId = nextRunId;
     STATE.tab = nextTab;
+    STATE.search = '';
+    var input = document.getElementById('search-input');
+    if (input) input.value = '';
+    var clearBtn = document.getElementById('search-clear-btn');
+    if (clearBtn) clearBtn.style.display = 'none';
+    hideDocsNav();
     render();
 }
 
@@ -126,14 +132,195 @@ function switchTab(tab) {
     render();
 }
 
-function filterRuns(query) {
+function handleSearch(query) {
     STATE.search = query || '';
-    if (STATE.page === 'runs') render();
+    var clearBtn = document.getElementById('search-clear-btn');
+    if (clearBtn) clearBtn.style.display = STATE.search ? 'flex' : 'none';
+    if (STATE.page === 'runs') {
+        render();
+    } else if (STATE.page === 'run-detail') {
+        filterRunDetail(STATE.search);
+    } else if (STATE.page === 'docs') {
+        filterDocs(STATE.search);
+    }
 }
+
+function clearSearch() {
+    var input = document.getElementById('search-input');
+    if (input) input.value = '';
+    handleSearch('');
+}
+
+/* Backward compat alias */
+function filterRuns(query) { handleSearch(query); }
 
 function syncSearchInput() {
     var input = document.getElementById('search-input');
     if (input && input.value !== STATE.search) input.value = STATE.search;
+    updateSearchPlaceholder();
+}
+
+function updateSearchPlaceholder() {
+    var input = document.getElementById('search-input');
+    if (!input) return;
+    var placeholders = {
+        runs: 'Search runs\u2026',
+        'run-detail': 'Filter groups, detectors\u2026',
+        docs: 'Search documentation\u2026',
+        proposal: 'Search\u2026'
+    };
+    input.placeholder = placeholders[STATE.page] || 'Search\u2026';
+}
+
+/* ── Run detail filtering ── */
+function filterRunDetail(query) {
+    var q = query.toLowerCase().trim();
+    // Filter group cards in gallery
+    var groupCards = document.querySelectorAll('.group-card');
+    groupCards.forEach(function (card) {
+        if (!q) { card.style.display = ''; return; }
+        var text = card.textContent.toLowerCase();
+        card.style.display = text.indexOf(q) !== -1 ? '' : 'none';
+    });
+    // Filter RQ cards in results
+    var rqCards = document.querySelectorAll('.rq-card');
+    rqCards.forEach(function (card) {
+        if (!q) { card.style.display = ''; return; }
+        var text = card.textContent.toLowerCase();
+        card.style.display = text.indexOf(q) !== -1 ? '' : 'none';
+    });
+    // Filter condition rows
+    var condRows = document.querySelectorAll('.cond-row');
+    condRows.forEach(function (row) {
+        if (!q) { row.style.display = ''; var detail = row.nextElementSibling; if (detail && detail.classList.contains('cond-detail-wrap')) detail.style.removeProperty('display'); return; }
+        var text = row.textContent.toLowerCase();
+        var match = text.indexOf(q) !== -1;
+        row.style.display = match ? '' : 'none';
+        var detail = row.nextElementSibling;
+        if (detail && detail.classList.contains('cond-detail-wrap')) {
+            if (!match) detail.style.display = 'none';
+        }
+    });
+}
+
+/* ── Docs filtering ── */
+var _docsSearchState = { marks: [], current: -1 };
+
+function filterDocs(query) {
+    var q = query.toLowerCase().trim();
+
+    // Clear previous highlights
+    clearDocsHighlights();
+    hideDocsNav();
+
+    if (!q) {
+        document.querySelectorAll('.docs-section').forEach(function (sec) { sec.style.display = ''; });
+        return;
+    }
+
+    // Show all sections but highlight matching text
+    document.querySelectorAll('.docs-section').forEach(function (sec) { sec.style.display = ''; });
+
+    // Walk text nodes and wrap matches with <mark>
+    var marks = [];
+    var walker = document.createTreeWalker(
+        document.querySelector('.docs-body') || document.getElementById('main'),
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+    );
+    var textNodes = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+    textNodes.forEach(function (node) {
+        var parent = node.parentElement;
+        if (!parent || parent.tagName === 'SCRIPT' || parent.tagName === 'STYLE' || parent.classList.contains('docs-search-mark')) return;
+        var text = node.textContent;
+        var lower = text.toLowerCase();
+        var idx = lower.indexOf(q);
+        if (idx === -1) return;
+
+        var frag = document.createDocumentFragment();
+        var pos = 0;
+        while (idx !== -1) {
+            if (idx > pos) frag.appendChild(document.createTextNode(text.slice(pos, idx)));
+            var mark = document.createElement('mark');
+            mark.className = 'docs-search-mark';
+            mark.textContent = text.slice(idx, idx + q.length);
+            frag.appendChild(mark);
+            marks.push(mark);
+            pos = idx + q.length;
+            idx = lower.indexOf(q, pos);
+        }
+        if (pos < text.length) frag.appendChild(document.createTextNode(text.slice(pos)));
+        parent.replaceChild(frag, node);
+    });
+
+    _docsSearchState.marks = marks;
+    _docsSearchState.current = -1;
+
+    if (marks.length > 0) {
+        showDocsNav(marks.length);
+        docsSearchNext();
+    }
+}
+
+function clearDocsHighlights() {
+    document.querySelectorAll('.docs-search-mark').forEach(function (mark) {
+        var parent = mark.parentNode;
+        parent.replaceChild(document.createTextNode(mark.textContent), mark);
+        parent.normalize();
+    });
+    _docsSearchState.marks = [];
+    _docsSearchState.current = -1;
+}
+
+function showDocsNav(count) {
+    var nav = document.getElementById('search-nav');
+    if (!nav) {
+        nav = document.createElement('div');
+        nav.id = 'search-nav';
+        nav.className = 'search-nav';
+        nav.innerHTML =
+            '<span class="search-nav-count" id="search-nav-count"></span>' +
+            '<button class="search-nav-btn" onclick="docsSearchPrev()" title="Previous">' +
+                '<span class="material-symbols-outlined">keyboard_arrow_up</span>' +
+            '</button>' +
+            '<button class="search-nav-btn" onclick="docsSearchNext()" title="Next">' +
+                '<span class="material-symbols-outlined">keyboard_arrow_down</span>' +
+            '</button>';
+        var searchWrap = document.querySelector('.topbar-search');
+        if (searchWrap) searchWrap.appendChild(nav);
+    }
+    nav.style.display = 'flex';
+    document.getElementById('search-nav-count').textContent = count + ' found';
+}
+
+function hideDocsNav() {
+    var nav = document.getElementById('search-nav');
+    if (nav) nav.style.display = 'none';
+}
+
+function docsSearchNext() {
+    var s = _docsSearchState;
+    if (!s.marks.length) return;
+    if (s.current >= 0) s.marks[s.current].classList.remove('docs-search-active');
+    s.current = (s.current + 1) % s.marks.length;
+    s.marks[s.current].classList.add('docs-search-active');
+    s.marks[s.current].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var countEl = document.getElementById('search-nav-count');
+    if (countEl) countEl.textContent = (s.current + 1) + ' / ' + s.marks.length;
+}
+
+function docsSearchPrev() {
+    var s = _docsSearchState;
+    if (!s.marks.length) return;
+    if (s.current >= 0) s.marks[s.current].classList.remove('docs-search-active');
+    s.current = (s.current - 1 + s.marks.length) % s.marks.length;
+    s.marks[s.current].classList.add('docs-search-active');
+    s.marks[s.current].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var countEl = document.getElementById('search-nav-count');
+    if (countEl) countEl.textContent = (s.current + 1) + ' / ' + s.marks.length;
 }
 
 function showSidebar(runId, activeTab) {
@@ -875,7 +1062,7 @@ async function renderRunsList(el, token) {
                 '<button class="btn btn-primary" onclick="openLaunchPanel()">' + icon('add') + ' New Run</button>' +
             '</div>' +
             '<div class="stats-bento">' +
-                '<div class="bento-card"><div class="bento-label">Best Global AUC</div><div class="bento-value primary">' + formatMaybeNumber(stats.bestAuc, 3) + '</div><div class="bento-sub">' + escapeHtml(stats.bestRunLabel) + '</div></div>' +
+                '<div class="bento-card"><div class="bento-label">Largest Source Effect</div><div class="bento-value primary">' + (stats.largestDelta != null ? '\u0394 ' + (stats.largestDelta >= 0 ? '+' : '') + stats.largestDelta.toFixed(3) : '\u2014') + '</div><div class="bento-sub">' + escapeHtml(stats.largestDeltaLabel) + '</div></div>' +
                 '<div class="bento-card"><div class="bento-label">Tracked Runs</div><div class="bento-value">' + formatNumber(runs.length) + '</div><div class="bento-sub">' + formatNumber(stats.completedRuns) + ' with metrics</div></div>' +
                 '<div class="bento-card"><div class="bento-label">Processed Covers</div><div class="bento-value">' + formatNumber(stats.totalImages) + '</div><div class="bento-sub">' + formatNumber(stats.totalGroups) + ' grouped specimens</div></div>' +
                 '<div class="bento-card"><div class="bento-label">Detector Evaluations</div><div class="bento-value">' + formatNumber(stats.totalDetectors) + '</div><div class="bento-sub">' + escapeHtml(stats.coverageLabel) + '</div></div>' +
@@ -917,8 +1104,8 @@ function filterRunCollection(runs, search) {
 
 function summarizeRuns(runs) {
     var summary = {
-        bestAuc: null,
-        bestRunLabel: 'Awaiting detector output',
+        largestDelta: null,
+        largestDeltaLabel: 'Awaiting source metrics',
         completedRuns: 0,
         totalImages: 0,
         totalGroups: 0,
@@ -933,9 +1120,12 @@ function summarizeRuns(runs) {
         summary.totalImages += groups * 3;
         summary.totalDetectors += Number(run.n_detectors || 0);
         if (run.has_results) summary.completedRuns += 1;
-        if (run.best_auc != null && (summary.bestAuc == null || run.best_auc > summary.bestAuc)) {
-            summary.bestAuc = Number(run.best_auc);
-            summary.bestRunLabel = run.id;
+        if (run.source_delta != null) {
+            var absDelta = Math.abs(Number(run.source_delta));
+            if (summary.largestDelta == null || absDelta > Math.abs(summary.largestDelta)) {
+                summary.largestDelta = Number(run.source_delta);
+                summary.largestDeltaLabel = run.id;
+            }
         }
     });
 
@@ -972,17 +1162,17 @@ function buildRunRow(run) {
         ? statusPill('Running', 'running')
         : isKilled
             ? statusPill('Killed', 'error')
-            : run.best_auc == null
-                ? statusPill(run.has_results ? 'Metrics incomplete' : 'Pending results', run.has_results ? 'error' : 'pending')
-                : statusPill('Metrics ready', 'ready');
-    var aucCell;
+            : !run.has_results
+                ? statusPill('Pending', 'pending')
+                : statusPill('Ready', 'ready');
+    var deltaCell;
 
-    if (run.best_auc != null) {
-        var value = Number(run.best_auc);
-        var cls = value > 0.85 ? 'auc-high' : (value > 0.65 ? 'auc-mid' : 'auc-low');
-        aucCell = '<span class="auc-badge ' + cls + '">' + value.toFixed(3) + '</span>';
+    if (run.source_delta != null) {
+        var dv = Number(run.source_delta);
+        var dcls = Math.abs(dv) < 0.01 ? 'auc-mid' : (dv > 0 ? 'auc-high' : 'auc-low');
+        deltaCell = '<span class="auc-badge ' + dcls + '">\u0394 ' + (dv >= 0 ? '+' : '') + dv.toFixed(3) + '</span>';
     } else {
-        aucCell = '<div class="no-results">' + icon('cloud_off') + '<span>No Results</span></div>';
+        deltaCell = '<div class="no-results">' + icon('cloud_off') + '<span>No Data</span></div>';
     }
 
     var rowClass = isActive ? 'row-active' : (run.has_results ? '' : 'row-dimmed');
@@ -1000,7 +1190,7 @@ function buildRunRow(run) {
             '<td><span class="cell-dim">' + escapeHtml(methods.length ? methods.join(', ') : '\u2014') + '</span></td>' +
             '<td><span class="cell-dim">' + escapeHtml(levels.length ? levels.join(', ') : '\u2014') + '</span></td>' +
             '<td><div style="display:flex;align-items:center;gap:6px">' + icon('security') + '<span class="cell-mono">' + escapeHtml(nDetectors) + '</span></div></td>' +
-            '<td>' + aucCell + '</td>' +
+            '<td>' + deltaCell + '</td>' +
             '<td>' + runStatus + '</td>' +
             '<td>' +
                 '<button class="btn-icon" onclick="event.stopPropagation();confirmDeleteRun(\'' + escapeAttr(run.id) + '\')" title="Delete run">' +
@@ -1027,7 +1217,7 @@ function buildRunsTable(filteredRuns, totalRuns, rows) {
                         '<th>Methods</th>' +
                         '<th>Payloads</th>' +
                         '<th>Detectors</th>' +
-                        '<th>Best AUC</th>' +
+                        '<th>Source \u0394</th>' +
                         '<th>Status</th>' +
                         '<th>Actions</th>' +
                     '</tr></thead>' +
@@ -1046,10 +1236,10 @@ function buildRunsTable(filteredRuns, totalRuns, rows) {
 
 function buildActivityFeed(runs) {
     return runs.slice(0, 4).map(function (run, index) {
-        var tone = run.best_auc == null ? (run.has_results ? 'red' : 'amber') : (index === 0 ? 'blue' : 'green');
-        var text = run.best_auc == null
+        var tone = run.source_delta == null ? (run.has_results ? 'red' : 'amber') : (index === 0 ? 'blue' : 'green');
+        var text = run.source_delta == null
             ? (run.has_results ? 'Run <strong>' + escapeHtml(run.id) + '</strong> produced partial metrics that need review.' : 'Run <strong>' + escapeHtml(run.id) + '</strong> has been created but has not produced detector metrics yet.')
-            : 'Run <strong>' + escapeHtml(run.id) + '</strong> completed with best ROC-AUC <strong>' + escapeHtml(Number(run.best_auc).toFixed(3)) + '</strong>.';
+            : 'Run <strong>' + escapeHtml(run.id) + '</strong> completed with source effect \u0394 <strong>' + escapeHtml((Number(run.source_delta) >= 0 ? '+' : '') + Number(run.source_delta).toFixed(3)) + '</strong>.';
         return '<div class="activity-item">' +
             '<div class="activity-dot ' + tone + '"></div>' +
             '<div><div class="activity-text">' + text + '</div><div class="activity-time">' + escapeHtml((run.config || {}).timestamp || 'local artifact') + '</div></div>' +
@@ -1114,7 +1304,7 @@ async function renderRunDetail(el, runId, token) {
         var body = '';
         if (STATE.tab === 'overview') body = buildOverviewTab(cfg, detailStats, runId);
         if (STATE.tab === 'results') body = buildResultsTab(data, detailStats);
-        if (STATE.tab === 'covers') body = buildCoversTab(data.covers || []);
+        if (STATE.tab === 'covers') body = buildCoversTab(data, runId);
         if (STATE.tab === 'conditions') body = buildConditionsTab(data);
 
         el.innerHTML =
@@ -1133,14 +1323,10 @@ async function renderRunDetail(el, runId, token) {
             (getJobForRun(runId) ? buildTerminalSection(runId) : (isThisRunKilled ? buildKilledBanner(runId) : '')) +
             (!detailStats.detectorCount && !detailStats.coverGroups
                 ? ''  /* suppress stat cards when there is no data to show */
-                : '<div class="summary-strip">' +
-                      '<div class="summary-card"><div class="summary-label">Best ROC-AUC</div><div class="summary-value primary">' + formatMaybeNumber(detailStats.bestAuc, 3) + '</div><div class="summary-sub">' + escapeHtml(detailStats.bestDetectorLabel) + '</div></div>' +
-                      '<div class="summary-card"><div class="summary-label">Detector Rows</div><div class="summary-value">' + formatNumber(detailStats.detectorCount) + '</div><div class="summary-sub">' + escapeHtml(detailStats.sampleLabel) + '</div></div>' +
-                      '<div class="summary-card"><div class="summary-label">Cover Groups</div><div class="summary-value">' + formatNumber(detailStats.coverGroups) + '</div><div class="summary-sub">' + escapeHtml(detailStats.coverLabel) + '</div></div>' +
-                  '</div>') +
+                : buildSummaryStrip(cfg, detailStats, data)) +
             ((isThisRunActive || isThisRunKilled) && !data.has_results && !detailStats.coverGroups
                 ? ''  /* suppress empty tabs while pipeline is still running or was killed early */
-                : '<div id="tab-body">' + body + '</div>');
+                : buildPrototypeBanner(cfg) + '<div id="tab-body">' + body + '</div>');
 
         if (isThisRunActive && jobForRun) attachStream(jobForRun.jobId);
         if (STATE.tab === 'results' && data.has_results) {
@@ -1294,6 +1480,64 @@ function buildRunHeader(cfg, detailStats, runId) {
     ].join(' · ');
 }
 
+function buildSummaryStrip(cfg, detailStats, data) {
+    var profile = cfg.profile || 'unknown';
+    var meta = PROFILE_META[profile] || {};
+    var methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta.active_methods || []);
+    var payloads = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta.active_payload_levels || []);
+    var groups = cfg.n_groups != null ? Number(cfg.n_groups) : (meta.n_groups || 0);
+    var isProto = profile === 'prototype';
+
+    // Card 1: Experimental profile
+    var profileLabel = isProto ? 'Horizontal Prototype' : 'Full Factorial Design';
+    var profileIcon = isProto ? 'science' : 'experiment';
+    var designDesc = methods.join(' + ').toUpperCase() + ' \u00b7 ' + payloads.length + ' payload level' + (payloads.length !== 1 ? 's' : '') + ' \u00b7 ' + groups + ' groups';
+
+    // Card 2: Coverage
+    var nSources = detailStats.coverGroups ? 3 : 0;
+    var nDetectors = detailStats.detectorCount || 0;
+    var coverageDesc = nSources + ' sources \u00b7 ' + nDetectors + ' detectors \u00b7 ' + (methods.length * payloads.length * 2) + ' conditions';
+
+    // Card 3: Source Effect (RQ1 — core finding)
+    var sourceRows = toArray((data && data.metrics || {}).source);
+    var realRows = sourceRows.filter(function (r) { return r.source === 'real' && r.roc_auc && !isNaN(Number(r.roc_auc)); });
+    var mlRows = sourceRows.filter(function (r) { return r.source !== 'real' && r.roc_auc && !isNaN(Number(r.roc_auc)); });
+    var realAvg = realRows.length ? realRows.reduce(function (s, r) { return s + Number(r.roc_auc); }, 0) / realRows.length : null;
+    var mlAvg = mlRows.length ? mlRows.reduce(function (s, r) { return s + Number(r.roc_auc); }, 0) / mlRows.length : null;
+    var hasDelta = realAvg != null && mlAvg != null;
+    var delta = hasDelta ? mlAvg - realAvg : null;
+    var deltaStr = hasDelta ? (delta >= 0 ? '+' : '') + delta.toFixed(3) : '\u2014';
+    var deltaCls = hasDelta ? (Math.abs(delta) < 0.01 ? 'sc2-delta--neutral' : (delta > 0 ? 'sc2-delta--pos' : 'sc2-delta--neg')) : '';
+    var sourceDesc = hasDelta
+        ? 'Real ' + realAvg.toFixed(3) + ' vs ML ' + mlAvg.toFixed(3)
+        : 'Awaiting source metrics';
+
+    return '<div class="summary-strip">' +
+        '<div class="summary-card-v2">' +
+            '<div class="sc2-icon">' + icon(profileIcon) + '</div>' +
+            '<div class="sc2-body">' +
+                '<div class="sc2-label">' + escapeHtml(profileLabel) + '</div>' +
+                '<div class="sc2-desc">' + escapeHtml(designDesc) + '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="summary-card-v2">' +
+            '<div class="sc2-icon">' + icon('grid_view') + '</div>' +
+            '<div class="sc2-body">' +
+                '<div class="sc2-label">Experimental Coverage</div>' +
+                '<div class="sc2-desc">' + escapeHtml(coverageDesc) + '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="summary-card-v2 sc2-highlight">' +
+            '<div class="sc2-icon">' + icon('compare_arrows') + '</div>' +
+            '<div class="sc2-body">' +
+                '<div class="sc2-label">Source Effect (RQ1)</div>' +
+                '<div class="sc2-value ' + deltaCls + '">\u0394 ' + deltaStr + '</div>' +
+                '<div class="sc2-desc">' + escapeHtml(sourceDesc) + '</div>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
+}
+
 function buildOverviewTab(cfg, detailStats, runId) {
     var profileFromId = runId ? (Object.keys(PROFILE_META).find(function(k) { return runId.startsWith(k); }) || null) : null;
     var profile = cfg.profile || profileFromId || null;
@@ -1349,41 +1593,260 @@ function buildOverviewTab(cfg, detailStats, runId) {
     );
 }
 
-function buildResultsTab(data, detailStats) {
-    if (!data.has_results) {
-        return '<div class="empty-state"><h3>No results yet</h3><p>Run the pipeline with detectors enabled to populate charts and score tables.</p></div>';
-    }
-
-    var detectorRows = toArray((data.metrics || {}).detector);
-    var tableRows = detectorRows.map(function (row) {
-        var auc = Number(row.roc_auc || 0);
-        var eer = Number(row.eer || 0);
-        var acc = Number(row.accuracy_at_youden_j || 0);
-        var color = auc > 0.85 ? 'var(--green)' : (auc > 0.65 ? 'var(--amber)' : 'var(--error)');
-
+function buildQualityMetricsCard(qualityRows) {
+    var scored = qualityRows.filter(function (r) { return r.psnr !== '' || r.ssim !== ''; });
+    if (!scored.length) return '';
+    var levelMap = {};
+    scored.forEach(function (r) {
+        var lvl = r.payload_level || 'unknown';
+        if (!levelMap[lvl]) levelMap[lvl] = { psnrSum: 0, ssimSum: 0, psnrN: 0, ssimN: 0 };
+        if (r.psnr !== '' && !isNaN(Number(r.psnr)) && isFinite(Number(r.psnr))) {
+            levelMap[lvl].psnrSum += Number(r.psnr); levelMap[lvl].psnrN++;
+        }
+        if (r.ssim !== '' && !isNaN(Number(r.ssim))) {
+            levelMap[lvl].ssimSum += Number(r.ssim); levelMap[lvl].ssimN++;
+        }
+    });
+    var levelOrder = ['low', 'medium', 'high'];
+    var levels = levelOrder.filter(function (l) { return levelMap[l]; })
+        .concat(Object.keys(levelMap).filter(function (l) { return levelOrder.indexOf(l) === -1; }));
+    var tableRows = levels.map(function (lvl) {
+        var d = levelMap[lvl];
+        var psnr = d.psnrN ? d.psnrSum / d.psnrN : null;
+        var ssim = d.ssimN ? d.ssimSum / d.ssimN : null;
         return '<tr>' +
-            '<td style="font-weight:600">' + escapeHtml(row.detector) + '</td>' +
-            '<td><div class="auc-inline"><div class="auc-fill" style="width:' + Math.max(4, Math.round(auc * 110)) + 'px;background:' + color + '"></div><span class="auc-num" style="color:' + color + '">' + auc.toFixed(3) + '</span></div></td>' +
-            '<td class="cell-dim" style="font-family:monospace;font-size:12px">' + (eer * 100).toFixed(1) + '%</td>' +
-            '<td class="cell-dim" style="font-family:monospace;font-size:12px">' + (acc * 100).toFixed(1) + '%</td>' +
-            '<td class="cell-dim" style="font-family:monospace;font-size:12px">' + escapeHtml(row.n_samples || 0) + '</td>' +
+            '<td class="rq-bd-det">' + escapeHtml(lvl) + '</td>' +
+            '<td class="rq-bd-val">' + (psnr != null ? psnr.toFixed(2) + ' dB' : '\u2014') + '</td>' +
+            '<td class="rq-bd-val">' + (ssim != null ? ssim.toFixed(4) : '\u2014') + '</td>' +
+            '<td class="rq-bd-val" style="color:var(--secondary-dim)">' + d.psnrN + '</td>' +
         '</tr>';
     }).join('');
+    return '<div class="rq-card">' +
+        '<div class="rq-head">' +
+            '<div class="rq-head-left"><span class="rq-num">QC</span><span class="rq-title">Embedding Quality</span></div>' +
+            '<span class="rq-type rq-type--verification">Quality Control</span>' +
+        '</div>' +
+        '<p class="rq-question">PSNR and SSIM measure imperceptibility \u2014 higher values indicate less visible distortion from embedding.</p>' +
+        '<table class="rq-breakdown">' +
+            '<thead><tr><th>Payload Level</th><th>Mean PSNR</th><th>Mean SSIM</th><th>Samples</th></tr></thead>' +
+            '<tbody>' + tableRows + '</tbody>' +
+        '</table>' +
+    '</div>';
+}
 
+var DETECTOR_LABELS = {
+    'rs':                     'RS Analysis',
+    'chi_square_spatial':     'Chi-Square (Spatial)',
+    'sample_pairs':           'Sample Pairs',
+    'chi_square_dct':         'Chi-Square (DCT)',
+    'calibration_chi_square': 'Calibration Chi-Square',
+};
+function fmtDetector(name) { return DETECTOR_LABELS[name] || name; }
+
+function buildPrototypeBanner(cfg) {
+    var profile = (cfg || {}).profile || '';
+    if (profile !== 'prototype') return '';
+    return '<div class="proto-banner">' +
+        '<div class="proto-banner-icon">' + icon('warning') + '</div>' +
+        '<div class="proto-banner-body">' +
+            '<div class="proto-banner-title">Horizontal Prototype</div>' +
+            '<div class="proto-banner-text">These results are based on a reduced sample size (' + (PROFILE_META.prototype.n_groups || 20) + ' groups, LSB only) and <strong>cannot be considered statistically significant</strong>. ' +
+            'This run validates the end-to-end pipeline functionality and LSB integration. For publishable results, run the <em>full_design</em> profile.</div>' +
+        '</div>' +
+    '</div>';
+}
+
+function buildResultsTab(data, detailStats) {
+    if (!data.has_results) {
+        return '<div class="empty-state"><h3>No results yet</h3><p>Run the pipeline with detectors enabled to generate metrics for the research questions.</p></div>';
+    }
+
+    var detectorRows  = toArray((data.metrics || {}).detector);
+    var sourceRows    = toArray((data.metrics || {}).source);
+    var conditionRows = toArray((data.metrics || {}).condition);
+    var qualityRows   = toArray((data.metrics || {}).quality);
+    var detectors     = uniqueValues(detectorRows, 'detector');
+    var methods       = uniqueValues(conditionRows, 'method');
+
+    /* ── Helpers ───────────────────────────────────────────── */
+    function avgAuc(rows) {
+        var v = rows.filter(function (r) { return r.roc_auc && !isNaN(Number(r.roc_auc)); });
+        if (!v.length) return null;
+        return v.reduce(function (s, r) { return s + Number(r.roc_auc); }, 0) / v.length;
+    }
+    function fmtAuc(v) { return v != null ? v.toFixed(3) : '\u2014'; }
+    function aucCls(v) {
+        if (v == null) return '';
+        return v > 0.85 ? 'rq-auc--good' : (v > 0.65 ? 'rq-auc--mid' : 'rq-auc--low');
+    }
+    function pct(v) { return v != null ? Math.round(v * 100) : 0; }
+    function deltaHtml(a, b) {
+        if (a == null || b == null) return '';
+        var d = b - a;
+        var cls = Math.abs(d) < 0.005 ? 'rq-delta--neutral' : (d > 0 ? 'rq-delta--pos' : 'rq-delta--neg');
+        return '<span class="rq-delta ' + cls + '">\u0394 ' + (d >= 0 ? '+' : '') + d.toFixed(3) + '</span>';
+    }
+    function sourceAuc(det, src) {
+        var r = sourceRows.find(function (r) { return r.detector === det && r.source === src; });
+        return r ? Number(r.roc_auc) : null;
+    }
+    function pooledMl(det) {
+        var vals = [sourceAuc(det, 'ml_a'), sourceAuc(det, 'ml_b')].filter(function (v) { return v != null; });
+        return vals.length ? vals.reduce(function (s, v) { return s + v; }, 0) / vals.length : null;
+    }
+    function condAuc(f) {
+        return avgAuc(conditionRows.filter(function (r) {
+            for (var k in f) { if (f[k] !== undefined && r[k] !== f[k]) return false; }
+            return true;
+        }));
+    }
+
+    /* ── RQ card shell ─────────────────────────────────────── */
+    function rqCard(num, title, type, question, body, hasData) {
+        var tCls = 'rq-type--' + type.toLowerCase();
+        if (!hasData) body = '<div class="rq-no-data">Insufficient data for this analysis in the current run.</div>';
+        return '<div class="rq-card">' +
+            '<div class="rq-head">' +
+                '<div class="rq-head-left"><span class="rq-num">' + num + '</span><span class="rq-title">' + escapeHtml(title) + '</span></div>' +
+                '<span class="rq-type ' + tCls + '">' + escapeHtml(type) + '</span>' +
+            '</div>' +
+            '<p class="rq-question">' + question + '</p>' +
+            body +
+        '</div>';
+    }
+
+    /* ── Pair comparison visual ────────────────────────────── */
+    function pairVis(lA, aucA, clsA, noteA, lB, aucB, clsB, noteB) {
+        return '<div class="rq-pair">' +
+            '<div class="rq-side"><div class="rq-side-label ' + clsA + '">' + escapeHtml(lA) + '</div>' +
+                '<div class="rq-side-num ' + aucCls(aucA) + '">' + fmtAuc(aucA) + '</div>' +
+                '<div class="rq-side-bar"><div class="rq-side-fill rq-fill-' + clsA + '" style="width:' + pct(aucA) + '%"></div></div>' +
+                (noteA ? '<div class="rq-side-note">' + noteA + '</div>' : '') +
+            '</div>' +
+            '<div class="rq-vs">' + deltaHtml(aucA, aucB) + '</div>' +
+            '<div class="rq-side"><div class="rq-side-label ' + clsB + '">' + escapeHtml(lB) + '</div>' +
+                '<div class="rq-side-num ' + aucCls(aucB) + '">' + fmtAuc(aucB) + '</div>' +
+                '<div class="rq-side-bar"><div class="rq-side-fill rq-fill-' + clsB + '" style="width:' + pct(aucB) + '%"></div></div>' +
+                (noteB ? '<div class="rq-side-note">' + noteB + '</div>' : '') +
+            '</div>' +
+        '</div>';
+    }
+
+    /* ── Per-detector breakdown ─────────────────────────────── */
+    function bdTable(lA, lB, clsA, clsB, fnA, fnB) {
+        var rows = detectors.map(function (d) {
+            var a = fnA(d), b = fnB(d);
+            return '<tr><td class="rq-bd-det">' + escapeHtml(fmtDetector(d)) + '</td>' +
+                '<td class="rq-bd-val ' + aucCls(a) + '">' + fmtAuc(a) + '</td>' +
+                '<td class="rq-bd-val ' + aucCls(b) + '">' + fmtAuc(b) + '</td>' +
+                '<td class="rq-bd-delta">' + deltaHtml(a, b) + '</td></tr>';
+        }).join('');
+        return '<table class="rq-breakdown"><thead><tr><th>Detector</th><th class="' + clsA + '">' + escapeHtml(lA) + '</th><th class="' + clsB + '">' + escapeHtml(lB) + '</th><th>\u0394</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+
+    /* ═══ RQ1: Real vs ML ═══════════════════════════════════ */
+    var oReal = avgAuc(sourceRows.filter(function (r) { return r.source === 'real'; }));
+    var oMlA  = avgAuc(sourceRows.filter(function (r) { return r.source === 'ml_a'; }));
+    var oMlB  = avgAuc(sourceRows.filter(function (r) { return r.source === 'ml_b'; }));
+    var mlVals = [oMlA, oMlB].filter(function (v) { return v != null; });
+    var oMl   = mlVals.length ? mlVals.reduce(function (s, v) { return s + v; }, 0) / mlVals.length : null;
+    var rq1 = pairVis('Real', oReal, 'src-real', 'COCO + Flickr30k', 'ML (pooled)', oMl, 'src-ml', 'avg SDXL + FLUX.1') +
+        bdTable('Real', 'ML', 'src-real', 'src-ml', function (d) { return sourceAuc(d, 'real'); }, pooledMl);
+
+    /* ═══ RQ2: ML-A vs ML-B ════════════════════════════════ */
+    var hasRq2 = oMlA != null && oMlB != null;
+    var rq2 = pairVis('ML-A (SDXL)', oMlA, 'src-mla', 'Stable Diffusion XL 1.0', 'ML-B (FLUX.1)', oMlB, 'src-mlb', 'FLUX.1-schnell') +
+        bdTable('ML-A', 'ML-B', 'src-mla', 'src-mlb', function (d) { return sourceAuc(d, 'ml_a'); }, function (d) { return sourceAuc(d, 'ml_b'); });
+
+    /* ═══ RQ3: Payload interaction ══════════════════════════ */
+    var payloadLevels = uniqueValues(conditionRows, 'payload_level');
+    var lvlOrder = ['low', 'medium', 'high'];
+    var ordLvls = lvlOrder.filter(function (l) { return payloadLevels.indexOf(l) !== -1; })
+        .concat(payloadLevels.filter(function (l) { return lvlOrder.indexOf(l) === -1; }));
+    var LEVEL_CLR = { low: 'var(--green)', medium: 'var(--amber)', high: 'var(--error)' };
+    var rq3;
+    if (ordLvls.length > 1) {
+        rq3 = '<div class="rq3-grid">' + ordLvls.map(function (lvl) {
+            var overall = condAuc({ payload_level: lvl });
+            var c = LEVEL_CLR[lvl] || 'var(--primary)';
+            var perDet = detectors.map(function (det) {
+                var a = condAuc({ detector: det, payload_level: lvl });
+                return '<div class="rq3-det-row"><span class="rq3-det-name">' + escapeHtml(fmtDetector(det)) + '</span><span class="rq3-det-val ' + aucCls(a) + '">' + fmtAuc(a) + '</span></div>';
+            }).join('');
+            return '<div class="rq3-level-card"><div class="rq3-level-label" style="color:' + c + '">' + escapeHtml(lvl) + '</div>' +
+                '<div class="rq3-level-auc ' + aucCls(overall) + '">' + fmtAuc(overall) + '</div>' +
+                '<div class="rq-side-bar"><div class="rq-side-fill" style="width:' + pct(overall) + '%;background:' + c + '"></div></div>' +
+                '<div class="rq3-det-list">' + perDet + '</div></div>';
+        }).join('') + '</div>';
+    } else {
+        var singleLvl = ordLvls[0] || 'none';
+        var singleAuc = ordLvls.length ? condAuc({ payload_level: singleLvl }) : null;
+        rq3 = '<p class="rq-note">Only one payload level (<strong>' + escapeHtml(singleLvl) + '</strong>) in this run. Run the full design with low / medium / high to analyze payload interaction.</p>' +
+            (singleAuc != null ? '<div class="rq3-grid"><div class="rq3-level-card" style="max-width:220px"><div class="rq3-level-label">' + escapeHtml(singleLvl) + '</div><div class="rq3-level-auc ' + aucCls(singleAuc) + '">' + fmtAuc(singleAuc) + '</div>' +
+            '<div class="rq-side-bar"><div class="rq-side-fill" style="width:' + pct(singleAuc) + '%;background:var(--primary)"></div></div></div></div>' : '');
+    }
+
+    /* ═══ RQ4: Embedding branch ═════════════════════════════ */
+    var hasRq4 = methods.length > 1;
+    var rq4;
+    if (hasRq4) {
+        var oLsb = condAuc({ method: 'lsb' }), oDct = condAuc({ method: 'dct' });
+        rq4 = pairVis('LSB (Spatial)', oLsb, 'method-lsb', 'PNG carriers', 'DCT (Frequency)', oDct, 'method-dct', 'JPEG Q=95 carriers');
+        var lsbDets = detectors.filter(function (d) { return conditionRows.some(function (r) { return r.detector === d && r.method === 'lsb' && r.roc_auc; }); });
+        var dctDets = detectors.filter(function (d) { return conditionRows.some(function (r) { return r.detector === d && r.method === 'dct' && r.roc_auc; }); });
+        rq4 += '<div class="rq4-branches">' +
+            '<div class="rq4-branch"><div class="rq4-branch-label method-lsb">Spatial Detectors</div>' +
+                lsbDets.map(function (d) { var a = condAuc({detector:d,method:'lsb'}); return '<div class="rq3-det-row"><span class="rq3-det-name">' + escapeHtml(fmtDetector(d)) + '</span><span class="rq3-det-val ' + aucCls(a) + '">' + fmtAuc(a) + '</span></div>'; }).join('') +
+            '</div>' +
+            '<div class="rq4-branch"><div class="rq4-branch-label method-dct">Frequency Detectors</div>' +
+                dctDets.map(function (d) { var a = condAuc({detector:d,method:'dct'}); return '<div class="rq3-det-row"><span class="rq3-det-name">' + escapeHtml(fmtDetector(d)) + '</span><span class="rq3-det-val ' + aucCls(a) + '">' + fmtAuc(a) + '</span></div>'; }).join('') +
+            '</div>' +
+        '</div>';
+    } else {
+        rq4 = '<p class="rq-note">Only one embedding method (<strong>' + escapeHtml(methods[0] || 'none') + '</strong>) in this run. Run with both LSB and DCT to compare spatial vs. frequency branches.</p>';
+    }
+
+    /* ═══ RQ5: Encryption invariance ═══════════════════════ */
+    var oPlain = condAuc({ encryption: 'plain' }), oEnc = condAuc({ encryption: 'encrypted' });
+    var hasRq5 = oPlain != null && oEnc != null;
+    var rq5;
+    if (hasRq5) {
+        var d5 = Math.abs(oEnc - oPlain);
+        var finding = d5 < 0.01
+            ? 'As expected, encryption has negligible effect on detectability (\u0394 < 0.01). Detectors respond to embedding distortion, not payload structure.'
+            : 'Unexpected: encryption shows a detectable effect (\u0394 = ' + d5.toFixed(3) + '). This may indicate detectors are partially reacting to payload structure rather than embedding distortion alone.';
+        rq5 = pairVis('Plain', oPlain, 'enc-plain', 'unencrypted payload', 'AES-256-CBC', oEnc, 'enc-encrypted', 'encrypted payload') +
+            bdTable('Plain', 'Encrypted', 'enc-plain', 'enc-encrypted',
+                function (d) { return condAuc({ detector: d, encryption: 'plain' }); },
+                function (d) { return condAuc({ detector: d, encryption: 'encrypted' }); }) +
+            '<p class="rq-finding">' + finding + '</p>';
+    } else {
+        rq5 = '<p class="rq-note">Both plain and encrypted payloads are needed. Run with encryption enabled to test invariance.</p>';
+    }
+
+    /* ═══ Chart canvases embedded in RQ cards ═════════════ */
+    var chartDetector = '<div class="rq-chart-wrap"><canvas id="chart-detector" height="200"></canvas></div>';
+    var chartSource   = '<div class="rq-chart-wrap"><canvas id="chart-source" height="200"></canvas></div>';
+    var chartEnc      = '<div class="rq-chart-wrap"><canvas id="chart-encryption" height="180"></canvas></div>';
+
+    /* ═══ Assemble ══════════════════════════════════════════ */
     return (
-        '<div class="detail-note" style="margin-bottom:12px">' +
-            '<h3>Result Snapshot</h3>' +
-            '<p>The current leader is <code>' + escapeHtml(detailStats.bestDetectorLabel) + '</code> with ROC-AUC <code>' + formatMaybeNumber(detailStats.bestAuc, 3) + '</code>. Charts below compare detector strength across source families and encryption state.</p>' +
-        '</div>' +
-        '<div class="charts-row">' +
-            '<div class="chart-box"><div class="chart-title">AUC by Detector</div><canvas id="chart-detector" height="220"></canvas></div>' +
-            '<div class="chart-box"><div class="chart-title">AUC by Source</div><canvas id="chart-source" height="220"></canvas></div>' +
-        '</div>' +
-        '<div class="charts-full"><div class="chart-box"><div class="chart-title">AUC by Encryption</div><canvas id="chart-encryption" height="190"></canvas></div></div>' +
-        '<div class="card" style="margin-top:10px">' +
-            '<div class="card-head"><span class="card-title">Detector Performance</span></div>' +
-            '<div style="overflow-x:auto"><table class="metrics-table"><thead><tr><th>Detector</th><th>ROC-AUC</th><th>EER</th><th>Accuracy</th><th>Samples</th></tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
-        '</div>'
+        rqCard('RQ1', 'Carrier Source', 'Primary',
+            'Does carrier source (real photographs vs. ML-generated images) affect steganographic detectability under matched embedding settings?',
+            rq1 + chartSource, sourceRows.length > 0) +
+        rqCard('RQ2', 'Generator Effect', 'Primary',
+            'Within ML-generated carriers, does the choice of generator (ML-A vs. ML-B) affect detectability?',
+            rq2 + chartDetector, hasRq2) +
+        rqCard('RQ3', 'Payload Interaction', 'Exploratory',
+            'Does payload size change the detectability gap between carrier sources?',
+            rq3, true) +
+        rqCard('RQ4', 'Embedding Branch', 'Exploratory',
+            'Do the spatial branch (LSB+PNG) and frequency branch (DCT-LSB+JPEG) show different carrier-source effects?',
+            rq4, true) +
+        rqCard('RQ5', 'Encryption Invariance', 'Verification',
+            'Does AES-256-CBC encryption of the payload affect detectability?',
+            rq5 + chartEnc, true) +
+        buildQualityMetricsCard(qualityRows)
     );
 }
 
@@ -1439,10 +1902,225 @@ function drawAllCharts(data) {
     }
 }
 
-function buildCoversTab(covers) {
+/* ── Gallery / Covers tab ─────────────────────────────────────────────── */
+
+var _predictionsCache = {};
+
+function loadPredictions(runId) {
+    if (_predictionsCache[runId]) return Promise.resolve(_predictionsCache[runId]);
+    return api('/api/runs/' + encodeURIComponent(runId) + '/predictions').then(function (rows) {
+        _predictionsCache[runId] = rows;
+        return rows;
+    });
+}
+
+function toggleGroupMetrics(groupId, runId) {
+    var panel = document.getElementById('gm-' + groupId);
+    if (!panel) return;
+    var isOpen = panel.classList.toggle('gm-open');
+    var arrow = document.getElementById('gm-arrow-' + groupId);
+    if (arrow) arrow.textContent = isOpen ? 'expand_less' : 'expand_more';
+    if (!isOpen) return;
+    if (panel.dataset.loaded) return;
+    panel.dataset.loaded = '1';
+    panel.innerHTML = '<div class="gm-loading">' + icon('hourglass_empty') + ' Loading metrics\u2026</div>';
+
+    loadPredictions(runId).then(function (allRows) {
+        var qualityRows = toArray((STATE._galData || {}).quality);
+        var gRows = allRows.filter(function (r) { return String(r.group_id) === String(groupId); });
+        if (!gRows.length) {
+            panel.innerHTML = '<div class="gm-empty">No prediction data for this group.</div>';
+            return;
+        }
+        panel.innerHTML = buildGroupMetricsContent(groupId, gRows, qualityRows);
+        requestAnimationFrame(function () { drawGroupCharts(groupId, gRows); });
+    }).catch(function () {
+        panel.innerHTML = '<div class="gm-empty">Failed to load predictions.</div>';
+    });
+}
+
+function buildGroupMetricsContent(groupId, gRows, qualityRows) {
+    var sources = ['real', 'ml_a', 'ml_b'];
+    var SOURCE_NAMES = { real: 'Real', ml_a: 'ML-A (SDXL)', ml_b: 'ML-B (FLUX.1)' };
+    var detectors = [];
+    gRows.forEach(function (r) { if (detectors.indexOf(r.detector) === -1) detectors.push(r.detector); });
+
+    // Build per-source tables: detector × cover/stego scores
+    var tables = sources.map(function (src) {
+        var srcRows = gRows.filter(function (r) { return r.source === src; });
+        if (!srcRows.length) return '';
+
+        var tableRows = detectors.map(function (det) {
+            var rows = srcRows.filter(function (r) { return r.detector === det; });
+            var coverRows = rows.filter(function (r) { return String(r.label) === '0'; });
+            var stegoRows = rows.filter(function (r) { return String(r.label) === '1'; });
+            var cs = coverRows.length ? coverRows.reduce(function (s, r) { return s + Number(r.score); }, 0) / coverRows.length : null;
+            var ss = stegoRows.length ? stegoRows.reduce(function (s, r) { return s + Number(r.score); }, 0) / stegoRows.length : null;
+            var sep = (cs != null && ss != null) ? Math.abs(ss - cs) : null;
+            return '<tr>' +
+                '<td class="gm-det">' + escapeHtml(fmtDetector(det)) + '</td>' +
+                '<td class="gm-val">' + (cs != null ? fmtScore(cs) : '\u2014') + '</td>' +
+                '<td class="gm-val gm-val--stego">' + (ss != null ? fmtScore(ss) : '\u2014') + '</td>' +
+                '<td class="gm-val gm-val--sep">' + (sep != null ? fmtScore(sep) : '\u2014') + '</td>' +
+            '</tr>';
+        }).join('');
+
+        // Quality metrics for this group+source
+        var qRows = qualityRows.filter(function (r) { return String(r.group_id) === String(groupId) && r.source === src; });
+        var qualityHtml = '';
+        if (qRows.length) {
+            var avgPsnr = qRows.reduce(function (s, r) { return s + (r.psnr ? Number(r.psnr) : 0); }, 0) / qRows.length;
+            var avgSsim = qRows.reduce(function (s, r) { return s + (r.ssim ? Number(r.ssim) : 0); }, 0) / qRows.length;
+            qualityHtml = '<div class="gm-quality">' +
+                '<span>PSNR: <strong>' + avgPsnr.toFixed(1) + ' dB</strong></span>' +
+                '<span>SSIM: <strong>' + avgSsim.toFixed(4) + '</strong></span>' +
+            '</div>';
+        }
+
+        return '<div class="gm-source-block">' +
+            '<div class="gm-source-label ' + src + '">' + escapeHtml(SOURCE_NAMES[src] || src) + '</div>' +
+            qualityHtml +
+            '<table class="gm-table">' +
+                '<thead><tr><th>Detector</th><th>Cover</th><th>Stego</th><th>Separation</th></tr></thead>' +
+                '<tbody>' + tableRows + '</tbody>' +
+            '</table>' +
+            '<div class="gm-bars" id="gm-bars-' + groupId + '-' + src + '"></div>' +
+        '</div>';
+    }).join('');
+
+    return '<div class="gm-sources-grid">' + tables + '</div>' +
+        '<div class="gm-chart-note">' + icon('info') + ' Each detector is normalized to its own max score across all sources, so bar heights show relative cover\u2009/\u2009stego separation per detector.</div>';
+}
+
+function fmtScore(v) {
+    if (v == null || isNaN(v)) return '\u2014';
+    var abs = Math.abs(v);
+    if (abs === 0) return '0';
+    if (abs >= 1000) return v.toFixed(0);
+    if (abs >= 1) return v.toFixed(2);
+    if (abs >= 0.0001) return v.toFixed(4);
+    return v.toExponential(1);
+}
+
+function drawGroupCharts(groupId, gRows) {
+    var sources = ['real', 'ml_a', 'ml_b'];
+    var detectors = [];
+    gRows.forEach(function (r) { if (detectors.indexOf(r.detector) === -1) detectors.push(r.detector); });
+
+    // Helper: average absolute scores for a set of rows
+    function avgScore(rows) {
+        if (!rows.length) return 0;
+        return rows.reduce(function (s, r) { return s + Math.abs(Number(r.score) || 0); }, 0) / rows.length;
+    }
+
+    // Compute per-detector max across ALL sources
+    var detMax = {};
+    detectors.forEach(function (det) {
+        var detRows = gRows.filter(function (r) { return r.detector === det; });
+        var mx = 0;
+        sources.forEach(function (src) {
+            var sr = detRows.filter(function (r) { return r.source === src; });
+            var c = avgScore(sr.filter(function (r) { return String(r.label) === '0'; }));
+            var s = avgScore(sr.filter(function (r) { return String(r.label) === '1'; }));
+            if (c > mx) mx = c;
+            if (s > mx) mx = s;
+        });
+        detMax[det] = mx || 1;
+    });
+
+    sources.forEach(function (src) {
+        var container = document.getElementById('gm-bars-' + groupId + '-' + src);
+        if (!container) return;
+        var srcRows = gRows.filter(function (r) { return r.source === src; });
+        if (!srcRows.length) return;
+
+        var html = detectors.map(function (det) {
+            var rows = srcRows.filter(function (r) { return r.detector === det; });
+            var cs = avgScore(rows.filter(function (r) { return String(r.label) === '0'; }));
+            var ss = avgScore(rows.filter(function (r) { return String(r.label) === '1'; }));
+            var mx = detMax[det];
+            var cPct = Math.round((cs / mx) * 100);
+            var sPct = Math.round((ss / mx) * 100);
+            var bothZero = cs === 0 && ss === 0;
+
+            return '<div class="gm-bar-row">' +
+                '<div class="gm-bar-label">' + escapeHtml(fmtDetector(det)) + '</div>' +
+                (bothZero
+                    ? '<div class="gm-bar-zero">No signal</div>'
+                    : '<div class="gm-bar-tracks">' +
+                        '<div class="gm-bar-track"><div class="gm-bar-fill gm-bar--cover" style="width:' + cPct + '%"></div><span class="gm-bar-val">' + fmtScore(cs) + '</span></div>' +
+                        '<div class="gm-bar-track"><div class="gm-bar-fill gm-bar--stego" style="width:' + sPct + '%"></div><span class="gm-bar-val">' + fmtScore(ss) + '</span></div>' +
+                    '</div>') +
+            '</div>';
+        }).join('');
+
+        container.innerHTML = html +
+            '<div class="gm-bar-legend"><span class="gm-bar-fill gm-bar--cover" style="width:10px;height:8px;display:inline-block;border-radius:2px"></span> Cover <span class="gm-bar-fill gm-bar--stego" style="width:10px;height:8px;display:inline-block;border-radius:2px;margin-left:8px"></span> Stego</div>';
+    });
+}
+
+function drawGroupedBarsThemed(canvas, labels, datasets) {
+    var isLight = document.documentElement.classList.contains('light');
+    var theme = isLight
+        ? { bg: 'transparent', grid: '#e5e7eb', gridMid: '#d1d5db', text: '#4b5563', textDim: '#9ca3af', track: '#f3f4f6' }
+        : { bg: 'transparent', grid: '#1a2d54', gridMid: '#2b4680', text: '#8f9fb7', textDim: '#5b74b1', track: '#06122d' };
+    var font = 'monospace';
+    var fontBody = "'Inter', system-ui, sans-serif";
+
+    var dpr = window.devicePixelRatio || 1;
+    var W = canvas.parentElement.clientWidth || 300, H = canvas.height || 120;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    var ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+
+    var pad = { t: 16, r: 12, b: 46, l: 10 };
+    var cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    var n = labels.length, nd = datasets.length, gw = cw / n;
+    var bw = Math.min(18, Math.max(5, (gw - 10) / nd));
+    ctx.clearRect(0, 0, W, H);
+
+    [0, 0.5, 1].forEach(function (v) {
+        var y = pad.t + ch * (1 - v);
+        ctx.strokeStyle = v === 0.5 ? theme.gridMid : theme.grid;
+        ctx.lineWidth = 1; ctx.setLineDash(v === 0.5 ? [3, 3] : []);
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cw, y); ctx.stroke(); ctx.setLineDash([]);
+    });
+
+    labels.forEach(function (lbl, gi) {
+        var gx = pad.l + gi * gw + gw / 2;
+        datasets.forEach(function (ds, di) {
+            var v = Math.max(0, Math.min(1, ds.vals[gi] || 0));
+            var x = gx + (di - (nd - 1) / 2) * (bw + 2) - bw / 2;
+            ctx.fillStyle = ds.color; ctx.globalAlpha = 0.8;
+            roundedRect(ctx, x, pad.t + ch * (1 - v), bw, v * ch || 2, [2, 2, 0, 0]); ctx.fill();
+            ctx.globalAlpha = 1;
+        });
+        ctx.fillStyle = theme.text; ctx.font = '9px ' + font; ctx.textAlign = 'center';
+        var short = lbl.length > 12 ? lbl.slice(0, 11) + '\u2026' : lbl;
+        ctx.fillText(short, gx, H - pad.b + 12);
+    });
+
+    var lx = pad.l + 2, ly = H - 4;
+    ctx.font = '9px ' + fontBody;
+    datasets.forEach(function (ds) {
+        ctx.fillStyle = ds.color; ctx.globalAlpha = 0.8;
+        roundedRect(ctx, lx, ly - 6, 8, 6, 2); ctx.fill(); ctx.globalAlpha = 1;
+        ctx.fillStyle = theme.text; ctx.textAlign = 'left';
+        ctx.fillText(ds.label, lx + 11, ly);
+        lx += ctx.measureText(ds.label).width + 22;
+    });
+}
+
+function buildCoversTab(data, runId) {
+    var covers = data.covers || [];
+    // Store quality rows for per-group access
+    STATE._galData = { quality: toArray((data.metrics || {}).quality) };
+
     if (!covers.length) {
         return '<div class="empty-state"><h3>No cover manifest found</h3><p>This run has not exported grouped cover previews yet.</p></div>';
     }
+
+    var hasPredictions = data.has_results;
 
     var groups = covers.map(function (group) {
         var cells = ['real', 'ml_a', 'ml_b'].map(function (source) {
@@ -1456,16 +2134,33 @@ function buildCoversTab(covers) {
             return '<div class="source-cell"><div class="source-label ' + source + '">' + escapeHtml(label) + '</div><img class="cover-thumb" src="' + escapeAttr(url) + '" loading="lazy" alt="' + escapeAttr(label) + '" onclick="openLightbox(\'' + escapeAttr(url) + '\')"></div>';
         }).join('');
 
+        var metricsToggle = hasPredictions
+            ? '<button class="gm-toggle" onclick="toggleGroupMetrics(\'' + escapeAttr(group.group_id) + '\', \'' + escapeAttr(runId) + '\')">' +
+                  icon('analytics') + ' <span>Metrics</span>' +
+                  '<span class="material-symbols-outlined gm-arrow" id="gm-arrow-' + escapeAttr(group.group_id) + '">expand_more</span>' +
+              '</button>'
+            : '';
+
         return '<div class="group-card">' +
             '<div class="group-head">' +
                 '<span class="group-gid">Group ' + escapeHtml(group.group_id) + '</span>' +
                 (group.caption ? '<span class="group-caption">' + escapeHtml(group.caption) + '</span>' : '') +
+                metricsToggle +
             '</div>' +
             '<div class="group-images">' + cells + '</div>' +
+            (hasPredictions ? '<div class="gm-panel" id="gm-' + escapeAttr(group.group_id) + '"></div>' : '') +
         '</div>';
     }).join('');
 
-    return '<div class="section-header"><div><div class="section-title">Cover Images</div><div class="section-subtitle">' + covers.length + ' groups · real and generated sources</div></div></div><div class="covers-grid">' + groups + '</div>';
+    return '<div class="section-header"><div><div class="section-title">Cover Images</div><div class="section-subtitle">' + covers.length + ' groups · real and generated sources' + (hasPredictions ? ' · click Metrics to see per-image detector scores' : '') + '</div></div></div><div class="covers-grid">' + groups + '</div>';
+}
+
+function toggleConditionRow(detectorKey) {
+    var panel = document.getElementById('cond-detail-' + detectorKey);
+    if (!panel) return;
+    var isOpen = panel.classList.toggle('cond-open');
+    var arrow = document.getElementById('cond-arrow-' + detectorKey);
+    if (arrow) arrow.textContent = isOpen ? 'expand_less' : 'expand_more';
 }
 
 function buildConditionsTab(data) {
@@ -1474,12 +2169,14 @@ function buildConditionsTab(data) {
         return '<div class="empty-state"><h3>No condition metrics</h3><p>This run has no per-condition AUC table yet.</p></div>';
     }
 
-    var detectors = uniqueValues(conditionRows, 'detector');
-    var methods = uniqueValues(conditionRows, 'method');
-    var levels = uniqueValues(conditionRows, 'payload_level');
-    var encryptions = uniqueValues(conditionRows, 'encryption');
-    var columns = [];
+    // Store for drill-down
+    STATE._condData = conditionRows;
 
+    var detectors  = uniqueValues(conditionRows, 'detector');
+    var methods    = uniqueValues(conditionRows, 'method');
+    var levels     = uniqueValues(conditionRows, 'payload_level');
+    var encryptions = uniqueValues(conditionRows, 'encryption');
+    var columns    = [];
     methods.forEach(function (method) {
         levels.forEach(function (level) {
             encryptions.forEach(function (encryption) {
@@ -1488,29 +2185,89 @@ function buildConditionsTab(data) {
         });
     });
 
-    var header = columns.map(function (column) {
-        return '<th style="text-align:center"><div>' + escapeHtml(String(column.method).toUpperCase()) + '</div><div style="color:var(--amber);font-weight:500">' + escapeHtml(column.level) + '</div><div style="color:var(--tertiary-dim);font-weight:500">' + escapeHtml(column.encryption) + '</div></th>';
+    var LEVEL_COLORS = { low: 'var(--green)', medium: 'var(--amber)', high: 'var(--error)' };
+    var ENC_COLORS   = { plain: 'var(--secondary)', encrypted: 'var(--primary)' };
+
+    function aucColor(auc) { return auc > 0.85 ? 'var(--green)' : (auc > 0.65 ? 'var(--amber)' : 'var(--error)'); }
+    function fmtPct(v) { return v != null && !isNaN(Number(v)) ? (Number(v) * 100).toFixed(1) + '%' : '\u2014'; }
+
+    var header = '<th class="cond-th-det">Detector</th>' + columns.map(function (col) {
+        return '<th style="text-align:center">' +
+            '<div style="font-size:10px;text-transform:uppercase;color:var(--secondary-dim);font-weight:700;letter-spacing:0.6px">' + escapeHtml(col.method.toUpperCase()) + '</div>' +
+            '<div style="color:' + (LEVEL_COLORS[col.level] || 'var(--secondary)') + ';font-weight:600;font-size:11px">' + escapeHtml(col.level) + '</div>' +
+            '<div style="color:' + (ENC_COLORS[col.encryption] || 'var(--secondary-dim)') + ';font-size:10px">' + escapeHtml(col.encryption) + '</div>' +
+        '</th>';
     }).join('');
 
     var body = detectors.map(function (detector) {
-        var cells = columns.map(function (column) {
+        var detKey = detector.replace(/[^a-z0-9_]/gi, '_');
+        var cells = columns.map(function (col) {
             var row = conditionRows.find(function (item) {
                 return item.detector === detector &&
-                    item.method === column.method &&
-                    item.payload_level === column.level &&
-                    item.encryption === column.encryption;
+                    item.method === col.method &&
+                    item.payload_level === col.level &&
+                    item.encryption === col.encryption;
             });
-
             if (!row) return '<td style="text-align:center;color:var(--secondary-dim)">\u2014</td>';
-            var auc = Number(row.roc_auc || 0);
-            var color = auc > 0.85 ? 'var(--green)' : (auc > 0.65 ? 'var(--amber)' : 'var(--error)');
-            return '<td style="text-align:center;font-weight:600;font-family:monospace;font-size:12px;color:' + color + '">' + auc.toFixed(3) + '</td>';
+            var auc   = Number(row.roc_auc || 0);
+            var color = aucColor(auc);
+            return '<td style="text-align:center">' +
+                '<div class="auc-cell" style="justify-content:center">' +
+                    '<div class="auc-glow-dot" style="background:' + color + ';box-shadow:0 0 6px ' + color + '"></div>' +
+                    '<span style="font-family:monospace;font-size:12px;font-weight:600;color:' + color + '">' + auc.toFixed(3) + '</span>' +
+                '</div>' +
+            '</td>';
         }).join('');
 
-        return '<tr><td style="font-weight:600">' + escapeHtml(detector) + '</td>' + cells + '</tr>';
+        // Build expanded detail rows for this detector
+        var detailHeader = '<th></th>' + columns.map(function (col) {
+            return '<th style="text-align:center;font-size:9px;color:var(--secondary-dim);font-weight:600">' +
+                escapeHtml(col.method.toUpperCase()) + ' / ' + escapeHtml(col.level) + ' / ' + escapeHtml(col.encryption) + '</th>';
+        }).join('');
+
+        var metricNames = [
+            { key: 'eer', label: 'EER' },
+            { key: 'accuracy_at_youden_j', label: 'Accuracy' },
+            { key: 'fpr_at_fixed_fnr', label: 'FPR @ 10% FNR' },
+            { key: 'n_samples', label: 'Samples' }
+        ];
+
+        var detailRows = metricNames.map(function (m) {
+            var metricCells = columns.map(function (col) {
+                var row = conditionRows.find(function (item) {
+                    return item.detector === detector &&
+                        item.method === col.method &&
+                        item.payload_level === col.level &&
+                        item.encryption === col.encryption;
+                });
+                if (!row) return '<td style="text-align:center;color:var(--secondary-dim);font-size:11px">\u2014</td>';
+                var val = row[m.key];
+                var display;
+                if (m.key === 'n_samples') {
+                    display = val != null ? String(val) : '\u2014';
+                } else {
+                    display = fmtPct(val);
+                }
+                return '<td style="text-align:center;font-family:monospace;font-size:11px;color:var(--secondary)">' + escapeHtml(display) + '</td>';
+            }).join('');
+            return '<tr class="cond-detail-metric"><td style="font-size:10px;font-weight:600;color:var(--secondary-dim);padding-left:24px">' + escapeHtml(m.label) + '</td>' + metricCells + '</tr>';
+        }).join('');
+
+        return '<tr class="cond-row" onclick="toggleConditionRow(\'' + detKey + '\')">' +
+            '<td style="font-weight:600;cursor:pointer">' +
+                '<span class="material-symbols-outlined cond-arrow" id="cond-arrow-' + detKey + '">expand_more</span> ' +
+                escapeHtml(fmtDetector(detector)) +
+            '</td>' + cells +
+        '</tr>' +
+        '<tr class="cond-detail-wrap" id="cond-detail-' + detKey + '"><td colspan="' + (columns.length + 1) + '">' +
+            '<table class="cond-detail-table"><tbody>' + detailRows + '</tbody></table>' +
+        '</td></tr>';
     }).join('');
 
-    return '<div class="card"><div class="card-head"><span class="card-title">AUC per Condition</span></div><div style="overflow-x:auto"><table class="metrics-table"><thead><tr><th>Detector</th>' + header + '</tr></thead><tbody>' + body + '</tbody></table></div></div>';
+    return '<div class="card">' +
+        '<div class="card-head"><span class="card-title">AUC per Condition</span><span class="card-sub">per detector &middot; method &middot; payload &middot; encryption &middot; click a row for details</span></div>' +
+        '<div style="overflow-x:auto"><table class="metrics-table"><thead><tr>' + header + '</tr></thead><tbody>' + body + '</tbody></table></div>' +
+    '</div>';
 }
 
 function openLaunchPanel() {
@@ -2068,7 +2825,8 @@ function toggleTheme() {
 function applyStoredTheme() {
     var stored;
     try { stored = localStorage.getItem('theme'); } catch(e) {}
-    if (stored === 'light') {
+    // Default to light; only go dark when explicitly stored as 'dark'
+    if (stored !== 'dark') {
         document.documentElement.classList.add('light');
         var icon = document.getElementById('theme-toggle-icon');
         if (icon) icon.textContent = 'dark_mode';

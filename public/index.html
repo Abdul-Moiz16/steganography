@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/public/style.css?v=7">
+    <link rel="stylesheet" href="/public/style.css?v=9">
 </head>
 <body>
     <!-- Top nav -->
@@ -24,11 +24,16 @@
         </div>
         <div class="topbar-right">
             <div class="topbar-search">
-                <span class="material-symbols-outlined topbar-search-icon">search</span>
-                <input type="text" class="topbar-search-input" id="search-input" placeholder="Search runs…" oninput="filterRuns(this.value)">
+                <div class="topbar-search-wrap">
+                    <span class="material-symbols-outlined topbar-search-icon">search</span>
+                    <input type="text" class="topbar-search-input" id="search-input" placeholder="Search runs…" oninput="handleSearch(this.value)">
+                    <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" title="Clear search" style="display:none">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
             </div>
             <button class="topbar-icon-btn" id="theme-toggle-btn" title="Toggle theme" onclick="toggleTheme()">
-                <span class="material-symbols-outlined" id="theme-toggle-icon">light_mode</span>
+                <span class="material-symbols-outlined" id="theme-toggle-icon">dark_mode</span>
             </button>
         </div>
     </nav>
@@ -120,7 +125,7 @@
         </div>
     </div>
 
-    <script src="/public/charts.js?v=7"></script>
-    <script src="/public/app.js?v=7"></script>
+    <script src="/public/charts.js?v=9"></script>
+    <script src="/public/app.js?v=9"></script>
 </body>
 </html>
