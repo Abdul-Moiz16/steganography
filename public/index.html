@@ -1,48 +1,124 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stego Explorer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/public/style.css?v=2">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/public/style.css?v=6">
 </head>
 <body>
-    <div class="shell">
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <img class="brand-logo" src="/public/logo.png" alt="UM" width="32" height="32">
-                <div class="brand-text">
-                    <span class="brand-name">Stego</span>
-                    <span class="brand-sub">Explorer</span>
-                </div>
+    <!-- Top nav -->
+    <nav class="topbar" id="topbar">
+        <div class="topbar-left">
+            <img class="topbar-logo" src="/public/logo.png" alt="UM" width="26" height="26">
+            <span class="topbar-brand">Stego Explorer</span>
+            <div class="topbar-nav">
+                <a id="nav-runs" class="topbar-link active" onclick="go('runs')">Runs</a>
             </div>
-            <nav class="sidebar-nav">
-                <a id="nav-runs" class="nav-link active" onclick="go('runs')">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3h12M2 8h12M2 13h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                    Runs
-                </a>
-                <a id="nav-launch" class="nav-link" onclick="go('launch')">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 2l10 6-10 6V2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-                    Launch
-                </a>
-            </nav>
-            <div class="sidebar-foot">
-                <div class="sidebar-foot-label">Steganography Pipeline</div>
-                <div class="sidebar-foot-sub">University of Malta &middot; M2</div>
+        </div>
+        <div class="topbar-right">
+            <div class="topbar-search">
+                <span class="material-symbols-outlined topbar-search-icon">search</span>
+                <input type="text" class="topbar-search-input" id="search-input" placeholder="Search runs…" oninput="filterRuns(this.value)">
             </div>
-        </aside>
-        <main class="content" id="main"></main>
-    </div>
+            <button class="topbar-icon-btn" id="theme-toggle-btn" title="Toggle theme" onclick="toggleTheme()">
+                <span class="material-symbols-outlined" id="theme-toggle-icon">light_mode</span>
+            </button>
+        </div>
+    </nav>
 
+    <!-- Always-visible sidebar -->
+    <aside class="sidebar is-hidden" id="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-run-label-row">
+                <button class="sidebar-back-btn" onclick="go('runs')" title="Back to Runs">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                </button>
+                <div class="sidebar-run-label">Active Run</div>
+            </div>
+            <div class="sidebar-run-id" id="sidebar-run-id">No run selected</div>
+        </div>
+        <nav class="sidebar-tabs" id="sidebar-tabs">
+            <a class="sidebar-tab" onclick="switchTab('overview')">
+                <span class="material-symbols-outlined">dashboard</span>
+                <span>Overview</span>
+            </a>
+            <a class="sidebar-tab" onclick="switchTab('results')">
+                <span class="material-symbols-outlined">analytics</span>
+                <span>Results</span>
+            </a>
+            <a class="sidebar-tab" onclick="switchTab('covers')">
+                <span class="material-symbols-outlined">collections</span>
+                <span>Gallery</span>
+            </a>
+            <a class="sidebar-tab" onclick="switchTab('conditions')">
+                <span class="material-symbols-outlined">science</span>
+                <span>Conditions</span>
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <div class="sidebar-bottom-label">Tools</div>
+            <a class="sidebar-bottom-link" onclick="go('launch')">
+                <span class="material-symbols-outlined">terminal</span>
+                <span>Launch Pipeline</span>
+            </a>
+            <a class="sidebar-bottom-link" id="sidebar-log-link" style="display:none">
+                <span class="material-symbols-outlined">description</span>
+                <span>View Logs</span>
+            </a>
+        </div>
+        <div class="sidebar-foot">
+            <div class="sidebar-foot-label">Steganography Pipeline</div>
+            <div class="sidebar-foot-sub">Maastricht University</div>
+        </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="content" id="main"></main>
+
+    <!-- Floating action button (mobile) -->
+    <button class="fab" id="fab" onclick="go('launch')" title="New Run">
+        <span class="material-symbols-outlined">add</span>
+    </button>
+
+    <!-- Launch drawer -->
+    <div class="drawer-overlay" id="launch-drawer-overlay" onclick="closeLaunchPanel()"></div>
+    <aside class="launch-drawer" id="launch-drawer">
+        <div class="launch-drawer-header">
+            <div>
+                <div class="launch-drawer-title">New Run</div>
+                <div class="launch-drawer-sub">Configure and start a pipeline run</div>
+            </div>
+            <button class="topbar-icon-btn" onclick="closeLaunchPanel()">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="launch-drawer-body" id="launch-drawer-body"></div>
+    </aside>
+
+    <!-- Lightbox -->
     <div class="lightbox" id="lightbox" onclick="closeLightbox()">
         <span class="lightbox-close">&times;</span>
         <img id="lightbox-img" src="" alt="">
     </div>
 
-    <script src="/public/charts.js?v=2"></script>
-    <script src="/public/app.js?v=2"></script>
+    <!-- Confirm dialog -->
+    <div class="dialog-overlay" id="confirm-dialog">
+        <div class="dialog-box">
+            <div class="dialog-title" id="dialog-title"></div>
+            <div class="dialog-message" id="dialog-message"></div>
+            <div class="dialog-actions">
+                <button class="btn btn-ghost" id="dialog-cancel">Cancel</button>
+                <button class="btn btn-danger" id="dialog-confirm">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/public/charts.js?v=6"></script>
+    <script src="/public/app.js?v=6"></script>
 </body>
 </html>
