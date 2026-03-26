@@ -78,18 +78,18 @@ function showDocsNav(count) {
         nav.id = 'search-nav';
         nav.className = 'search-nav';
         nav.innerHTML =
-            '<span class="search-nav-count" id="search-nav-count"></span>' +
-            '<button class="search-nav-btn" onclick="docsSearchPrev()" title="Previous">' +
-                '<span class="material-symbols-outlined">keyboard_arrow_up</span>' +
-            '</button>' +
-            '<button class="search-nav-btn" onclick="docsSearchNext()" title="Next">' +
-                '<span class="material-symbols-outlined">keyboard_arrow_down</span>' +
-            '</button>';
+            `<span class="search-nav-count" id="search-nav-count"></span>
+            <button class="search-nav-btn" onclick="docsSearchPrev()" title="Previous">
+                <span class="material-symbols-outlined">keyboard_arrow_up</span>
+            </button>
+            <button class="search-nav-btn" onclick="docsSearchNext()" title="Next">
+                <span class="material-symbols-outlined">keyboard_arrow_down</span>
+            </button>`;
         var searchWrap = document.querySelector('.topbar-search');
         if (searchWrap) searchWrap.appendChild(nav);
     }
     nav.style.display = 'flex';
-    document.getElementById('search-nav-count').textContent = count + ' found';
+    document.getElementById('search-nav-count').textContent = `${count} found`;
 }
 
 function hideDocsNav() {
@@ -105,7 +105,7 @@ function docsSearchNext() {
     s.marks[s.current].classList.add('docs-search-active');
     s.marks[s.current].scrollIntoView({ behavior: 'smooth', block: 'center' });
     var countEl = document.getElementById('search-nav-count');
-    if (countEl) countEl.textContent = (s.current + 1) + ' / ' + s.marks.length;
+    if (countEl) countEl.textContent = `${s.current + 1} / ${s.marks.length}`;
 }
 
 function docsSearchPrev() {
@@ -116,5 +116,5 @@ function docsSearchPrev() {
     s.marks[s.current].classList.add('docs-search-active');
     s.marks[s.current].scrollIntoView({ behavior: 'smooth', block: 'center' });
     var countEl = document.getElementById('search-nav-count');
-    if (countEl) countEl.textContent = (s.current + 1) + ' / ' + s.marks.length;
+    if (countEl) countEl.textContent = `${s.current + 1} / ${s.marks.length}`;
 }

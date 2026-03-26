@@ -2,7 +2,7 @@
 
 async function renderRunDetail(el, runId, token) {
     try {
-        var data = await api('/api/runs/' + encodeURIComponent(runId) + '/detail');
+        var data = await api(`/api/runs/${encodeURIComponent(runId)}/detail`);
         if (token !== STATE.renderToken) return;
         var isThisRunActive = isRunActive(runId) || !!(data && data.is_active);
         var isThisRunKilled = !isThisRunActive && !!(data && data.is_killed || (getJobForRun(runId) || {}).killed);
@@ -17,18 +17,18 @@ async function renderRunDetail(el, runId, token) {
             /* Run just started — show terminal-only initializing state */
             hideSidebar();
             el.innerHTML =
-                '<div class="breadcrumb">' +
-                    '<a onclick="go(\'runs\')">Runs</a>' +
-                    '<span class="material-symbols-outlined breadcrumb-sep">chevron_right</span>' +
-                    '<span class="breadcrumb-active">' + escapeHtml(runId) + '</span>' +
-                '</div>' +
-                '<div class="page-header">' +
-                    '<div>' +
-                        '<div class="page-title">' + escapeHtml(runId) + '</div>' +
-                        '<div class="page-subtitle">Pipeline initializing — awaiting output…</div>' +
-                    '</div>' +
-                    '<button class="btn btn-ghost" onclick="go(\'runs\')">' + icon('arrow_back') + ' Back to Runs</button>' +
-                '</div>' +
+                `<div class="breadcrumb">` +
+                    `<a onclick="go('runs')">Runs</a>` +
+                    `<span class="material-symbols-outlined breadcrumb-sep">chevron_right</span>` +
+                    `<span class="breadcrumb-active">${escapeHtml(runId)}</span>` +
+                `</div>` +
+                `<div class="page-header">` +
+                    `<div>` +
+                        `<div class="page-title">${escapeHtml(runId)}</div>` +
+                        `<div class="page-subtitle">Pipeline initializing — awaiting output…</div>` +
+                    `</div>` +
+                    `<button class="btn btn-ghost" onclick="go('runs')">${icon('arrow_back')} Back to Runs</button>` +
+                `</div>` +
                 buildTerminalSection(runId);
             attachStream(runId);
             return;
@@ -45,25 +45,25 @@ async function renderRunDetail(el, runId, token) {
         if (STATE.tab === 'conditions') body = buildConditionsTab(data);
 
         el.innerHTML =
-            '<div class="breadcrumb">' +
-                '<a onclick="go(\'runs\')">Runs</a>' +
-                '<span class="material-symbols-outlined breadcrumb-sep">chevron_right</span>' +
-                '<span class="breadcrumb-active">' + escapeHtml(runId) + '</span>' +
-            '</div>' +
-            '<div class="page-header">' +
-                '<div>' +
-                    '<div class="page-title">' + escapeHtml(runId) + '</div>' +
-                    '<div class="page-subtitle">' + escapeHtml(isThisRunActive && !cfg.profile ? (jobForRun ? (jobForRun.profile || 'prototype') + ' · ' + (jobForRun.engine || 'stub') + ' engine · running…' : 'Pipeline running…') : buildRunHeader(cfg, detailStats, runId)) + '</div>' +
-                '</div>' +
-                '<button class="btn btn-ghost" onclick="go(\'runs\')">' + icon('arrow_back') + ' Back to Runs</button>' +
-            '</div>' +
+            `<div class="breadcrumb">` +
+                `<a onclick="go('runs')">Runs</a>` +
+                `<span class="material-symbols-outlined breadcrumb-sep">chevron_right</span>` +
+                `<span class="breadcrumb-active">${escapeHtml(runId)}</span>` +
+            `</div>` +
+            `<div class="page-header">` +
+                `<div>` +
+                    `<div class="page-title">${escapeHtml(runId)}</div>` +
+                    `<div class="page-subtitle">${escapeHtml(isThisRunActive && !cfg.profile ? (jobForRun ? (jobForRun.profile || 'prototype') + ' · ' + (jobForRun.engine || 'stub') + ' engine · running…' : 'Pipeline running…') : buildRunHeader(cfg, detailStats, runId))}</div>` +
+                `</div>` +
+                `<button class="btn btn-ghost" onclick="go('runs')">${icon('arrow_back')} Back to Runs</button>` +
+            `</div>` +
             (getJobForRun(runId) ? buildTerminalSection(runId) : (isThisRunKilled ? buildKilledBanner(runId) : '')) +
             (!detailStats.detectorCount && !detailStats.coverGroups
                 ? ''  /* suppress stat cards when there is no data to show */
                 : buildSummaryStrip(cfg, detailStats, data)) +
             ((isThisRunActive || isThisRunKilled) && !data.has_results && !detailStats.coverGroups
                 ? ''  /* suppress empty tabs while pipeline is still running or was killed early */
-                : buildPrototypeBanner(cfg) + '<div id="tab-body">' + body + '</div>');
+                : buildPrototypeBanner(cfg) + `<div id="tab-body">${body}</div>`);
 
         if (isThisRunActive && jobForRun) attachStream(jobForRun.jobId);
         if (STATE.tab === 'results' && data.has_results) {
@@ -77,16 +77,16 @@ async function renderRunDetail(el, runId, token) {
 }
 
 function buildKilledBanner(runId) {
-    return '<div class="rd-terminal">' +
-        '<div class="rd-terminal-hdr">' +
-            '<span>' + icon('terminal') + ' Pipeline Output</span>' +
-            '<span class="badge badge-error">✗ Killed</span>' +
-        '</div>' +
-        '<div class="rd-error-banner">' +
+    return `<div class="rd-terminal">` +
+        `<div class="rd-terminal-hdr">` +
+            `<span>${icon('terminal')} Pipeline Output</span>` +
+            `<span class="badge badge-error">✗ Killed</span>` +
+        `</div>` +
+        `<div class="rd-error-banner">` +
             icon('cancel') +
-            '<span class="rd-error-msg">This run was killed before it completed. No pipeline output is available from this viewer instance.</span>' +
-        '</div>' +
-    '</div>';
+            `<span class="rd-error-msg">This run was killed before it completed. No pipeline output is available from this viewer instance.</span>` +
+        `</div>` +
+    `</div>`;
 }
 
 function buildTerminalSection(runId) {
@@ -98,51 +98,51 @@ function buildTerminalSection(runId) {
     var logContent = escapeHtml(job.logLines.join('\n'));
 
     var statusBadge = isRunning
-        ? '<span class="badge badge-running">● Live</span>'
+        ? `<span class="badge badge-running">● Live</span>`
         : (job.failed || job.killed)
-            ? '<span class="badge badge-error">' + (job.killed ? '✗ Killed' : '✗ Failed') + '</span>'
-            : '<span class="badge badge-done">✓ Completed</span>';
+            ? `<span class="badge badge-error">${job.killed ? '✗ Killed' : '✗ Failed'}</span>`
+            : `<span class="badge badge-done">✓ Completed</span>`;
 
     var killBtn = isRunning
-        ? '<button class="rd-kill-btn" onclick="killRun(\'' + escapeAttr(job.jobId) + '\')" title="Kill this run">' +
-              '<span class="material-symbols-outlined">stop_circle</span> Kill' +
-          '</button>'
+        ? `<button class="rd-kill-btn" onclick="killRun('${escapeAttr(job.jobId)}')" title="Kill this run">` +
+              `<span class="material-symbols-outlined">stop_circle</span> Kill` +
+          `</button>`
         : '';
 
     var errorBanner = ((job.failed || job.killed) && job.error)
-        ? '<div class="rd-error-banner">' +
-              '<span class="material-symbols-outlined">error_outline</span>' +
-              '<div><strong>Pipeline error detected</strong><div class="rd-error-msg">' + escapeHtml(job.error) + '</div></div>' +
-          '</div>'
+        ? `<div class="rd-error-banner">` +
+              `<span class="material-symbols-outlined">error_outline</span>` +
+              `<div><strong>Pipeline error detected</strong><div class="rd-error-msg">${escapeHtml(job.error)}</div></div>` +
+          `</div>`
         : '';
 
     var body = isOpen
-        ? '<div class="rd-terminal-body">' +
+        ? `<div class="rd-terminal-body">` +
               errorBanner +
-              '<div class="lp-terminal-chrome">' +
-                  '<span class="lp-dot lp-dot--r"></span>' +
-                  '<span class="lp-dot lp-dot--y"></span>' +
-                  '<span class="lp-dot lp-dot--g"></span>' +
-                  '<span class="lp-terminal-label">sh — ' + escapeHtml(job.runId || job.jobId) + ' — pts/0</span>' +
-              '</div>' +
-              '<pre class="log-box lp-log-body" id="run-terminal-log">' + logContent + '</pre>' +
-          '</div>'
+              `<div class="lp-terminal-chrome">` +
+                  `<span class="lp-dot lp-dot--r"></span>` +
+                  `<span class="lp-dot lp-dot--y"></span>` +
+                  `<span class="lp-dot lp-dot--g"></span>` +
+                  `<span class="lp-terminal-label">sh — ${escapeHtml(job.runId || job.jobId)} — pts/0</span>` +
+              `</div>` +
+              `<pre class="log-box lp-log-body" id="run-terminal-log">${logContent}</pre>` +
+          `</div>`
         : '';
 
-    return '<div class="rd-terminal">' +
-        '<div class="rd-terminal-hdr" onclick="toggleRunTerminal()">' +
-            '<div class="rd-terminal-hdr-left">' +
-                '<span class="material-symbols-outlined rd-term-icon">terminal</span>' +
-                '<span class="rd-terminal-title">Pipeline Output</span>' +
+    return `<div class="rd-terminal">` +
+        `<div class="rd-terminal-hdr" onclick="toggleRunTerminal()">` +
+            `<div class="rd-terminal-hdr-left">` +
+                `<span class="material-symbols-outlined rd-term-icon">terminal</span>` +
+                `<span class="rd-terminal-title">Pipeline Output</span>` +
                 statusBadge +
-            '</div>' +
-            '<div class="rd-terminal-hdr-right">' +
+            `</div>` +
+            `<div class="rd-terminal-hdr-right">` +
                 killBtn +
-                '<span class="material-symbols-outlined rd-term-chevron">' + (isOpen ? 'expand_less' : 'expand_more') + '</span>' +
-            '</div>' +
-        '</div>' +
+                `<span class="material-symbols-outlined rd-term-chevron">${isOpen ? 'expand_less' : 'expand_more'}</span>` +
+            `</div>` +
+        `</div>` +
         body +
-    '</div>';
+    `</div>`;
 }
 
 function toggleRunTerminal() {
@@ -156,17 +156,17 @@ function toggleRunTerminal() {
     if (STATE.terminalOpen && job) {
         var isRunning = !!job.streamSource && !job.failed && !job.killed;
         var errorBanner = ((job.failed || job.killed) && job.error)
-            ? '<div class="rd-error-banner"><span class="material-symbols-outlined">error_outline</span><div><strong>Pipeline error detected</strong><div class="rd-error-msg">' + escapeHtml(job.error) + '</div></div></div>'
+            ? `<div class="rd-error-banner"><span class="material-symbols-outlined">error_outline</span><div><strong>Pipeline error detected</strong><div class="rd-error-msg">${escapeHtml(job.error)}</div></div></div>`
             : '';
         var div = document.createElement('div');
         div.className = 'rd-terminal-body';
         div.innerHTML =
             errorBanner +
-            '<div class="lp-terminal-chrome">' +
-                '<span class="lp-dot lp-dot--r"></span><span class="lp-dot lp-dot--y"></span><span class="lp-dot lp-dot--g"></span>' +
-                '<span class="lp-terminal-label">sh — ' + escapeHtml((job.runId || job.jobId)) + ' — pts/0</span>' +
-            '</div>' +
-            '<pre class="log-box lp-log-body" id="run-terminal-log">' + escapeHtml(job.logLines.join('\n')) + '</pre>';
+            `<div class="lp-terminal-chrome">` +
+                `<span class="lp-dot lp-dot--r"></span><span class="lp-dot lp-dot--y"></span><span class="lp-dot lp-dot--g"></span>` +
+                `<span class="lp-terminal-label">sh — ${escapeHtml(job.runId || job.jobId)} — pts/0</span>` +
+            `</div>` +
+            `<pre class="log-box lp-log-body" id="run-terminal-log">${escapeHtml(job.logLines.join('\n'))}</pre>`;
         section.appendChild(div);
         var box = div.querySelector('#run-terminal-log');
         if (box) box.scrollTop = box.scrollHeight;
@@ -246,33 +246,33 @@ function buildSummaryStrip(cfg, detailStats, data) {
     var deltaStr = hasDelta ? (delta >= 0 ? '+' : '') + delta.toFixed(3) : '\u2014';
     var deltaCls = hasDelta ? (Math.abs(delta) < 0.01 ? 'sc2-delta--neutral' : (delta > 0 ? 'sc2-delta--pos' : 'sc2-delta--neg')) : '';
     var sourceDesc = hasDelta
-        ? 'Real ' + realAvg.toFixed(3) + ' vs ML ' + mlAvg.toFixed(3)
+        ? `Real ${realAvg.toFixed(3)} vs ML ${mlAvg.toFixed(3)}`
         : 'Awaiting source metrics';
 
-    return '<div class="summary-strip">' +
-        '<div class="summary-card-v2">' +
-            '<div class="sc2-icon">' + icon(profileIcon) + '</div>' +
-            '<div class="sc2-body">' +
-                '<div class="sc2-label">' + escapeHtml(profileLabel) + '</div>' +
-                '<div class="sc2-desc">' + escapeHtml(designDesc) + '</div>' +
-            '</div>' +
-        '</div>' +
-        '<div class="summary-card-v2">' +
-            '<div class="sc2-icon">' + icon('grid_view') + '</div>' +
-            '<div class="sc2-body">' +
-                '<div class="sc2-label">Experimental Coverage</div>' +
-                '<div class="sc2-desc">' + escapeHtml(coverageDesc) + '</div>' +
-            '</div>' +
-        '</div>' +
-        '<div class="summary-card-v2 sc2-highlight">' +
-            '<div class="sc2-icon">' + icon('compare_arrows') + '</div>' +
-            '<div class="sc2-body">' +
-                '<div class="sc2-label">Source Effect (RQ1)</div>' +
-                '<div class="sc2-value ' + deltaCls + '">\u0394 ' + deltaStr + '</div>' +
-                '<div class="sc2-desc">' + escapeHtml(sourceDesc) + '</div>' +
-            '</div>' +
-        '</div>' +
-    '</div>';
+    return `<div class="summary-strip">` +
+        `<div class="summary-card-v2">` +
+            `<div class="sc2-icon">${icon(profileIcon)}</div>` +
+            `<div class="sc2-body">` +
+                `<div class="sc2-label">${escapeHtml(profileLabel)}</div>` +
+                `<div class="sc2-desc">${escapeHtml(designDesc)}</div>` +
+            `</div>` +
+        `</div>` +
+        `<div class="summary-card-v2">` +
+            `<div class="sc2-icon">${icon('grid_view')}</div>` +
+            `<div class="sc2-body">` +
+                `<div class="sc2-label">Experimental Coverage</div>` +
+                `<div class="sc2-desc">${escapeHtml(coverageDesc)}</div>` +
+            `</div>` +
+        `</div>` +
+        `<div class="summary-card-v2 sc2-highlight">` +
+            `<div class="sc2-icon">${icon('compare_arrows')}</div>` +
+            `<div class="sc2-body">` +
+                `<div class="sc2-label">Source Effect (RQ1)</div>` +
+                `<div class="sc2-value ${deltaCls}">\u0394 ${deltaStr}</div>` +
+                `<div class="sc2-desc">${escapeHtml(sourceDesc)}</div>` +
+            `</div>` +
+        `</div>` +
+    `</div>`;
 }
 
 function buildOverviewTab(cfg, detailStats, runId) {
@@ -301,31 +301,31 @@ function buildOverviewTab(cfg, detailStats, runId) {
         ['Payload seed', cfg.payload_seed != null ? cfg.payload_seed : '\u2014'],
         ['Timestamp', cfg.timestamp || '\u2014']
     ].map(function (pair) {
-        return '<tr><td>' + escapeHtml(pair[0]) + '</td><td>' + escapeHtml(pair[1]) + '</td></tr>';
+        return `<tr><td>${escapeHtml(pair[0])}</td><td>${escapeHtml(pair[1])}</td></tr>`;
     }).join('');
 
     return (
-        '<div class="detail-grid">' +
-            '<div class="card">' +
-                '<div class="card-head"><span class="card-title">Run Configuration</span></div>' +
-                '<table class="config-table">' + rows + '</table>' +
-            '</div>' +
-            '<div class="detail-note">' +
-                '<h3>Operational Note</h3>' +
-                '<p>' +
+        `<div class="detail-grid">` +
+            `<div class="card">` +
+                `<div class="card-head"><span class="card-title">Run Configuration</span></div>` +
+                `<table class="config-table">${rows}</table>` +
+            `</div>` +
+            `<div class="detail-note">` +
+                `<h3>Operational Note</h3>` +
+                `<p>` +
                     (detailStats.hasResults
                         ? 'This run already has detector output, so the fastest way to compare it is through the Results and Conditions tabs. Use the overview as the experiment contract for reproducing the same profile later.'
                         : 'This run has been created, but the explorer cannot see detector metrics yet. That usually means the pipeline has not finished, or the run only produced config scaffolding so far.') +
-                '</p>' +
-            '</div>' +
-        '</div>' +
-        '<div class="stats">' +
-            '<div class="stat"><div class="stat-val">' + formatNumber(groups) + '</div><div class="stat-lbl">Groups</div></div>' +
-            '<div class="stat"><div class="stat-val">' + formatNumber(groups * 3) + '</div><div class="stat-lbl">Cover Slots</div></div>' +
-            '<div class="stat"><div class="stat-val">' + formatNumber(conditionCount) + '</div><div class="stat-lbl">Conditions</div></div>' +
-            '<div class="stat"><div class="stat-val">' + formatNumber(methods.length) + '</div><div class="stat-lbl">Methods</div></div>' +
-            '<div class="stat"><div class="stat-val">' + formatNumber(payloads.length) + '</div><div class="stat-lbl">Payload Levels</div></div>' +
-            '<div class="stat"><div class="stat-val">' + formatMaybeNumber(detailStats.bestAuc, 3) + '</div><div class="stat-lbl">Best ROC-AUC</div></div>' +
-        '</div>'
+                `</p>` +
+            `</div>` +
+        `</div>` +
+        `<div class="stats">` +
+            `<div class="stat"><div class="stat-val">${formatNumber(groups)}</div><div class="stat-lbl">Groups</div></div>` +
+            `<div class="stat"><div class="stat-val">${formatNumber(groups * 3)}</div><div class="stat-lbl">Cover Slots</div></div>` +
+            `<div class="stat"><div class="stat-val">${formatNumber(conditionCount)}</div><div class="stat-lbl">Conditions</div></div>` +
+            `<div class="stat"><div class="stat-val">${formatNumber(methods.length)}</div><div class="stat-lbl">Methods</div></div>` +
+            `<div class="stat"><div class="stat-val">${formatNumber(payloads.length)}</div><div class="stat-lbl">Payload Levels</div></div>` +
+            `<div class="stat"><div class="stat-val">${formatMaybeNumber(detailStats.bestAuc, 3)}</div><div class="stat-lbl">Best ROC-AUC</div></div>` +
+        `</div>`
     );
 }

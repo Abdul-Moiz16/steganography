@@ -24,64 +24,64 @@ function renderLaunchDrawer() {
 
     function engineOpt(value, label, sub) {
         var checked = curEngine === value;
-        return '<label class="lp-engine-opt' + (checked ? ' lp-engine-opt--checked' : '') + '">' +
-            '<div class="lp-engine-opt-left">' +
-                '<input type="radio" class="lp-engine-radio" name="launch-engine" value="' + escapeAttr(value) + '"' + (checked ? ' checked' : '') + '>' +
-                '<span class="lp-engine-name">' + escapeHtml(label) + '</span>' +
-            '</div>' +
-            '<span class="lp-engine-sub">' + escapeHtml(sub) + '</span>' +
-        '</label>';
+        return `<label class="lp-engine-opt${checked ? ' lp-engine-opt--checked' : ''}">
+            <div class="lp-engine-opt-left">
+                <input type="radio" class="lp-engine-radio" name="launch-engine" value="${escapeAttr(value)}"${checked ? ' checked' : ''}>
+                <span class="lp-engine-name">${escapeHtml(label)}</span>
+            </div>
+            <span class="lp-engine-sub">${escapeHtml(sub)}</span>
+        </label>`;
     }
 
     el.innerHTML =
         /* System check */
-        '<div class="drawer-section">' +
-            '<div class="sc-row">' +
-                '<div class="lp-field-label" style="margin-bottom:0">System Check</div>' +
-                '<button class="sc-refresh-btn" onclick="loadSystemCheck()" title="Re-check">' +
-                    '<span class="material-symbols-outlined">refresh</span>' +
-                '</button>' +
-            '</div>' +
-            '<div class="sc-panel" id="sc-panel"><div class="sc-loading"><span class="loader sc-loader"></span> Checking…</div></div>' +
-        '</div>' +
-        '<div class="drawer-divider"></div>' +
-        '<div class="drawer-section">' +
-            '<div class="lp-field-label">Research Profile</div>' +
-            '<div class="lp-dropdown" id="lp-profile-dropdown">' +
-                '<button class="lp-dropdown-trigger" type="button" onclick="toggleLpDropdown()">' +
-                    '<span class="lp-dropdown-value" id="lp-profile-label">' + (curProfile === 'prototype' ? 'Prototype Analysis' : 'Prototype Analysis') + '</span>' +
-                    '<span class="material-symbols-outlined lp-dropdown-arrow">expand_more</span>' +
-                '</button>' +
-                '<div class="lp-dropdown-menu" id="lp-profile-menu">' +
-                    '<div class="lp-dropdown-opt lp-dropdown-opt--selected" onclick="selectLpProfile(\'prototype\', \'Prototype Analysis\', this)">' +
-                        '<span class="material-symbols-outlined lp-dropdown-check">check</span>Prototype Analysis' +
-                    '</div>' +
-                    '<div class="lp-dropdown-opt lp-dropdown-opt--disabled">' +
-                        '<span class="material-symbols-outlined lp-dropdown-check" style="opacity:0">check</span>Full Design Analysis<span class="lp-dropdown-tag">Soon</span>' +
-                    '</div>' +
-                '</div>' +
-            '</div>' +
-            '<input type="hidden" id="launch-profile" value="' + escapeAttr(curProfile) + '">' +
-        '</div>' +
-        '<div class="drawer-section">' +
-            '<div class="lp-field-label">ML Image Engine</div>' +
-            '<div class="lp-engine-group">' +
-                engineOpt('stub',          'Fast Stub',  'Low Latency') +
-                engineOpt('inference_api', 'Cloud API',  'High Capacity') +
-                engineOpt('diffusers',     'Local GPU',  'Private / Secure') +
-            '</div>' +
-        '</div>' +
+        `<div class="drawer-section">
+            <div class="sc-row">
+                <div class="lp-field-label" style="margin-bottom:0">System Check</div>
+                <button class="sc-refresh-btn" onclick="loadSystemCheck()" title="Re-check">
+                    <span class="material-symbols-outlined">refresh</span>
+                </button>
+            </div>
+            <div class="sc-panel" id="sc-panel"><div class="sc-loading"><span class="loader sc-loader"></span> Checking…</div></div>
+        </div>
+        <div class="drawer-divider"></div>
+        <div class="drawer-section">
+            <div class="lp-field-label">Research Profile</div>
+            <div class="lp-dropdown" id="lp-profile-dropdown">
+                <button class="lp-dropdown-trigger" type="button" onclick="toggleLpDropdown()">
+                    <span class="lp-dropdown-value" id="lp-profile-label">${curProfile === 'prototype' ? 'Prototype Analysis' : 'Prototype Analysis'}</span>
+                    <span class="material-symbols-outlined lp-dropdown-arrow">expand_more</span>
+                </button>
+                <div class="lp-dropdown-menu" id="lp-profile-menu">
+                    <div class="lp-dropdown-opt lp-dropdown-opt--selected" onclick="selectLpProfile('prototype', 'Prototype Analysis', this)">
+                        <span class="material-symbols-outlined lp-dropdown-check">check</span>Prototype Analysis
+                    </div>
+                    <div class="lp-dropdown-opt lp-dropdown-opt--disabled">
+                        <span class="material-symbols-outlined lp-dropdown-check" style="opacity:0">check</span>Full Design Analysis<span class="lp-dropdown-tag">Soon</span>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" id="launch-profile" value="${escapeAttr(curProfile)}">
+        </div>
+        <div class="drawer-section">
+            <div class="lp-field-label">ML Image Engine</div>
+            <div class="lp-engine-group">
+                ${engineOpt('stub',          'Fast Stub',  'Low Latency')}
+                ${engineOpt('inference_api', 'Cloud API',  'High Capacity')}
+                ${engineOpt('diffusers',     'Local GPU',  'Private / Secure')}
+            </div>
+        </div>` +
         (activeCount > 0
-            ? '<div class="drawer-section"><div class="sc-running-note">' +
-                  '<span class="material-symbols-outlined">info</span>' +
-                  activeCount + ' run' + (activeCount > 1 ? 's' : '') + ' already in progress — you can launch additional runs in parallel.' +
-              '</div></div>'
+            ? `<div class="drawer-section"><div class="sc-running-note">
+                  <span class="material-symbols-outlined">info</span>
+                  ${activeCount} run${activeCount > 1 ? 's' : ''} already in progress — you can launch additional runs in parallel.
+              </div></div>`
             : '') +
-        '<div class="drawer-footer">' +
-            '<button class="btn-launch" id="launch-btn" onclick="launchRun()">' +
-                '<span class="material-symbols-outlined">bolt</span> START RUN' +
-            '</button>' +
-        '</div>';
+        `<div class="drawer-footer">
+            <button class="btn-launch" id="launch-btn" onclick="launchRun()">
+                <span class="material-symbols-outlined">bolt</span> START RUN
+            </button>
+        </div>`;
 
     /* wire up radio → state */
     var radios = el.querySelectorAll('input[name="launch-engine"]');
@@ -114,8 +114,8 @@ function loadSystemCheck() {
 function renderSystemCheck(data) {
     var pyOk = data.python_ok;
     var pyBadge = pyOk
-        ? '<span class="sc-badge sc-badge--ok">Python ' + escapeHtml(data.python_version) + '</span>'
-        : '<span class="sc-badge sc-badge--err">Python ' + escapeHtml(data.python_version) + ' (need ≥3.9)</span>';
+        ? `<span class="sc-badge sc-badge--ok">Python ${escapeHtml(data.python_version)}</span>`
+        : `<span class="sc-badge sc-badge--err">Python ${escapeHtml(data.python_version)} (need ≥3.9)</span>`;
 
     var core = data.packages.filter(function(p) { return p.required; });
     var optional = data.packages.filter(function(p) { return !p.required; });
@@ -123,22 +123,22 @@ function renderSystemCheck(data) {
     function pkgRow(p) {
         var icon = p.installed ? 'check_circle' : 'cancel';
         var cls  = p.installed ? 'sc-pkg--ok' : (p.required ? 'sc-pkg--err' : 'sc-pkg--warn');
-        return '<div class="sc-pkg ' + cls + '">' +
-            '<span class="material-symbols-outlined sc-pkg-icon">' + icon + '</span>' +
-            '<span class="sc-pkg-name">' + escapeHtml(p.name) + '</span>' +
-            (p.version ? '<span class="sc-pkg-ver">' + escapeHtml(p.version) + '</span>' : '') +
-        '</div>';
+        return `<div class="sc-pkg ${cls}">
+            <span class="material-symbols-outlined sc-pkg-icon">${icon}</span>
+            <span class="sc-pkg-name">${escapeHtml(p.name)}</span>
+            ${p.version ? `<span class="sc-pkg-ver">${escapeHtml(p.version)}</span>` : ''}
+        </div>`;
     }
 
-    return pyBadge +
-        '<div class="sc-group">' +
-            '<div class="sc-group-label">Core</div>' +
-            core.map(pkgRow).join('') +
-        '</div>' +
-        '<div class="sc-group">' +
-            '<div class="sc-group-label">ML / Optional</div>' +
-            optional.map(pkgRow).join('') +
-        '</div>';
+    return `${pyBadge}
+        <div class="sc-group">
+            <div class="sc-group-label">Core</div>
+            ${core.map(pkgRow).join('')}
+        </div>
+        <div class="sc-group">
+            <div class="sc-group-label">ML / Optional</div>
+            ${optional.map(pkgRow).join('')}
+        </div>`;
 }
 
 function toggleLpDropdown() {
@@ -183,140 +183,140 @@ function renderLaunchPage(el) {
 
     function engineRadio(value, label, sub) {
         var checked = curEngine === value;
-        return '<label class="lp-engine-opt' + (checked ? ' lp-engine-opt--checked' : '') + '">' +
-            '<div class="lp-engine-opt-left">' +
-                '<input type="radio" class="lp-engine-radio" name="launch-engine" value="' + escapeAttr(value) + '"' + (checked ? ' checked' : '') + '>' +
-                '<span class="lp-engine-name">' + escapeHtml(label) + '</span>' +
-            '</div>' +
-            '<span class="lp-engine-sub">' + escapeHtml(sub) + '</span>' +
-        '</label>';
+        return `<label class="lp-engine-opt${checked ? ' lp-engine-opt--checked' : ''}">
+            <div class="lp-engine-opt-left">
+                <input type="radio" class="lp-engine-radio" name="launch-engine" value="${escapeAttr(value)}"${checked ? ' checked' : ''}>
+                <span class="lp-engine-name">${escapeHtml(label)}</span>
+            </div>
+            <span class="lp-engine-sub">${escapeHtml(sub)}</span>
+        </label>`;
     }
 
     el.innerHTML =
         /* ── Header ── */
-        '<div class="lp-header">' +
-            '<div>' +
-                '<h1 class="lp-title">Initialize Pipeline</h1>' +
-                '<p class="lp-subtitle">Configure engine parameters and start a fresh forensic analysis run.</p>' +
-            '</div>' +
-            '<span class="lp-status-badge">' +
-                '<span class="lp-status-dot' + (isRunning ? ' lp-status-dot--pulse' : '') + '"></span>' +
-                (isRunning ? 'Run in progress' : 'Ready for deployment') +
-            '</span>' +
-        '</div>' +
+        `<div class="lp-header">
+            <div>
+                <h1 class="lp-title">Initialize Pipeline</h1>
+                <p class="lp-subtitle">Configure engine parameters and start a fresh forensic analysis run.</p>
+            </div>
+            <span class="lp-status-badge">
+                <span class="lp-status-dot${isRunning ? ' lp-status-dot--pulse' : ''}"></span>
+                ${isRunning ? 'Run in progress' : 'Ready for deployment'}
+            </span>
+        </div>` +
 
         /* ── Config grid ── */
-        '<div class="lp-config-grid">' +
+        `<div class="lp-config-grid">` +
 
             /* Left: form */
-            '<div class="lp-config-left glass-panel">' +
-                '<div class="lp-form-grid">' +
+            `<div class="lp-config-left glass-panel">
+                <div class="lp-form-grid">` +
 
                     /* Profile */
-                    '<div class="lp-field">' +
-                        '<label class="lp-field-label">Research Profile</label>' +
-                        '<div class="lp-dropdown" id="lp-profile-dropdown">' +
-                            '<button class="lp-dropdown-trigger" type="button" onclick="toggleLpDropdown()">' +
-                                '<span class="lp-dropdown-value" id="lp-profile-label">Prototype Analysis</span>' +
-                                '<span class="material-symbols-outlined lp-dropdown-arrow">expand_more</span>' +
-                            '</button>' +
-                            '<div class="lp-dropdown-menu" id="lp-profile-menu">' +
-                                '<div class="lp-dropdown-opt lp-dropdown-opt--selected" onclick="selectLpProfile(\'prototype\', \'Prototype Analysis\', this)">' +
-                                    '<span class="material-symbols-outlined lp-dropdown-check">check</span>' +
-                                    'Prototype Analysis' +
-                                '</div>' +
-                                '<div class="lp-dropdown-opt lp-dropdown-opt--disabled">' +
-                                    '<span class="material-symbols-outlined lp-dropdown-check" style="opacity:0">check</span>' +
-                                    'Full Design Analysis' +
-                                    '<span class="lp-dropdown-tag">Soon</span>' +
-                                '</div>' +
-                            '</div>' +
-                        '</div>' +
-                        '<input type="hidden" id="launch-profile" value="' + escapeAttr(curProfile) + '">' +
-                        '<p class="lp-field-hint">Determines algorithmic sensitivity and output resolution.</p>' +
-                    '</div>' +
+                    `<div class="lp-field">
+                        <label class="lp-field-label">Research Profile</label>
+                        <div class="lp-dropdown" id="lp-profile-dropdown">
+                            <button class="lp-dropdown-trigger" type="button" onclick="toggleLpDropdown()">
+                                <span class="lp-dropdown-value" id="lp-profile-label">Prototype Analysis</span>
+                                <span class="material-symbols-outlined lp-dropdown-arrow">expand_more</span>
+                            </button>
+                            <div class="lp-dropdown-menu" id="lp-profile-menu">
+                                <div class="lp-dropdown-opt lp-dropdown-opt--selected" onclick="selectLpProfile('prototype', 'Prototype Analysis', this)">
+                                    <span class="material-symbols-outlined lp-dropdown-check">check</span>
+                                    Prototype Analysis
+                                </div>
+                                <div class="lp-dropdown-opt lp-dropdown-opt--disabled">
+                                    <span class="material-symbols-outlined lp-dropdown-check" style="opacity:0">check</span>
+                                    Full Design Analysis
+                                    <span class="lp-dropdown-tag">Soon</span>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="launch-profile" value="${escapeAttr(curProfile)}">
+                        <p class="lp-field-hint">Determines algorithmic sensitivity and output resolution.</p>
+                    </div>` +
 
                     /* Engine */
-                    '<div class="lp-field">' +
-                        '<label class="lp-field-label">ML Image Engine</label>' +
-                        '<div class="lp-engine-group">' +
-                            engineRadio('stub',          'Fast Stub',  'Low Latency') +
-                            engineRadio('inference_api', 'Cloud API',  'High Capacity') +
-                            engineRadio('diffusers',     'Local GPU',  'Private / Secure') +
-                        '</div>' +
-                    '</div>' +
+                    `<div class="lp-field">
+                        <label class="lp-field-label">ML Image Engine</label>
+                        <div class="lp-engine-group">
+                            ${engineRadio('stub',          'Fast Stub',  'Low Latency')}
+                            ${engineRadio('inference_api', 'Cloud API',  'High Capacity')}
+                            ${engineRadio('diffusers',     'Local GPU',  'Private / Secure')}
+                        </div>
+                    </div>` +
 
-                '</div>' +
-            '</div>' +
+                `</div>
+            </div>` +
 
             /* Right: launch card */
-            '<div class="lp-launch-card glass-panel">' +
-                '<div>' +
-                    '<h4 class="lp-launch-title">Finalize Launch</h4>' +
-                    '<p class="lp-launch-desc">Execution will stream pipeline output directly into the log viewer below.</p>' +
-                '</div>' +
-                '<button class="btn-launch" id="launch-btn" onclick="launchRun()"' + (isRunning ? ' disabled' : '') + '>' +
-                    (isRunning
+            `<div class="lp-launch-card glass-panel">
+                <div>
+                    <h4 class="lp-launch-title">Finalize Launch</h4>
+                    <p class="lp-launch-desc">Execution will stream pipeline output directly into the log viewer below.</p>
+                </div>
+                <button class="btn-launch" id="launch-btn" onclick="launchRun()"${isRunning ? ' disabled' : ''}>
+                    ${isRunning
                         ? '<span class="loader lp-loader"></span> Running...'
-                        : '<span class="material-symbols-outlined">bolt</span> START RUN') +
-                '</button>' +
-            '</div>' +
+                        : '<span class="material-symbols-outlined">bolt</span> START RUN'}
+                </button>
+            </div>` +
 
-        '</div>' +
+        `</div>` +
 
         /* ── Terminal viewer ── */
-        '<section class="lp-terminal-section">' +
-            '<div class="lp-terminal-hdr">' +
-                '<div class="lp-terminal-hdr-left">' +
-                    '<span class="material-symbols-outlined lp-terminal-icon">terminal</span>' +
-                    '<span class="lp-terminal-title">SYSTEM LOG VIEWER</span>' +
-                '</div>' +
-                '<div class="lp-terminal-hdr-right">' +
-                    '<span class="lp-run-indicator' + (isRunning ? ' lp-run-indicator--on' : '') + '">' +
-                        '<span class="lp-run-dot' + (isRunning ? ' lp-run-dot--pulse' : '') + '"></span>' +
-                        (isRunning ? 'Running' : 'Idle') +
-                    '</span>' +
-                    '<span class="lp-divider"></span>' +
-                    '<span class="badge ' + (isRunning ? 'badge-running' : (STATE.logLines.length ? 'badge-done' : '')) + '" id="launch-badge">' +
-                        (isRunning ? '● Running' : (STATE.logLines.length ? '✓ Done' : '— Standby')) +
-                    '</span>' +
-                '</div>' +
-            '</div>' +
-            '<div class="lp-terminal-wrap">' +
-                '<div class="lp-terminal-chrome">' +
-                    '<span class="lp-dot lp-dot--r"></span>' +
-                    '<span class="lp-dot lp-dot--y"></span>' +
-                    '<span class="lp-dot lp-dot--g"></span>' +
-                    '<span class="lp-terminal-label">sh — steganography-pipeline — pts/0</span>' +
-                '</div>' +
-                '<pre class="log-box lp-log-body" id="launch-log">' + logContent + '</pre>' +
-            '</div>' +
-        '</section>' +
+        `<section class="lp-terminal-section">
+            <div class="lp-terminal-hdr">
+                <div class="lp-terminal-hdr-left">
+                    <span class="material-symbols-outlined lp-terminal-icon">terminal</span>
+                    <span class="lp-terminal-title">SYSTEM LOG VIEWER</span>
+                </div>
+                <div class="lp-terminal-hdr-right">
+                    <span class="lp-run-indicator${isRunning ? ' lp-run-indicator--on' : ''}">
+                        <span class="lp-run-dot${isRunning ? ' lp-run-dot--pulse' : ''}"></span>
+                        ${isRunning ? 'Running' : 'Idle'}
+                    </span>
+                    <span class="lp-divider"></span>
+                    <span class="badge ${isRunning ? 'badge-running' : (STATE.logLines.length ? 'badge-done' : '')}" id="launch-badge">
+                        ${isRunning ? '● Running' : (STATE.logLines.length ? '✓ Done' : '— Standby')}
+                    </span>
+                </div>
+            </div>
+            <div class="lp-terminal-wrap">
+                <div class="lp-terminal-chrome">
+                    <span class="lp-dot lp-dot--r"></span>
+                    <span class="lp-dot lp-dot--y"></span>
+                    <span class="lp-dot lp-dot--g"></span>
+                    <span class="lp-terminal-label">sh — steganography-pipeline — pts/0</span>
+                </div>
+                <pre class="log-box lp-log-body" id="launch-log">${logContent}</pre>
+            </div>
+        </section>` +
 
         /* ── Stats row ── */
-        '<div class="lp-stats-row">' +
-            '<div class="lp-stat-card">' +
-                '<p class="lp-stat-label">Queue Status</p>' +
-                '<div class="lp-stat-bottom">' +
-                    '<span class="lp-stat-val">' + (isRunning ? '1 Job' : '0 Jobs') + '</span>' +
-                    '<span class="lp-stat-note' + (isRunning ? ' lp-stat-note--on' : '') + '">' + (isRunning ? 'Active' : 'Standby') + '</span>' +
-                '</div>' +
-            '</div>' +
-            '<div class="lp-stat-card">' +
-                '<p class="lp-stat-label">Engine</p>' +
-                '<div class="lp-stat-bottom">' +
-                    '<span class="lp-stat-val" id="lp-engine-stat">' + escapeHtml(ENGINE_LABELS[curEngine] || curEngine) + '</span>' +
-                    '<span class="lp-stat-note">Selected</span>' +
-                '</div>' +
-            '</div>' +
-            '<div class="lp-stat-card">' +
-                '<p class="lp-stat-label">Profile</p>' +
-                '<div class="lp-stat-bottom">' +
-                    '<span class="lp-stat-val">Default</span>' +
-                    '<span class="lp-stat-note">Forensic</span>' +
-                '</div>' +
-            '</div>' +
-        '</div>';
+        `<div class="lp-stats-row">
+            <div class="lp-stat-card">
+                <p class="lp-stat-label">Queue Status</p>
+                <div class="lp-stat-bottom">
+                    <span class="lp-stat-val">${isRunning ? '1 Job' : '0 Jobs'}</span>
+                    <span class="lp-stat-note${isRunning ? ' lp-stat-note--on' : ''}">${isRunning ? 'Active' : 'Standby'}</span>
+                </div>
+            </div>
+            <div class="lp-stat-card">
+                <p class="lp-stat-label">Engine</p>
+                <div class="lp-stat-bottom">
+                    <span class="lp-stat-val" id="lp-engine-stat">${escapeHtml(ENGINE_LABELS[curEngine] || curEngine)}</span>
+                    <span class="lp-stat-note">Selected</span>
+                </div>
+            </div>
+            <div class="lp-stat-card">
+                <p class="lp-stat-label">Profile</p>
+                <div class="lp-stat-bottom">
+                    <span class="lp-stat-val">Default</span>
+                    <span class="lp-stat-note">Forensic</span>
+                </div>
+            </div>
+        </div>`;
 
     if (isRunning) attachStream(STATE.job);
 
@@ -360,6 +360,6 @@ function launchRun() {
     }).catch(function (error) {
         if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-symbols-outlined">bolt</span> START RUN'; }
         var panel = document.getElementById('sc-panel');
-        if (panel) panel.innerHTML = '<div class="sc-error">Launch failed: ' + escapeHtml(error.message) + '</div>';
+        if (panel) panel.innerHTML = `<div class="sc-error">Launch failed: ${escapeHtml(error.message)}</div>`;
     });
 }

@@ -12,9 +12,8 @@ function showSidebar(runId, activeTab) {
     runIdEl.classList.remove('none');
 
     document.getElementById('sidebar-tabs').innerHTML = SIDEBAR_TABS.map(function (tab) {
-        var cls = 'sidebar-tab' + (tab.id === activeTab ? ' active' : '');
-        return '<a class="' + cls + '" onclick="switchTab(\'' + tab.id + '\')">' +
-            icon(tab.icon) + '<span>' + escapeHtml(tab.label) + '</span></a>';
+        var cls = `sidebar-tab${tab.id === activeTab ? ' active' : ''}`;
+        return `<a class="${cls}" onclick="switchTab('${tab.id}')">${icon(tab.icon)}<span>${escapeHtml(tab.label)}</span></a>`;
     }).join('');
 
     if (logLink) logLink.style.display = 'none';

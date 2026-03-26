@@ -21,24 +21,24 @@ function buildQualityMetricsCard(qualityRows) {
         var d = levelMap[lvl];
         var psnr = d.psnrN ? d.psnrSum / d.psnrN : null;
         var ssim = d.ssimN ? d.ssimSum / d.ssimN : null;
-        return '<tr>' +
-            '<td class="rq-bd-det">' + escapeHtml(lvl) + '</td>' +
-            '<td class="rq-bd-val">' + (psnr != null ? psnr.toFixed(2) + ' dB' : '\u2014') + '</td>' +
-            '<td class="rq-bd-val">' + (ssim != null ? ssim.toFixed(4) : '\u2014') + '</td>' +
-            '<td class="rq-bd-val" style="color:var(--secondary-dim)">' + d.psnrN + '</td>' +
-        '</tr>';
+        return `<tr>
+            <td class="rq-bd-det">${escapeHtml(lvl)}</td>
+            <td class="rq-bd-val">${psnr != null ? psnr.toFixed(2) + ' dB' : '\u2014'}</td>
+            <td class="rq-bd-val">${ssim != null ? ssim.toFixed(4) : '\u2014'}</td>
+            <td class="rq-bd-val" style="color:var(--secondary-dim)">${d.psnrN}</td>
+        </tr>`;
     }).join('');
-    return '<div class="rq-card">' +
-        '<div class="rq-head">' +
-            '<div class="rq-head-left"><span class="rq-num">QC</span><span class="rq-title">Embedding Quality</span></div>' +
-            '<span class="rq-type rq-type--verification">Quality Control</span>' +
-        '</div>' +
-        '<p class="rq-question">PSNR and SSIM measure imperceptibility \u2014 higher values indicate less visible distortion from embedding.</p>' +
-        '<table class="rq-breakdown">' +
-            '<thead><tr><th>Payload Level</th><th>Mean PSNR</th><th>Mean SSIM</th><th>Samples</th></tr></thead>' +
-            '<tbody>' + tableRows + '</tbody>' +
-        '</table>' +
-    '</div>';
+    return `<div class="rq-card">
+        <div class="rq-head">
+            <div class="rq-head-left"><span class="rq-num">QC</span><span class="rq-title">Embedding Quality</span></div>
+            <span class="rq-type rq-type--verification">Quality Control</span>
+        </div>
+        <p class="rq-question">PSNR and SSIM measure imperceptibility \u2014 higher values indicate less visible distortion from embedding.</p>
+        <table class="rq-breakdown">
+            <thead><tr><th>Payload Level</th><th>Mean PSNR</th><th>Mean SSIM</th><th>Samples</th></tr></thead>
+            <tbody>${tableRows}</tbody>
+        </table>
+    </div>`;
 }
 
 var DETECTOR_LABELS = {
@@ -53,19 +53,18 @@ function fmtDetector(name) { return DETECTOR_LABELS[name] || name; }
 function buildPrototypeBanner(cfg) {
     var profile = (cfg || {}).profile || '';
     if (profile !== 'prototype') return '';
-    return '<div class="proto-banner">' +
-        '<div class="proto-banner-icon">' + icon('warning') + '</div>' +
-        '<div class="proto-banner-body">' +
-            '<div class="proto-banner-title">Horizontal Prototype</div>' +
-            '<div class="proto-banner-text">These results are based on a reduced sample size (' + (PROFILE_META.prototype.n_groups || 20) + ' groups, LSB only) and <strong>cannot be considered statistically significant</strong>. ' +
-            'This run validates the end-to-end pipeline functionality and LSB integration. For publishable results, run the <em>full_design</em> profile.</div>' +
-        '</div>' +
-    '</div>';
+    return `<div class="proto-banner">
+        <div class="proto-banner-icon">${icon('warning')}</div>
+        <div class="proto-banner-body">
+            <div class="proto-banner-title">Horizontal Prototype</div>
+            <div class="proto-banner-text">These results are based on a reduced sample size (${PROFILE_META.prototype.n_groups || 20} groups, LSB only) and <strong>cannot be considered statistically significant</strong>. This run validates the end-to-end pipeline functionality and LSB integration. For publishable results, run the <em>full_design</em> profile.</div>
+        </div>
+    </div>`;
 }
 
 function buildResultsTab(data, detailStats) {
     if (!data.has_results) {
-        return '<div class="empty-state"><h3>No results yet</h3><p>Run the pipeline with detectors enabled to generate metrics for the research questions.</p></div>';
+        return `<div class="empty-state"><h3>No results yet</h3><p>Run the pipeline with detectors enabled to generate metrics for the research questions.</p></div>`;
     }
 
     var detectorRows  = toArray((data.metrics || {}).detector);
@@ -91,7 +90,7 @@ function buildResultsTab(data, detailStats) {
         if (a == null || b == null) return '';
         var d = b - a;
         var cls = Math.abs(d) < 0.005 ? 'rq-delta--neutral' : (d > 0 ? 'rq-delta--pos' : 'rq-delta--neg');
-        return '<span class="rq-delta ' + cls + '">\u0394 ' + (d >= 0 ? '+' : '') + d.toFixed(3) + '</span>';
+        return `<span class="rq-delta ${cls}">\u0394 ${d >= 0 ? '+' : ''}${d.toFixed(3)}</span>`;
     }
     function sourceAuc(det, src) {
         var r = sourceRows.find(function (r) { return r.detector === det && r.source === src; });
@@ -111,44 +110,49 @@ function buildResultsTab(data, detailStats) {
     /* ── RQ card shell ─────────────────────────────────────── */
     function rqCard(num, title, type, question, body, hasData) {
         var tCls = 'rq-type--' + type.toLowerCase();
-        if (!hasData) body = '<div class="rq-no-data">Insufficient data for this analysis in the current run.</div>';
-        return '<div class="rq-card">' +
-            '<div class="rq-head">' +
-                '<div class="rq-head-left"><span class="rq-num">' + num + '</span><span class="rq-title">' + escapeHtml(title) + '</span></div>' +
-                '<span class="rq-type ' + tCls + '">' + escapeHtml(type) + '</span>' +
-            '</div>' +
-            '<p class="rq-question">' + question + '</p>' +
-            body +
-        '</div>';
+        if (!hasData) body = `<div class="rq-no-data">Insufficient data for this analysis in the current run.</div>`;
+        return `<div class="rq-card">
+            <div class="rq-head">
+                <div class="rq-head-left"><span class="rq-num">${num}</span><span class="rq-title">${escapeHtml(title)}</span></div>
+                <span class="rq-type ${tCls}">${escapeHtml(type)}</span>
+            </div>
+            <p class="rq-question">${question}</p>
+            ${body}
+        </div>`;
     }
 
     /* ── Pair comparison visual ────────────────────────────── */
     function pairVis(lA, aucA, clsA, noteA, lB, aucB, clsB, noteB) {
-        return '<div class="rq-pair">' +
-            '<div class="rq-side"><div class="rq-side-label ' + clsA + '">' + escapeHtml(lA) + '</div>' +
-                '<div class="rq-side-num ' + aucCls(aucA) + '">' + fmtAuc(aucA) + '</div>' +
-                '<div class="rq-side-bar"><div class="rq-side-fill rq-fill-' + clsA + '" style="width:' + pct(aucA) + '%"></div></div>' +
-                (noteA ? '<div class="rq-side-note">' + noteA + '</div>' : '') +
-            '</div>' +
-            '<div class="rq-vs">' + deltaHtml(aucA, aucB) + '</div>' +
-            '<div class="rq-side"><div class="rq-side-label ' + clsB + '">' + escapeHtml(lB) + '</div>' +
-                '<div class="rq-side-num ' + aucCls(aucB) + '">' + fmtAuc(aucB) + '</div>' +
-                '<div class="rq-side-bar"><div class="rq-side-fill rq-fill-' + clsB + '" style="width:' + pct(aucB) + '%"></div></div>' +
-                (noteB ? '<div class="rq-side-note">' + noteB + '</div>' : '') +
-            '</div>' +
-        '</div>';
+        return `<div class="rq-pair">
+            <div class="rq-side"><div class="rq-side-label ${clsA}">${escapeHtml(lA)}</div>
+                <div class="rq-side-num ${aucCls(aucA)}">${fmtAuc(aucA)}</div>
+                <div class="rq-side-bar"><div class="rq-side-fill rq-fill-${clsA}" style="width:${pct(aucA)}%"></div></div>
+                ${noteA ? `<div class="rq-side-note">${noteA}</div>` : ''}
+            </div>
+            <div class="rq-vs">${deltaHtml(aucA, aucB)}</div>
+            <div class="rq-side"><div class="rq-side-label ${clsB}">${escapeHtml(lB)}</div>
+                <div class="rq-side-num ${aucCls(aucB)}">${fmtAuc(aucB)}</div>
+                <div class="rq-side-bar"><div class="rq-side-fill rq-fill-${clsB}" style="width:${pct(aucB)}%"></div></div>
+                ${noteB ? `<div class="rq-side-note">${noteB}</div>` : ''}
+            </div>
+        </div>`;
     }
 
     /* ── Per-detector breakdown ─────────────────────────────── */
     function bdTable(lA, lB, clsA, clsB, fnA, fnB) {
         var rows = detectors.map(function (d) {
             var a = fnA(d), b = fnB(d);
-            return '<tr><td class="rq-bd-det">' + escapeHtml(fmtDetector(d)) + '</td>' +
-                '<td class="rq-bd-val ' + aucCls(a) + '">' + fmtAuc(a) + '</td>' +
-                '<td class="rq-bd-val ' + aucCls(b) + '">' + fmtAuc(b) + '</td>' +
-                '<td class="rq-bd-delta">' + deltaHtml(a, b) + '</td></tr>';
+            return `<tr>
+                <td class="rq-bd-det">${escapeHtml(fmtDetector(d))}</td>
+                <td class="rq-bd-val ${aucCls(a)}">${fmtAuc(a)}</td>
+                <td class="rq-bd-val ${aucCls(b)}">${fmtAuc(b)}</td>
+                <td class="rq-bd-delta">${deltaHtml(a, b)}</td>
+            </tr>`;
         }).join('');
-        return '<table class="rq-breakdown"><thead><tr><th>Detector</th><th class="' + clsA + '">' + escapeHtml(lA) + '</th><th class="' + clsB + '">' + escapeHtml(lB) + '</th><th>\u0394</th></tr></thead><tbody>' + rows + '</tbody></table>';
+        return `<table class="rq-breakdown">
+            <thead><tr><th>Detector</th><th class="${clsA}">${escapeHtml(lA)}</th><th class="${clsB}">${escapeHtml(lB)}</th><th>\u0394</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
     }
 
     /* ═══ RQ1: Real vs ML ═══════════════════════════════════ */
@@ -173,24 +177,24 @@ function buildResultsTab(data, detailStats) {
     var LEVEL_CLR = { low: 'var(--green)', medium: 'var(--amber)', high: 'var(--error)' };
     var rq3;
     if (ordLvls.length > 1) {
-        rq3 = '<div class="rq3-grid">' + ordLvls.map(function (lvl) {
+        rq3 = `<div class="rq3-grid">${ordLvls.map(function (lvl) {
             var overall = condAuc({ payload_level: lvl });
             var c = LEVEL_CLR[lvl] || 'var(--primary)';
             var perDet = detectors.map(function (det) {
                 var a = condAuc({ detector: det, payload_level: lvl });
-                return '<div class="rq3-det-row"><span class="rq3-det-name">' + escapeHtml(fmtDetector(det)) + '</span><span class="rq3-det-val ' + aucCls(a) + '">' + fmtAuc(a) + '</span></div>';
+                return `<div class="rq3-det-row"><span class="rq3-det-name">${escapeHtml(fmtDetector(det))}</span><span class="rq3-det-val ${aucCls(a)}">${fmtAuc(a)}</span></div>`;
             }).join('');
-            return '<div class="rq3-level-card"><div class="rq3-level-label" style="color:' + c + '">' + escapeHtml(lvl) + '</div>' +
-                '<div class="rq3-level-auc ' + aucCls(overall) + '">' + fmtAuc(overall) + '</div>' +
-                '<div class="rq-side-bar"><div class="rq-side-fill" style="width:' + pct(overall) + '%;background:' + c + '"></div></div>' +
-                '<div class="rq3-det-list">' + perDet + '</div></div>';
-        }).join('') + '</div>';
+            return `<div class="rq3-level-card"><div class="rq3-level-label" style="color:${c}">${escapeHtml(lvl)}</div>
+                <div class="rq3-level-auc ${aucCls(overall)}">${fmtAuc(overall)}</div>
+                <div class="rq-side-bar"><div class="rq-side-fill" style="width:${pct(overall)}%;background:${c}"></div></div>
+                <div class="rq3-det-list">${perDet}</div></div>`;
+        }).join('')}</div>`;
     } else {
         var singleLvl = ordLvls[0] || 'none';
         var singleAuc = ordLvls.length ? condAuc({ payload_level: singleLvl }) : null;
-        rq3 = '<p class="rq-note">Only one payload level (<strong>' + escapeHtml(singleLvl) + '</strong>) in this run. Run the full design with low / medium / high to analyze payload interaction.</p>' +
-            (singleAuc != null ? '<div class="rq3-grid"><div class="rq3-level-card" style="max-width:220px"><div class="rq3-level-label">' + escapeHtml(singleLvl) + '</div><div class="rq3-level-auc ' + aucCls(singleAuc) + '">' + fmtAuc(singleAuc) + '</div>' +
-            '<div class="rq-side-bar"><div class="rq-side-fill" style="width:' + pct(singleAuc) + '%;background:var(--primary)"></div></div></div></div>' : '');
+        rq3 = `<p class="rq-note">Only one payload level (<strong>${escapeHtml(singleLvl)}</strong>) in this run. Run the full design with low / medium / high to analyze payload interaction.</p>` +
+            (singleAuc != null ? `<div class="rq3-grid"><div class="rq3-level-card" style="max-width:220px"><div class="rq3-level-label">${escapeHtml(singleLvl)}</div><div class="rq3-level-auc ${aucCls(singleAuc)}">${fmtAuc(singleAuc)}</div>
+            <div class="rq-side-bar"><div class="rq-side-fill" style="width:${pct(singleAuc)}%;background:var(--primary)"></div></div></div></div>` : '');
     }
 
     /* ═══ RQ4: Embedding branch ═════════════════════════════ */
@@ -201,16 +205,16 @@ function buildResultsTab(data, detailStats) {
         rq4 = pairVis('LSB (Spatial)', oLsb, 'method-lsb', 'PNG carriers', 'DCT (Frequency)', oDct, 'method-dct', 'JPEG Q=95 carriers');
         var lsbDets = detectors.filter(function (d) { return conditionRows.some(function (r) { return r.detector === d && r.method === 'lsb' && r.roc_auc; }); });
         var dctDets = detectors.filter(function (d) { return conditionRows.some(function (r) { return r.detector === d && r.method === 'dct' && r.roc_auc; }); });
-        rq4 += '<div class="rq4-branches">' +
-            '<div class="rq4-branch"><div class="rq4-branch-label method-lsb">Spatial Detectors</div>' +
-                lsbDets.map(function (d) { var a = condAuc({detector:d,method:'lsb'}); return '<div class="rq3-det-row"><span class="rq3-det-name">' + escapeHtml(fmtDetector(d)) + '</span><span class="rq3-det-val ' + aucCls(a) + '">' + fmtAuc(a) + '</span></div>'; }).join('') +
-            '</div>' +
-            '<div class="rq4-branch"><div class="rq4-branch-label method-dct">Frequency Detectors</div>' +
-                dctDets.map(function (d) { var a = condAuc({detector:d,method:'dct'}); return '<div class="rq3-det-row"><span class="rq3-det-name">' + escapeHtml(fmtDetector(d)) + '</span><span class="rq3-det-val ' + aucCls(a) + '">' + fmtAuc(a) + '</span></div>'; }).join('') +
-            '</div>' +
-        '</div>';
+        rq4 += `<div class="rq4-branches">
+            <div class="rq4-branch"><div class="rq4-branch-label method-lsb">Spatial Detectors</div>
+                ${lsbDets.map(function (d) { var a = condAuc({detector:d,method:'lsb'}); return `<div class="rq3-det-row"><span class="rq3-det-name">${escapeHtml(fmtDetector(d))}</span><span class="rq3-det-val ${aucCls(a)}">${fmtAuc(a)}</span></div>`; }).join('')}
+            </div>
+            <div class="rq4-branch"><div class="rq4-branch-label method-dct">Frequency Detectors</div>
+                ${dctDets.map(function (d) { var a = condAuc({detector:d,method:'dct'}); return `<div class="rq3-det-row"><span class="rq3-det-name">${escapeHtml(fmtDetector(d))}</span><span class="rq3-det-val ${aucCls(a)}">${fmtAuc(a)}</span></div>`; }).join('')}
+            </div>
+        </div>`;
     } else {
-        rq4 = '<p class="rq-note">Only one embedding method (<strong>' + escapeHtml(methods[0] || 'none') + '</strong>) in this run. Run with both LSB and DCT to compare spatial vs. frequency branches.</p>';
+        rq4 = `<p class="rq-note">Only one embedding method (<strong>${escapeHtml(methods[0] || 'none')}</strong>) in this run. Run with both LSB and DCT to compare spatial vs. frequency branches.</p>`;
     }
 
     /* ═══ RQ5: Encryption invariance ═══════════════════════ */
@@ -221,20 +225,20 @@ function buildResultsTab(data, detailStats) {
         var d5 = Math.abs(oEnc - oPlain);
         var finding = d5 < 0.01
             ? 'As expected, encryption has negligible effect on detectability (\u0394 < 0.01). Detectors respond to embedding distortion, not payload structure.'
-            : 'Unexpected: encryption shows a detectable effect (\u0394 = ' + d5.toFixed(3) + '). This may indicate detectors are partially reacting to payload structure rather than embedding distortion alone.';
+            : `Unexpected: encryption shows a detectable effect (\u0394 = ${d5.toFixed(3)}). This may indicate detectors are partially reacting to payload structure rather than embedding distortion alone.`;
         rq5 = pairVis('Plain', oPlain, 'enc-plain', 'unencrypted payload', 'AES-256-CBC', oEnc, 'enc-encrypted', 'encrypted payload') +
             bdTable('Plain', 'Encrypted', 'enc-plain', 'enc-encrypted',
                 function (d) { return condAuc({ detector: d, encryption: 'plain' }); },
                 function (d) { return condAuc({ detector: d, encryption: 'encrypted' }); }) +
-            '<p class="rq-finding">' + finding + '</p>';
+            `<p class="rq-finding">${finding}</p>`;
     } else {
-        rq5 = '<p class="rq-note">Both plain and encrypted payloads are needed. Run with encryption enabled to test invariance.</p>';
+        rq5 = `<p class="rq-note">Both plain and encrypted payloads are needed. Run with encryption enabled to test invariance.</p>`;
     }
 
     /* ═══ Chart canvases embedded in RQ cards ═════════════ */
-    var chartDetector = '<div class="rq-chart-wrap"><canvas id="chart-detector" height="200"></canvas></div>';
-    var chartSource   = '<div class="rq-chart-wrap"><canvas id="chart-source" height="200"></canvas></div>';
-    var chartEnc      = '<div class="rq-chart-wrap"><canvas id="chart-encryption" height="180"></canvas></div>';
+    var chartDetector = `<div class="rq-chart-wrap"><canvas id="chart-detector" height="200"></canvas></div>`;
+    var chartSource   = `<div class="rq-chart-wrap"><canvas id="chart-source" height="200"></canvas></div>`;
+    var chartEnc      = `<div class="rq-chart-wrap"><canvas id="chart-encryption" height="180"></canvas></div>`;
 
     /* ═══ Assemble ══════════════════════════════════════════ */
     return (

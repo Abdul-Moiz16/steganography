@@ -7,13 +7,13 @@ async function renderRunsList(el, token) {
 
         if (!runs.length) {
             el.innerHTML =
-                '<div class="empty-state">' +
-                    '<h3>No runs yet</h3>' +
-                    '<p>Launch a prototype run to seed the explorer with pipeline output.</p>' +
-                    '<div class="empty-actions">' +
-                        '<button class="btn btn-primary" onclick="openLaunchPanel()">' + icon('add') + ' New Run</button>' +
-                    '</div>' +
-                '</div>' +
+                `<div class="empty-state">
+                    <h3>No runs yet</h3>
+                    <p>Launch a prototype run to seed the explorer with pipeline output.</p>
+                    <div class="empty-actions">
+                        <button class="btn btn-primary" onclick="openLaunchPanel()">${icon('add')} New Run</button>
+                    </div>
+                </div>` +
                 buildEduCarousel();
             initEduCarousel();
             return;
@@ -26,35 +26,35 @@ async function renderRunsList(el, token) {
         var rows = filtered.map(buildRunRow).join('');
 
         el.innerHTML =
-            '<div class="breadcrumb">' +
-                '<span>Explorer</span>' +
-                '<span class="material-symbols-outlined breadcrumb-sep">chevron_right</span>' +
-                '<span class="breadcrumb-active">Pipeline Runs</span>' +
-            '</div>' +
-            '<div class="page-header">' +
-                '<div>' +
-                    '<div class="page-title">Runs Overview</div>' +
-                    '<div class="page-subtitle">' + escapeHtml(buildRunsSubtitle(filtered.length, runs.length, STATE.search)) + '</div>' +
-                '</div>' +
-                '<button class="btn btn-primary" onclick="openLaunchPanel()">' + icon('add') + ' New Run</button>' +
-            '</div>' +
-            '<div class="stats-bento">' +
-                '<div class="bento-card"><div class="bento-label">Largest Source Effect</div><div class="bento-value primary">' + (stats.largestDelta != null ? '\u0394 ' + (stats.largestDelta >= 0 ? '+' : '') + stats.largestDelta.toFixed(3) : '\u2014') + '</div><div class="bento-sub">' + escapeHtml(stats.largestDeltaLabel) + '</div></div>' +
-                '<div class="bento-card"><div class="bento-label">Tracked Runs</div><div class="bento-value">' + formatNumber(runs.length) + '</div><div class="bento-sub">' + formatNumber(stats.completedRuns) + ' with metrics</div></div>' +
-                '<div class="bento-card"><div class="bento-label">Processed Covers</div><div class="bento-value">' + formatNumber(stats.totalImages) + '</div><div class="bento-sub">' + formatNumber(stats.totalGroups) + ' grouped specimens</div></div>' +
-                '<div class="bento-card"><div class="bento-label">Detector Evaluations</div><div class="bento-value">' + formatNumber(stats.totalDetectors) + '</div><div class="bento-sub">' + escapeHtml(stats.coverageLabel) + '</div></div>' +
-            '</div>' +
+            `<div class="breadcrumb">
+                <span>Explorer</span>
+                <span class="material-symbols-outlined breadcrumb-sep">chevron_right</span>
+                <span class="breadcrumb-active">Pipeline Runs</span>
+            </div>
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Runs Overview</div>
+                    <div class="page-subtitle">${escapeHtml(buildRunsSubtitle(filtered.length, runs.length, STATE.search))}</div>
+                </div>
+                <button class="btn btn-primary" onclick="openLaunchPanel()">${icon('add')} New Run</button>
+            </div>
+            <div class="stats-bento">
+                <div class="bento-card"><div class="bento-label">Largest Source Effect</div><div class="bento-value primary">${stats.largestDelta != null ? `\u0394 ${stats.largestDelta >= 0 ? '+' : ''}${stats.largestDelta.toFixed(3)}` : '\u2014'}</div><div class="bento-sub">${escapeHtml(stats.largestDeltaLabel)}</div></div>
+                <div class="bento-card"><div class="bento-label">Tracked Runs</div><div class="bento-value">${formatNumber(runs.length)}</div><div class="bento-sub">${formatNumber(stats.completedRuns)} with metrics</div></div>
+                <div class="bento-card"><div class="bento-label">Processed Covers</div><div class="bento-value">${formatNumber(stats.totalImages)}</div><div class="bento-sub">${formatNumber(stats.totalGroups)} grouped specimens</div></div>
+                <div class="bento-card"><div class="bento-label">Detector Evaluations</div><div class="bento-value">${formatNumber(stats.totalDetectors)}</div><div class="bento-sub">${escapeHtml(stats.coverageLabel)}</div></div>
+            </div>` +
             buildRunsTable(filtered, runs.length, rows) +
-            '<div class="panels-row">' +
-                '<div class="glass-panel">' +
-                    '<div class="glass-panel-head"><div class="glass-panel-title">Recent Activity</div></div>' +
-                    '<div class="glass-panel-body"><div class="activity-feed">' + activity + '</div></div>' +
-                '</div>' +
-                '<div class="glass-panel">' +
-                    '<div class="glass-panel-head"><div class="glass-panel-title">Analysis Tip</div></div>' +
-                    '<div class="glass-panel-body">' + tip + '</div>' +
-                '</div>' +
-            '</div>' +
+            `<div class="panels-row">
+                <div class="glass-panel">
+                    <div class="glass-panel-head"><div class="glass-panel-title">Recent Activity</div></div>
+                    <div class="glass-panel-body"><div class="activity-feed">${activity}</div></div>
+                </div>
+                <div class="glass-panel">
+                    <div class="glass-panel-head"><div class="glass-panel-title">Analysis Tip</div></div>
+                    <div class="glass-panel-body">${tip}</div>
+                </div>
+            </div>` +
             buildEduCarousel();
         initEduCarousel();
     } catch (error) {
@@ -115,9 +115,9 @@ function summarizeRuns(runs) {
 
 function buildRunsSubtitle(filteredCount, totalCount, search) {
     if (search) {
-        return 'Showing ' + filteredCount + ' of ' + totalCount + ' runs for "' + search + '".';
+        return `Showing ${filteredCount} of ${totalCount} runs for "${search}".`;
     }
-    return totalCount + ' experiment run' + (totalCount === 1 ? '' : 's') + ' currently available in the local explorer.';
+    return `${totalCount} experiment run${totalCount === 1 ? '' : 's'} currently available in the local explorer.`;
 }
 
 function buildRunRow(run) {
@@ -147,67 +147,67 @@ function buildRunRow(run) {
     if (run.source_delta != null) {
         var dv = Number(run.source_delta);
         var dcls = Math.abs(dv) < 0.01 ? 'auc-mid' : (dv > 0 ? 'auc-high' : 'auc-low');
-        deltaCell = '<span class="auc-badge ' + dcls + '">\u0394 ' + (dv >= 0 ? '+' : '') + dv.toFixed(3) + '</span>';
+        deltaCell = `<span class="auc-badge ${dcls}">\u0394 ${dv >= 0 ? '+' : ''}${dv.toFixed(3)}</span>`;
     } else {
-        deltaCell = '<div class="no-results">' + icon('cloud_off') + '<span>No Data</span></div>';
+        deltaCell = `<div class="no-results">${icon('cloud_off')}<span>No Data</span></div>`;
     }
 
     var rowClass = isActive ? 'row-active' : (run.has_results ? '' : 'row-dimmed');
     return (
-        '<tr' + (rowClass ? ' class="' + rowClass + '"' : '') + ' style="cursor:pointer" onclick="go(\'run-detail\', \'' + escapeAttr(run.id) + '\')">' +
-            '<td>' +
-                '<div class="run-name">' +
-                    (isActive ? '<span class="run-live-dot"></span>' : '') +
-                    '<strong>' + escapeHtml(run.id) + '</strong>' +
-                    '<div class="run-sub-id">' + escapeHtml(cfg.timestamp || 'local run artifact') + '</div>' +
-                '</div>' +
-            '</td>' +
-            '<td><span class="profile-tag' + (isActive ? ' profile-tag--dim' : '') + '">' + escapeHtml(profile) + '</span></td>' +
-            '<td><span class="cell-mono">' + escapeHtml(nGroups != null ? nGroups : '\u2014') + '</span></td>' +
-            '<td><span class="cell-dim">' + escapeHtml(methods.length ? methods.join(', ') : '\u2014') + '</span></td>' +
-            '<td><span class="cell-dim">' + escapeHtml(levels.length ? levels.join(', ') : '\u2014') + '</span></td>' +
-            '<td><div style="display:flex;align-items:center;gap:6px">' + icon('security') + '<span class="cell-mono">' + escapeHtml(nDetectors) + '</span></div></td>' +
-            '<td>' + deltaCell + '</td>' +
-            '<td>' + runStatus + '</td>' +
-            '<td>' +
-                '<button class="btn-icon" onclick="event.stopPropagation();confirmDeleteRun(\'' + escapeAttr(run.id) + '\')" title="Delete run">' +
-                    icon('delete') +
-                '</button>' +
-            '</td>' +
-        '</tr>'
+        `<tr${rowClass ? ` class="${rowClass}"` : ''} style="cursor:pointer" onclick="go('run-detail', '${escapeAttr(run.id)}')">
+            <td>
+                <div class="run-name">
+                    ${isActive ? '<span class="run-live-dot"></span>' : ''}
+                    <strong>${escapeHtml(run.id)}</strong>
+                    <div class="run-sub-id">${escapeHtml(cfg.timestamp || 'local run artifact')}</div>
+                </div>
+            </td>
+            <td><span class="profile-tag${isActive ? ' profile-tag--dim' : ''}">${escapeHtml(profile)}</span></td>
+            <td><span class="cell-mono">${escapeHtml(nGroups != null ? nGroups : '\u2014')}</span></td>
+            <td><span class="cell-dim">${escapeHtml(methods.length ? methods.join(', ') : '\u2014')}</span></td>
+            <td><span class="cell-dim">${escapeHtml(levels.length ? levels.join(', ') : '\u2014')}</span></td>
+            <td><div style="display:flex;align-items:center;gap:6px">${icon('security')}<span class="cell-mono">${escapeHtml(nDetectors)}</span></div></td>
+            <td>${deltaCell}</td>
+            <td>${runStatus}</td>
+            <td>
+                <button class="btn-icon" onclick="event.stopPropagation();confirmDeleteRun('${escapeAttr(run.id)}')" title="Delete run">
+                    ${icon('delete')}
+                </button>
+            </td>
+        </tr>`
     );
 }
 
 function buildRunsTable(filteredRuns, totalRuns, rows) {
     if (!filteredRuns.length) {
-        return '<div class="data-table-wrap"><div class="empty-state"><h3>No runs match this search</h3><p>Try a run id, profile name, method, or payload level.</p><div class="empty-actions"><button class="btn btn-ghost" onclick="clearSearch()">Clear Search</button></div></div></div>';
+        return `<div class="data-table-wrap"><div class="empty-state"><h3>No runs match this search</h3><p>Try a run id, profile name, method, or payload level.</p><div class="empty-actions"><button class="btn btn-ghost" onclick="clearSearch()">Clear Search</button></div></div></div>`;
     }
 
     return (
-        '<div class="data-table-wrap">' +
-            '<div style="overflow-x:auto">' +
-                '<table class="data-table">' +
-                    '<thead><tr>' +
-                        '<th>Run Name</th>' +
-                        '<th>Profile</th>' +
-                        '<th>Groups</th>' +
-                        '<th>Methods</th>' +
-                        '<th>Payloads</th>' +
-                        '<th>Detectors</th>' +
-                        '<th>Source \u0394</th>' +
-                        '<th>Status</th>' +
-                        '<th>Actions</th>' +
-                    '</tr></thead>' +
-                    '<tbody>' + rows + '</tbody>' +
-                '</table>' +
-            '</div>' +
-            '<div class="table-footer">' +
-                '<span>Displaying ' + filteredRuns.length + ' of ' + totalRuns + ' runs</span>' +
-                '<div class="table-footer-actions">' +
-                    '<span class="inline-note">' + icon('tips_and_updates') + '<strong>Tip:</strong> click a row to inspect run detail.</span>' +
-                '</div>' +
-            '</div>' +
-        '</div>'
+        `<div class="data-table-wrap">
+            <div style="overflow-x:auto">
+                <table class="data-table">
+                    <thead><tr>
+                        <th>Run Name</th>
+                        <th>Profile</th>
+                        <th>Groups</th>
+                        <th>Methods</th>
+                        <th>Payloads</th>
+                        <th>Detectors</th>
+                        <th>Source \u0394</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+            <div class="table-footer">
+                <span>Displaying ${filteredRuns.length} of ${totalRuns} runs</span>
+                <div class="table-footer-actions">
+                    <span class="inline-note">${icon('tips_and_updates')}<strong>Tip:</strong> click a row to inspect run detail.</span>
+                </div>
+            </div>
+        </div>`
     );
 }
 
@@ -215,12 +215,12 @@ function buildActivityFeed(runs) {
     return runs.slice(0, 4).map(function (run, index) {
         var tone = run.source_delta == null ? (run.has_results ? 'red' : 'amber') : (index === 0 ? 'blue' : 'green');
         var text = run.source_delta == null
-            ? (run.has_results ? 'Run <strong>' + escapeHtml(run.id) + '</strong> produced partial metrics that need review.' : 'Run <strong>' + escapeHtml(run.id) + '</strong> has been created but has not produced detector metrics yet.')
-            : 'Run <strong>' + escapeHtml(run.id) + '</strong> completed with source effect \u0394 <strong>' + escapeHtml((Number(run.source_delta) >= 0 ? '+' : '') + Number(run.source_delta).toFixed(3)) + '</strong>.';
-        return '<div class="activity-item">' +
-            '<div class="activity-dot ' + tone + '"></div>' +
-            '<div><div class="activity-text">' + text + '</div><div class="activity-time">' + escapeHtml((run.config || {}).timestamp || 'local artifact') + '</div></div>' +
-        '</div>';
+            ? (run.has_results ? `Run <strong>${escapeHtml(run.id)}</strong> produced partial metrics that need review.` : `Run <strong>${escapeHtml(run.id)}</strong> has been created but has not produced detector metrics yet.`)
+            : `Run <strong>${escapeHtml(run.id)}</strong> completed with source effect \u0394 <strong>${escapeHtml((Number(run.source_delta) >= 0 ? '+' : '') + Number(run.source_delta).toFixed(3))}</strong>.`;
+        return `<div class="activity-item">
+            <div class="activity-dot ${tone}"></div>
+            <div><div class="activity-text">${text}</div><div class="activity-time">${escapeHtml((run.config || {}).timestamp || 'local artifact')}</div></div>
+        </div>`;
     }).join('');
 }
 
@@ -230,12 +230,11 @@ function buildRunsTip(runs, stats) {
     var payloads = bestRun && bestRun.config ? toArray(bestRun.config.active_payload_levels) : [];
 
     return (
-        '<div class="tip-icon">' + icon('info') + '</div>' +
-        '<div class="tip-title">Best-performing configuration</div>' +
-        '<div class="tip-text">' +
-            'Right now the strongest local run is <strong>' + escapeHtml(stats.bestRunLabel) + '</strong>. ' +
-            'If you want the redesign to guide analysis, start by comparing new runs against the <strong>' + escapeHtml(bestProfile) + '</strong> profile' +
-            (payloads.length ? ' across payloads ' + escapeHtml(payloads.join(', ')) + '.' : '.') +
-        '</div>'
+        `<div class="tip-icon">${icon('info')}</div>
+        <div class="tip-title">Best-performing configuration</div>
+        <div class="tip-text">
+            Right now the strongest local run is <strong>${escapeHtml(stats.bestRunLabel)}</strong>.
+            If you want the redesign to guide analysis, start by comparing new runs against the <strong>${escapeHtml(bestProfile)}</strong> profile${payloads.length ? ` across payloads ${escapeHtml(payloads.join(', '))}.` : '.'}
+        </div>`
     );
 }

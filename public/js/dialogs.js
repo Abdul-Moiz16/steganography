@@ -9,7 +9,7 @@ function clearSearch() {
 function confirmDeleteRun(runId) {
     var overlay = document.getElementById('confirm-dialog');
     document.getElementById('dialog-title').textContent = 'Delete Run';
-    document.getElementById('dialog-message').innerHTML = 'Permanently delete <strong style="font-family:monospace">' + escapeHtml(runId) + '</strong> and all generated artifacts?';
+    document.getElementById('dialog-message').innerHTML = `Permanently delete <strong style="font-family:monospace">${escapeHtml(runId)}</strong> and all generated artifacts?`;
     overlay.classList.add('open');
 
     document.getElementById('dialog-confirm').onclick = function () {
@@ -25,7 +25,7 @@ function confirmDeleteRun(runId) {
 }
 
 function deleteRun(runId) {
-    api('/api/runs/' + encodeURIComponent(runId), { method: 'DELETE' })
+    api(`/api/runs/${encodeURIComponent(runId)}`, { method: 'DELETE' })
         .then(function () {
             if (STATE.page === 'run-detail' && STATE.runId === runId) {
                 STATE.runId = null;
@@ -33,7 +33,7 @@ function deleteRun(runId) {
             render();
         })
         .catch(function (error) {
-            alert('Failed to delete run: ' + error.message);
+            alert(`Failed to delete run: ${error.message}`);
         });
 }
 

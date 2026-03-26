@@ -4,7 +4,7 @@ async function api(url, options) {
     var response = await fetch(url, options);
     if (!response.ok) {
         var text = await response.text();
-        throw new Error(text || ('Request failed: ' + response.status));
+        throw new Error(text || `Request failed: ${response.status}`);
     }
     return response.json();
 }
@@ -23,7 +23,7 @@ function escapeAttr(value) {
 }
 
 function icon(name, extraClass) {
-    return '<span class="material-symbols-outlined' + (extraClass ? ' ' + extraClass : '') + '">' + escapeHtml(name) + '</span>';
+    return `<span class="material-symbols-outlined${extraClass ? ' ' + extraClass : ''}">${escapeHtml(name)}</span>`;
 }
 
 function toArray(value) {
@@ -39,7 +39,7 @@ function formatMaybeNumber(value, digits) {
 }
 
 function statusPill(label, tone) {
-    return '<span class="status-pill ' + tone + '">' + escapeHtml(label) + '</span>';
+    return `<span class="status-pill ${tone}">${escapeHtml(label)}</span>`;
 }
 
 function uniqueValues(list, key) {
@@ -52,12 +52,12 @@ function uniqueValues(list, key) {
 }
 
 function renderLoading() {
-    return '<div class="loading-page"><div class="loader"></div></div>';
+    return `<div class="loading-page"><div class="loader"></div></div>`;
 }
 
 function renderError(message, actionLabel, actionFn) {
     var button = actionLabel && actionFn
-        ? '<div class="empty-actions"><button class="btn btn-primary" onclick="' + actionFn + '">' + escapeHtml(actionLabel) + '</button></div>'
+        ? `<div class="empty-actions"><button class="btn btn-primary" onclick="${actionFn}">${escapeHtml(actionLabel)}</button></div>`
         : '';
-    return '<div class="empty-state"><h3>Something went off-track</h3><p>' + escapeHtml(message) + '</p>' + button + '</div>';
+    return `<div class="empty-state"><h3>Something went off-track</h3><p>${escapeHtml(message)}</p>${button}</div>`;
 }

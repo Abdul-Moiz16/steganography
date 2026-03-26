@@ -4,22 +4,22 @@ var _predictionsCache = {};
 
 function loadPredictions(runId) {
     if (_predictionsCache[runId]) return Promise.resolve(_predictionsCache[runId]);
-    return api('/api/runs/' + encodeURIComponent(runId) + '/predictions').then(function (rows) {
+    return api(`/api/runs/${encodeURIComponent(runId)}/predictions`).then(function (rows) {
         _predictionsCache[runId] = rows;
         return rows;
     });
 }
 
 function toggleGroupMetrics(groupId, runId) {
-    var panel = document.getElementById('gm-' + groupId);
+    var panel = document.getElementById(`gm-${groupId}`);
     if (!panel) return;
     var isOpen = panel.classList.toggle('gm-open');
-    var arrow = document.getElementById('gm-arrow-' + groupId);
+    var arrow = document.getElementById(`gm-arrow-${groupId}`);
     if (arrow) arrow.textContent = isOpen ? 'expand_less' : 'expand_more';
     if (!isOpen) return;
     if (panel.dataset.loaded) return;
     panel.dataset.loaded = '1';
-    panel.innerHTML = '<div class="gm-loading">' + icon('hourglass_empty') + ' Loading metrics\u2026</div>';
+    panel.innerHTML = `<div class="gm-loading">${icon('hourglass_empty')} Loading metrics\u2026</div>`;
 
     loadPredictions(runId).then(function (allRows) {
         var qualityRows = toArray((STATE._galData || {}).quality);
@@ -53,12 +53,12 @@ function buildGroupMetricsContent(groupId, gRows, qualityRows) {
             var cs = coverRows.length ? coverRows.reduce(function (s, r) { return s + Number(r.score); }, 0) / coverRows.length : null;
             var ss = stegoRows.length ? stegoRows.reduce(function (s, r) { return s + Number(r.score); }, 0) / stegoRows.length : null;
             var sep = (cs != null && ss != null) ? Math.abs(ss - cs) : null;
-            return '<tr>' +
-                '<td class="gm-det">' + escapeHtml(fmtDetector(det)) + '</td>' +
-                '<td class="gm-val">' + (cs != null ? fmtScore(cs) : '\u2014') + '</td>' +
-                '<td class="gm-val gm-val--stego">' + (ss != null ? fmtScore(ss) : '\u2014') + '</td>' +
-                '<td class="gm-val gm-val--sep">' + (sep != null ? fmtScore(sep) : '\u2014') + '</td>' +
-            '</tr>';
+            return `<tr>
+                <td class="gm-det">${escapeHtml(fmtDetector(det))}</td>
+                <td class="gm-val">${cs != null ? fmtScore(cs) : '\u2014'}</td>
+                <td class="gm-val gm-val--stego">${ss != null ? fmtScore(ss) : '\u2014'}</td>
+                <td class="gm-val gm-val--sep">${sep != null ? fmtScore(sep) : '\u2014'}</td>
+            </tr>`;
         }).join('');
 
         // Quality metrics for this group+source
@@ -67,25 +67,25 @@ function buildGroupMetricsContent(groupId, gRows, qualityRows) {
         if (qRows.length) {
             var avgPsnr = qRows.reduce(function (s, r) { return s + (r.psnr ? Number(r.psnr) : 0); }, 0) / qRows.length;
             var avgSsim = qRows.reduce(function (s, r) { return s + (r.ssim ? Number(r.ssim) : 0); }, 0) / qRows.length;
-            qualityHtml = '<div class="gm-quality">' +
-                '<span>PSNR: <strong>' + avgPsnr.toFixed(1) + ' dB</strong></span>' +
-                '<span>SSIM: <strong>' + avgSsim.toFixed(4) + '</strong></span>' +
-            '</div>';
+            qualityHtml = `<div class="gm-quality">
+                <span>PSNR: <strong>${avgPsnr.toFixed(1)} dB</strong></span>
+                <span>SSIM: <strong>${avgSsim.toFixed(4)}</strong></span>
+            </div>`;
         }
 
-        return '<div class="gm-source-block">' +
-            '<div class="gm-source-label ' + src + '">' + escapeHtml(SOURCE_NAMES[src] || src) + '</div>' +
-            qualityHtml +
-            '<table class="gm-table">' +
-                '<thead><tr><th>Detector</th><th>Cover</th><th>Stego</th><th>Separation</th></tr></thead>' +
-                '<tbody>' + tableRows + '</tbody>' +
-            '</table>' +
-            '<div class="gm-bars" id="gm-bars-' + groupId + '-' + src + '"></div>' +
-        '</div>';
+        return `<div class="gm-source-block">
+            <div class="gm-source-label ${src}">${escapeHtml(SOURCE_NAMES[src] || src)}</div>
+            ${qualityHtml}
+            <table class="gm-table">
+                <thead><tr><th>Detector</th><th>Cover</th><th>Stego</th><th>Separation</th></tr></thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+            <div class="gm-bars" id="gm-bars-${groupId}-${src}"></div>
+        </div>`;
     }).join('');
 
-    return '<div class="gm-sources-grid">' + tables + '</div>' +
-        '<div class="gm-chart-note">' + icon('info') + ' Each detector is normalized to its own max score across all sources, so bar heights show relative cover\u2009/\u2009stego separation per detector.</div>';
+    return `<div class="gm-sources-grid">${tables}</div>
+        <div class="gm-chart-note">${icon('info')} Each detector is normalized to its own max score across all sources, so bar heights show relative cover\u2009/\u2009stego separation per detector.</div>`;
 }
 
 function fmtScore(v) {
@@ -125,7 +125,7 @@ function drawGroupCharts(groupId, gRows) {
     });
 
     sources.forEach(function (src) {
-        var container = document.getElementById('gm-bars-' + groupId + '-' + src);
+        var container = document.getElementById(`gm-bars-${groupId}-${src}`);
         if (!container) return;
         var srcRows = gRows.filter(function (r) { return r.source === src; });
         if (!srcRows.length) return;
@@ -139,19 +139,19 @@ function drawGroupCharts(groupId, gRows) {
             var sPct = Math.round((ss / mx) * 100);
             var bothZero = cs === 0 && ss === 0;
 
-            return '<div class="gm-bar-row">' +
-                '<div class="gm-bar-label">' + escapeHtml(fmtDetector(det)) + '</div>' +
-                (bothZero
+            return `<div class="gm-bar-row">
+                <div class="gm-bar-label">${escapeHtml(fmtDetector(det))}</div>
+                ${bothZero
                     ? '<div class="gm-bar-zero">No signal</div>'
-                    : '<div class="gm-bar-tracks">' +
-                        '<div class="gm-bar-track"><div class="gm-bar-fill gm-bar--cover" style="width:' + cPct + '%"></div><span class="gm-bar-val">' + fmtScore(cs) + '</span></div>' +
-                        '<div class="gm-bar-track"><div class="gm-bar-fill gm-bar--stego" style="width:' + sPct + '%"></div><span class="gm-bar-val">' + fmtScore(ss) + '</span></div>' +
-                    '</div>') +
-            '</div>';
+                    : `<div class="gm-bar-tracks">
+                        <div class="gm-bar-track"><div class="gm-bar-fill gm-bar--cover" style="width:${cPct}%"></div><span class="gm-bar-val">${fmtScore(cs)}</span></div>
+                        <div class="gm-bar-track"><div class="gm-bar-fill gm-bar--stego" style="width:${sPct}%"></div><span class="gm-bar-val">${fmtScore(ss)}</span></div>
+                    </div>`}
+            </div>`;
         }).join('');
 
-        container.innerHTML = html +
-            '<div class="gm-bar-legend"><span class="gm-bar-fill gm-bar--cover" style="width:10px;height:8px;display:inline-block;border-radius:2px"></span> Cover <span class="gm-bar-fill gm-bar--stego" style="width:10px;height:8px;display:inline-block;border-radius:2px;margin-left:8px"></span> Stego</div>';
+        container.innerHTML = `${html}
+            <div class="gm-bar-legend"><span class="gm-bar-fill gm-bar--cover" style="width:10px;height:8px;display:inline-block;border-radius:2px"></span> Cover <span class="gm-bar-fill gm-bar--stego" style="width:10px;height:8px;display:inline-block;border-radius:2px;margin-left:8px"></span> Stego</div>`;
     });
 }
 
@@ -166,7 +166,7 @@ function drawGroupedBarsThemed(canvas, labels, datasets) {
     var dpr = window.devicePixelRatio || 1;
     var W = canvas.parentElement.clientWidth || 300, H = canvas.height || 120;
     canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
     var ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
 
     var pad = { t: 16, r: 12, b: 46, l: 10 };
@@ -191,13 +191,13 @@ function drawGroupedBarsThemed(canvas, labels, datasets) {
             roundedRect(ctx, x, pad.t + ch * (1 - v), bw, v * ch || 2, [2, 2, 0, 0]); ctx.fill();
             ctx.globalAlpha = 1;
         });
-        ctx.fillStyle = theme.text; ctx.font = '9px ' + font; ctx.textAlign = 'center';
+        ctx.fillStyle = theme.text; ctx.font = `9px ${font}`; ctx.textAlign = 'center';
         var short = lbl.length > 12 ? lbl.slice(0, 11) + '\u2026' : lbl;
         ctx.fillText(short, gx, H - pad.b + 12);
     });
 
     var lx = pad.l + 2, ly = H - 4;
-    ctx.font = '9px ' + fontBody;
+    ctx.font = `9px ${fontBody}`;
     datasets.forEach(function (ds) {
         ctx.fillStyle = ds.color; ctx.globalAlpha = 0.8;
         roundedRect(ctx, lx, ly - 6, 8, 6, 2); ctx.fill(); ctx.globalAlpha = 1;
@@ -223,30 +223,36 @@ function buildCoversTab(data, runId) {
             var path = (group.sources || {})[source];
             var label = source.replace('_', ' ');
             if (!path) {
-                return '<div class="source-cell"><div class="source-label ' + source + '">' + escapeHtml(label) + '</div><div class="image-none">\u2014</div></div>';
+                return `<div class="source-cell">
+                    <div class="source-label ${source}">${escapeHtml(label)}</div>
+                    <div class="image-none">\u2014</div>
+                </div>`;
             }
 
-            var url = '/api/image?path=' + encodeURIComponent(path);
-            return '<div class="source-cell"><div class="source-label ' + source + '">' + escapeHtml(label) + '</div><img class="cover-thumb" src="' + escapeAttr(url) + '" loading="lazy" alt="' + escapeAttr(label) + '" onclick="openLightbox(\'' + escapeAttr(url) + '\')"></div>';
+            var url = `/api/image?path=${encodeURIComponent(path)}`;
+            return `<div class="source-cell">
+                <div class="source-label ${source}">${escapeHtml(label)}</div>
+                <img class="cover-thumb" src="${escapeAttr(url)}" loading="lazy" alt="${escapeAttr(label)}" onclick="openLightbox('${escapeAttr(url)}')">
+            </div>`;
         }).join('');
 
         var metricsToggle = hasPredictions
-            ? '<button class="gm-toggle" onclick="toggleGroupMetrics(\'' + escapeAttr(group.group_id) + '\', \'' + escapeAttr(runId) + '\')">' +
-                  icon('analytics') + ' <span>Metrics</span>' +
-                  '<span class="material-symbols-outlined gm-arrow" id="gm-arrow-' + escapeAttr(group.group_id) + '">expand_more</span>' +
-              '</button>'
+            ? `<button class="gm-toggle" onclick="toggleGroupMetrics('${escapeAttr(group.group_id)}', '${escapeAttr(runId)}')">
+                  ${icon('analytics')} <span>Metrics</span>
+                  <span class="material-symbols-outlined gm-arrow" id="gm-arrow-${escapeAttr(group.group_id)}">expand_more</span>
+              </button>`
             : '';
 
-        return '<div class="group-card">' +
-            '<div class="group-head">' +
-                '<span class="group-gid">Group ' + escapeHtml(group.group_id) + '</span>' +
-                (group.caption ? '<span class="group-caption">' + escapeHtml(group.caption) + '</span>' : '') +
-                metricsToggle +
-            '</div>' +
-            '<div class="group-images">' + cells + '</div>' +
-            (hasPredictions ? '<div class="gm-panel" id="gm-' + escapeAttr(group.group_id) + '"></div>' : '') +
-        '</div>';
+        return `<div class="group-card">
+            <div class="group-head">
+                <span class="group-gid">Group ${escapeHtml(group.group_id)}</span>
+                ${group.caption ? `<span class="group-caption">${escapeHtml(group.caption)}</span>` : ''}
+                ${metricsToggle}
+            </div>
+            <div class="group-images">${cells}</div>
+            ${hasPredictions ? `<div class="gm-panel" id="gm-${escapeAttr(group.group_id)}"></div>` : ''}
+        </div>`;
     }).join('');
 
-    return '<div class="section-header"><div><div class="section-title">Cover Images</div><div class="section-subtitle">' + covers.length + ' groups · real and generated sources' + (hasPredictions ? ' · click Metrics to see per-image detector scores' : '') + '</div></div></div><div class="covers-grid">' + groups + '</div>';
+    return `<div class="section-header"><div><div class="section-title">Cover Images</div><div class="section-subtitle">${covers.length} groups \u00b7 real and generated sources${hasPredictions ? ' \u00b7 click Metrics to see per-image detector scores' : ''}</div></div></div><div class="covers-grid">${groups}</div>`;
 }
