@@ -136,8 +136,7 @@ function render() {
 
     if (STATE.page === 'docs') {
         hideSidebar();
-        el.innerHTML = renderDocsPage();
-        initDocsSpy();
+        renderDocsPage(el);
         return;
     }
 

@@ -41,25 +41,9 @@ function buildQualityMetricsCard(qualityRows) {
     </div>`;
 }
 
-var DETECTOR_LABELS = {
-    'rs':                     'RS Analysis',
-    'chi_square_spatial':     'Chi-Square (Spatial)',
-    'sample_pairs':           'Sample Pairs',
-    'chi_square_dct':         'Chi-Square (DCT)',
-    'calibration_chi_square': 'Calibration Chi-Square',
-};
-function fmtDetector(name) { return DETECTOR_LABELS[name] || name; }
-
 function buildPrototypeBanner(cfg) {
     var profile = (cfg || {}).profile || '';
-    if (profile !== 'prototype') return '';
-    return `<div class="proto-banner">
-        <div class="proto-banner-icon">${icon('warning')}</div>
-        <div class="proto-banner-body">
-            <div class="proto-banner-title">Horizontal Prototype</div>
-            <div class="proto-banner-text">These results are based on a reduced sample size (${PROFILE_META.prototype.n_groups || 20} groups, LSB only) and <strong>cannot be considered statistically significant</strong>. This run validates the end-to-end pipeline functionality and LSB integration. For publishable results, run the <em>full_design</em> profile.</div>
-        </div>
-    </div>`;
+    return `<proto-banner profile="${escapeAttr(profile)}"></proto-banner>`;
 }
 
 function buildResultsTab(data, detailStats) {

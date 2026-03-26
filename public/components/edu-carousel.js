@@ -1,10 +1,98 @@
-/* Stego Explorer — Educational carousel (project primer slides shown on empty runs page) */
+/* Stego Explorer — <edu-carousel> custom element
+   Usage: <edu-carousel></edu-carousel>
+   Fully self-contained: slides data, auto-advance timer, navigation.
+   Call .destroy() or let disconnectedCallback clean up the timer.     */
 
-var EDU_SLIDES = [
+class EduCarousel extends HTMLElement {
+    constructor() {
+        super();
+        this._idx = 0;
+        this._timer = null;
+    }
+
+    connectedCallback() {
+        this._render();
+        this._startTimer();
+    }
+
+    disconnectedCallback() {
+        this._stopTimer();
+    }
+
+    /* ── Navigation ─────────────────────────────────────────────── */
+
+    goTo(idx) {
+        this._idx = (idx + EduCarousel.SLIDES.length) % EduCarousel.SLIDES.length;
+        var track = this.querySelector('.edu-track');
+        if (track) track.style.transform = `translateX(-${this._idx * 100}%)`;
+        this.querySelectorAll('.edu-dot').forEach((dot, i) => {
+            dot.classList.toggle('active', i === this._idx);
+        });
+        this._restartTimer();
+    }
+
+    next() { this.goTo(this._idx + 1); }
+    prev() { this.goTo(this._idx - 1); }
+    destroy() { this._stopTimer(); }
+
+    /* ── Internal ───────────────────────────────────────────────── */
+
+    _startTimer() {
+        this._stopTimer();
+        this._timer = setInterval(() => this.next(), 7000);
+    }
+
+    _restartTimer() { this._startTimer(); }
+
+    _stopTimer() {
+        if (this._timer) { clearInterval(this._timer); this._timer = null; }
+    }
+
+    _render() {
+        var slides = EduCarousel.SLIDES.map(s =>
+            `<div class="edu-slide">` +
+                `<div class="edu-visual">${s.visual}</div>` +
+                `<div class="edu-text">` +
+                    `<div class="edu-tag">${escapeHtml(s.tag)}</div>` +
+                    `<div class="edu-title">${escapeHtml(s.title)}</div>` +
+                    `<div class="edu-body">${escapeHtml(s.body)}</div>` +
+                `</div>` +
+            `</div>`
+        ).join('');
+
+        var dots = EduCarousel.SLIDES.map((_, i) =>
+            `<button class="edu-dot${i === 0 ? ' active' : ''}" data-idx="${i}"></button>`
+        ).join('');
+
+        this.innerHTML =
+            `<div class="edu-section">` +
+                `<div class="edu-label">While you wait \u2014 project primer</div>` +
+                `<div class="edu-carousel">` +
+                    `<div class="edu-track">${slides}</div>` +
+                    `<button class="edu-arrow edu-prev" aria-label="Previous">&#8249;</button>` +
+                    `<button class="edu-arrow edu-next" aria-label="Next">&#8250;</button>` +
+                    `<div class="edu-dots">${dots}</div>` +
+                `</div>` +
+            `</div>`;
+
+        /* Attach event listeners via delegation */
+        this.addEventListener('click', e => {
+            var target = e.target.closest('.edu-prev, .edu-next, .edu-dot');
+            if (!target) return;
+            if (target.classList.contains('edu-prev')) this.prev();
+            else if (target.classList.contains('edu-next')) this.next();
+            else if (target.classList.contains('edu-dot')) this.goTo(Number(target.dataset.idx));
+        });
+    }
+}
+
+/* ── Slide data ─────────────────────────────────────────────────────── */
+
+EduCarousel.SLIDES = [
     {
         tag: 'PROJECT OVERVIEW',
         title: 'Research Questions',
-        body: 'Does the source of carrier image affect steganographic detectability? We test three sources — real photographs, ML-generated images using a real photo as reference, and ML-generated images using an AI image as reference — and measure whether statistical detectors behave differently across them.',
+        body: 'Does the source of carrier image affect steganographic detectability? We test three sources \u2014 real photographs, ML-generated images using a real photo as reference, and ML-generated images using an AI image as reference \u2014 and measure whether statistical detectors behave differently across them.',
         visual: `<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
             <rect x="8" y="14" width="68" height="34" rx="5" fill="rgba(102,217,160,0.12)" stroke="rgba(102,217,160,0.35)" stroke-width="1.2"/>
             <text x="42" y="28" text-anchor="middle" font-size="8.5" fill="#66d9a0" font-family="monospace" font-weight="700">REAL</text>
@@ -34,7 +122,6 @@ var EDU_SLIDES = [
         body: 'Least Significant Bit replacement encodes a secret bit by overwriting the final bit of a pixel. A pixel of 150 (10010110\u2082) with a secret bit 1 becomes 151 (10010111\u2082). The \u00b11 change is invisible to the eye, but creates statistical regularities that trained detectors can measure.',
         visual: `<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
             <text x="8" y="22" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">Cover pixel  150\u2081\u2080</text>` +
-            // 8 bit boxes for 10010110
             ['1','0','0','1','0','1','1','0'].map(function(b,i){
                 var x = 8 + i*28; var isLSB = i===7;
                 return `<rect x="${x}" y="28" width="24" height="24" rx="3" fill="${isLSB?'rgba(99,179,255,0.18)':'rgba(255,255,255,0.06)'}" stroke="${isLSB?'rgba(99,179,255,0.5)':'rgba(255,255,255,0.15)'}" stroke-width="1.2"/>
@@ -56,7 +143,6 @@ var EDU_SLIDES = [
         title: 'Regular-Singular (RS) Analysis',
         body: 'Pixels are partitioned into groups of 4. A flipping mask (+1/\u22121) is applied, and each group is classified as Regular (lower variance after flip), Singular (higher variance), or Unusable. In a clean image R \u2248 R\u0304 and S \u2248 S\u0304. LSB replacement predictably shifts these counts, revealing embedding.',
         visual: `<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">` +
-            // pixel group
             `<text x="8" y="18" font-size="8.5" fill="rgba(255,255,255,0.35)" font-family="monospace">Pixel group (4 px)</text>` +
             [148,151,149,150].map(function(v,i){
                 var x = 8+i*46;
@@ -80,7 +166,6 @@ var EDU_SLIDES = [
         body: 'LSB replacement pairs up pixel values that differ only in their final bit (2k \u2194 2k+1). In a natural image these pairs have different frequencies; embedding equalises them toward a 50/50 split. The chi-square statistic quantifies how far the observed pair frequencies deviate from this expected equipartition.',
         visual: `<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
             <text x="14" y="16" font-size="8.5" fill="rgba(255,255,255,0.35)" font-family="monospace">Cover image pairs</text>` +
-            // bars for cover (unequal pairs)
             [[14,62],[20,38],[18,28],[24,48],[16,34],[22,44],[12,18],[20,32]].map(function(pair,i){
                 var x = 14+i*28; var h1=pair[0]*1.1; var h2=pair[1]*1.1; var base=130;
                 return `<rect x="${x}" y="${base-h1}" width="10" height="${h1}" rx="1" fill="rgba(99,179,255,0.5)"/>
@@ -96,7 +181,6 @@ var EDU_SLIDES = [
         body: 'Analyses the multiset statistics of adjacent pixel pairs across the image. Sequential LSB embedding predictably shifts the count of pairs where one value is even and the other odd (the \u201ctrace\u201d multiset). The estimated embedding rate \u03b2 is derived directly from these shifted counts.',
         visual: `<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
             <text x="8" y="16" font-size="8.5" fill="rgba(255,255,255,0.35)" font-family="monospace">Adjacent pixel pairs</text>` +
-            // 4x3 grid of pairs
             [
                 [148,151],[150,149],[147,152],[151,148],
                 [149,150],[152,151],[148,149],[150,151],
@@ -118,12 +202,9 @@ var EDU_SLIDES = [
         title: 'Pipeline at a Glance',
         body: 'The prototype validates the full pipeline at small scale: 20 image groups, 1 embedding method (LSB), 1 payload level, 3 statistical detectors. The full design run scales to 500 groups, 2 methods, 3 payload levels, and 5 detectors \u2014 producing ~15,000 individual detection scores per run.',
         visual: `<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">` +
-            // Row labels
             `<text x="10" y="26" font-size="8" fill="rgba(102,217,160,0.7)" font-family="monospace" font-weight="700">PROTOTYPE</text>
             <text x="10" y="92" font-size="8" fill="rgba(99,179,255,0.7)" font-family="monospace" font-weight="700">FULL DESIGN</text>` +
-            // Divider
             `<line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>` +
-            // Prototype stats: 4 cells
             [
                 ['20','groups'],['1','method'],['1','payload'],['3','detectors']
             ].map(function(s,i){
@@ -131,7 +212,6 @@ var EDU_SLIDES = [
                 return `<text x="${x+22}" y="47" text-anchor="middle" font-size="18" fill="rgba(102,217,160,0.9)" font-family="monospace" font-weight="700">${s[0]}</text>
                        <text x="${x+22}" y="57" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,0.3)" font-family="monospace">${s[1]}</text>`;
             }).join('') +
-            // Full design stats: 4 cells
             [
                 ['500','groups'],['2','methods'],['3','payloads'],['5','detectors']
             ].map(function(s,i){
@@ -143,52 +223,4 @@ var EDU_SLIDES = [
     }
 ];
 
-var _eduTimer = null;
-var _eduIdx = 0;
-
-function buildEduCarousel() {
-    var dots = EDU_SLIDES.map(function(_, i) {
-        return `<button class="edu-dot${i === 0 ? ' active' : ''}" onclick="eduGoTo(${i})"></button>`;
-    }).join('');
-
-    var slides = EDU_SLIDES.map(function(s) {
-        return `<div class="edu-slide">
-            <div class="edu-visual">${s.visual}</div>
-            <div class="edu-text">
-                <div class="edu-tag">${escapeHtml(s.tag)}</div>
-                <div class="edu-title">${escapeHtml(s.title)}</div>
-                <div class="edu-body">${escapeHtml(s.body)}</div>
-            </div>
-        </div>`;
-    }).join('');
-
-    return `<div class="edu-section">
-        <div class="edu-label">While you wait \u2014 project primer</div>
-        <div class="edu-carousel" id="edu-carousel">
-            <div class="edu-track" id="edu-track">${slides}</div>
-            <button class="edu-arrow edu-prev" onclick="eduPrev()" aria-label="Previous">&#8249;</button>
-            <button class="edu-arrow edu-next" onclick="eduNext()" aria-label="Next">&#8250;</button>
-            <div class="edu-dots">${dots}</div>
-        </div>
-    </div>`;
-}
-
-function initEduCarousel() {
-    _eduIdx = 0;
-    clearInterval(_eduTimer);
-    _eduTimer = setInterval(function() { eduNext(); }, 7000);
-}
-
-function eduGoTo(idx) {
-    _eduIdx = (idx + EDU_SLIDES.length) % EDU_SLIDES.length;
-    var track = document.getElementById('edu-track');
-    if (track) track.style.transform = `translateX(-${_eduIdx * 100}%)`;
-    document.querySelectorAll('.edu-dot').forEach(function(d, i) {
-        d.classList.toggle('active', i === _eduIdx);
-    });
-    clearInterval(_eduTimer);
-    _eduTimer = setInterval(function() { eduNext(); }, 7000);
-}
-
-function eduNext() { eduGoTo(_eduIdx + 1); }
-function eduPrev() { eduGoTo(_eduIdx - 1); }
+customElements.define('edu-carousel', EduCarousel);

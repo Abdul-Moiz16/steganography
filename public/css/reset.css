@@ -48,6 +48,11 @@ body::after {
 ::-webkit-scrollbar-thumb { background: var(--outline-var); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--outline); }
 
+/* Custom elements: wrapper-only elements use display:contents to be layout-transparent.
+   bento-card and summary-card need their own box model (background, padding, border) so they must NOT use contents. */
+proto-banner, edu-carousel, terminal-panel { display: contents; }
+status-pill { display: inline-flex; }
+
 .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     vertical-align: middle;

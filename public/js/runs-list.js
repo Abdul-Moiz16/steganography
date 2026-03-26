@@ -14,8 +14,7 @@ async function renderRunsList(el, token) {
                         <button class="btn btn-primary" onclick="openLaunchPanel()">${icon('add')} New Run</button>
                     </div>
                 </div>` +
-                buildEduCarousel();
-            initEduCarousel();
+                `<edu-carousel></edu-carousel>`;
             return;
         }
 
@@ -39,10 +38,10 @@ async function renderRunsList(el, token) {
                 <button class="btn btn-primary" onclick="openLaunchPanel()">${icon('add')} New Run</button>
             </div>
             <div class="stats-bento">
-                <div class="bento-card"><div class="bento-label">Largest Source Effect</div><div class="bento-value primary">${stats.largestDelta != null ? `\u0394 ${stats.largestDelta >= 0 ? '+' : ''}${stats.largestDelta.toFixed(3)}` : '\u2014'}</div><div class="bento-sub">${escapeHtml(stats.largestDeltaLabel)}</div></div>
-                <div class="bento-card"><div class="bento-label">Tracked Runs</div><div class="bento-value">${formatNumber(runs.length)}</div><div class="bento-sub">${formatNumber(stats.completedRuns)} with metrics</div></div>
-                <div class="bento-card"><div class="bento-label">Processed Covers</div><div class="bento-value">${formatNumber(stats.totalImages)}</div><div class="bento-sub">${formatNumber(stats.totalGroups)} grouped specimens</div></div>
-                <div class="bento-card"><div class="bento-label">Detector Evaluations</div><div class="bento-value">${formatNumber(stats.totalDetectors)}</div><div class="bento-sub">${escapeHtml(stats.coverageLabel)}</div></div>
+                <bento-card label="Largest Source Effect" value="${stats.largestDelta != null ? `\u0394 ${stats.largestDelta >= 0 ? '+' : ''}${stats.largestDelta.toFixed(3)}` : '\u2014'}" value-class="primary" sub="${escapeAttr(stats.largestDeltaLabel)}"></bento-card>
+                <bento-card label="Tracked Runs" value="${formatNumber(runs.length)}" sub="${formatNumber(stats.completedRuns)} with metrics"></bento-card>
+                <bento-card label="Processed Covers" value="${formatNumber(stats.totalImages)}" sub="${formatNumber(stats.totalGroups)} grouped specimens"></bento-card>
+                <bento-card label="Detector Evaluations" value="${formatNumber(stats.totalDetectors)}" sub="${escapeAttr(stats.coverageLabel)}"></bento-card>
             </div>` +
             buildRunsTable(filtered, runs.length, rows) +
             `<div class="panels-row">
@@ -54,9 +53,8 @@ async function renderRunsList(el, token) {
                     <div class="glass-panel-head"><div class="glass-panel-title">Analysis Tip</div></div>
                     <div class="glass-panel-body">${tip}</div>
                 </div>
-            </div>` +
-            buildEduCarousel();
-        initEduCarousel();
+            </div>
+            <edu-carousel></edu-carousel>`;
     } catch (error) {
         if (token !== STATE.renderToken) return;
         el.innerHTML = renderError(error.message, 'Retry', 'render()');

@@ -66,37 +66,13 @@ function appendLogForJob(jobId, line) {
     if (STATE.page !== 'run-detail') return;
     var job = getJobForRun(STATE.runId);
     if (!job || job.jobId !== jobId) return;
-    var box = document.getElementById('run-terminal-log');
-    if (!box) return;
-    box.textContent += (box.textContent ? '\n' : '') + line;
-    box.scrollTop = box.scrollHeight;
+    var panel = document.querySelector('terminal-panel');
+    if (panel) panel.appendLog(line);
 }
 
 function updateTerminalBadgeForJob(jobId, exitCode) {
-    var job = getJob(jobId);
-    if (!job) return;
-    var termSection = document.querySelector('.rd-terminal');
-    if (!termSection) return;
-    var badge = termSection.querySelector('.badge');
-    if (!badge) return;
-    if (job.killed) {
-        badge.className = 'badge badge-error'; badge.textContent = '\u2717 Killed';
-    } else if (exitCode === 0) {
-        badge.className = 'badge badge-done'; badge.textContent = '\u2713 Completed';
-    } else {
-        badge.className = 'badge badge-error'; badge.textContent = '\u2717 Failed';
-    }
-    /* Inject error banner if needed */
-    if ((exitCode !== 0 || job.killed) && job.error && STATE.terminalOpen) {
-        var body = termSection.querySelector('.rd-terminal-body');
-        if (body && !body.querySelector('.rd-error-banner')) {
-            var banner = document.createElement('div');
-            banner.className = 'rd-error-banner';
-            banner.innerHTML = `<span class="material-symbols-outlined">error_outline</span>
-                <div><strong>Pipeline error detected</strong><div class="rd-error-msg">${escapeHtml(job.error)}</div></div>`;
-            body.insertBefore(banner, body.firstChild);
-        }
-    }
+    var panel = document.querySelector('terminal-panel');
+    if (panel) panel.updateBadge(exitCode);
 }
 
 function killRun(jobId) {

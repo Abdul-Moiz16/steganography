@@ -76,104 +76,17 @@ async function renderRunDetail(el, runId, token) {
     }
 }
 
-function buildKilledBanner(runId) {
-    return `<div class="rd-terminal">` +
-        `<div class="rd-terminal-hdr">` +
-            `<span>${icon('terminal')} Pipeline Output</span>` +
-            `<span class="badge badge-error">✗ Killed</span>` +
-        `</div>` +
-        `<div class="rd-error-banner">` +
-            icon('cancel') +
-            `<span class="rd-error-msg">This run was killed before it completed. No pipeline output is available from this viewer instance.</span>` +
-        `</div>` +
-    `</div>`;
+function buildTerminalSection(runId) {
+    return `<terminal-panel run-id="${escapeAttr(runId)}"></terminal-panel>`;
 }
 
-function buildTerminalSection(runId) {
-    var job = getJobForRun(runId);
-    if (!job || !job.logLines.length) return '';
-
-    var isRunning = !!job.streamSource && !job.failed && !job.killed;
-    var isOpen = STATE.terminalOpen;
-    var logContent = escapeHtml(job.logLines.join('\n'));
-
-    var statusBadge = isRunning
-        ? `<span class="badge badge-running">● Live</span>`
-        : (job.failed || job.killed)
-            ? `<span class="badge badge-error">${job.killed ? '✗ Killed' : '✗ Failed'}</span>`
-            : `<span class="badge badge-done">✓ Completed</span>`;
-
-    var killBtn = isRunning
-        ? `<button class="rd-kill-btn" onclick="killRun('${escapeAttr(job.jobId)}')" title="Kill this run">` +
-              `<span class="material-symbols-outlined">stop_circle</span> Kill` +
-          `</button>`
-        : '';
-
-    var errorBanner = ((job.failed || job.killed) && job.error)
-        ? `<div class="rd-error-banner">` +
-              `<span class="material-symbols-outlined">error_outline</span>` +
-              `<div><strong>Pipeline error detected</strong><div class="rd-error-msg">${escapeHtml(job.error)}</div></div>` +
-          `</div>`
-        : '';
-
-    var body = isOpen
-        ? `<div class="rd-terminal-body">` +
-              errorBanner +
-              `<div class="lp-terminal-chrome">` +
-                  `<span class="lp-dot lp-dot--r"></span>` +
-                  `<span class="lp-dot lp-dot--y"></span>` +
-                  `<span class="lp-dot lp-dot--g"></span>` +
-                  `<span class="lp-terminal-label">sh — ${escapeHtml(job.runId || job.jobId)} — pts/0</span>` +
-              `</div>` +
-              `<pre class="log-box lp-log-body" id="run-terminal-log">${logContent}</pre>` +
-          `</div>`
-        : '';
-
-    return `<div class="rd-terminal">` +
-        `<div class="rd-terminal-hdr" onclick="toggleRunTerminal()">` +
-            `<div class="rd-terminal-hdr-left">` +
-                `<span class="material-symbols-outlined rd-term-icon">terminal</span>` +
-                `<span class="rd-terminal-title">Pipeline Output</span>` +
-                statusBadge +
-            `</div>` +
-            `<div class="rd-terminal-hdr-right">` +
-                killBtn +
-                `<span class="material-symbols-outlined rd-term-chevron">${isOpen ? 'expand_less' : 'expand_more'}</span>` +
-            `</div>` +
-        `</div>` +
-        body +
-    `</div>`;
+function buildKilledBanner(runId) {
+    return buildTerminalSection(runId);
 }
 
 function toggleRunTerminal() {
-    STATE.terminalOpen = !STATE.terminalOpen;
-    var section = document.querySelector('.rd-terminal');
-    if (!section) return;
-    var chevron = section.querySelector('.rd-term-chevron');
-    var job = getJobForRun(STATE.runId);
-    var existingBody = section.querySelector('.rd-terminal-body');
-
-    if (STATE.terminalOpen && job) {
-        var isRunning = !!job.streamSource && !job.failed && !job.killed;
-        var errorBanner = ((job.failed || job.killed) && job.error)
-            ? `<div class="rd-error-banner"><span class="material-symbols-outlined">error_outline</span><div><strong>Pipeline error detected</strong><div class="rd-error-msg">${escapeHtml(job.error)}</div></div></div>`
-            : '';
-        var div = document.createElement('div');
-        div.className = 'rd-terminal-body';
-        div.innerHTML =
-            errorBanner +
-            `<div class="lp-terminal-chrome">` +
-                `<span class="lp-dot lp-dot--r"></span><span class="lp-dot lp-dot--y"></span><span class="lp-dot lp-dot--g"></span>` +
-                `<span class="lp-terminal-label">sh — ${escapeHtml(job.runId || job.jobId)} — pts/0</span>` +
-            `</div>` +
-            `<pre class="log-box lp-log-body" id="run-terminal-log">${escapeHtml(job.logLines.join('\n'))}</pre>`;
-        section.appendChild(div);
-        var box = div.querySelector('#run-terminal-log');
-        if (box) box.scrollTop = box.scrollHeight;
-    } else {
-        if (existingBody) existingBody.remove();
-    }
-    if (chevron) chevron.textContent = STATE.terminalOpen ? 'expand_less' : 'expand_more';
+    var panel = document.querySelector('terminal-panel');
+    if (panel) panel.toggle();
 }
 
 function summarizeRunDetail(data) {
@@ -250,28 +163,9 @@ function buildSummaryStrip(cfg, detailStats, data) {
         : 'Awaiting source metrics';
 
     return `<div class="summary-strip">` +
-        `<div class="summary-card-v2">` +
-            `<div class="sc2-icon">${icon(profileIcon)}</div>` +
-            `<div class="sc2-body">` +
-                `<div class="sc2-label">${escapeHtml(profileLabel)}</div>` +
-                `<div class="sc2-desc">${escapeHtml(designDesc)}</div>` +
-            `</div>` +
-        `</div>` +
-        `<div class="summary-card-v2">` +
-            `<div class="sc2-icon">${icon('grid_view')}</div>` +
-            `<div class="sc2-body">` +
-                `<div class="sc2-label">Experimental Coverage</div>` +
-                `<div class="sc2-desc">${escapeHtml(coverageDesc)}</div>` +
-            `</div>` +
-        `</div>` +
-        `<div class="summary-card-v2 sc2-highlight">` +
-            `<div class="sc2-icon">${icon('compare_arrows')}</div>` +
-            `<div class="sc2-body">` +
-                `<div class="sc2-label">Source Effect (RQ1)</div>` +
-                `<div class="sc2-value ${deltaCls}">\u0394 ${deltaStr}</div>` +
-                `<div class="sc2-desc">${escapeHtml(sourceDesc)}</div>` +
-            `</div>` +
-        `</div>` +
+        `<summary-card icon="${escapeAttr(profileIcon)}" label="${escapeAttr(profileLabel)}" desc="${escapeAttr(designDesc)}"></summary-card>` +
+        `<summary-card icon="grid_view" label="Experimental Coverage" desc="${escapeAttr(coverageDesc)}"></summary-card>` +
+        `<summary-card icon="compare_arrows" label="Source Effect (RQ1)" value="\u0394 ${deltaStr}" value-class="${deltaCls}" desc="${escapeAttr(sourceDesc)}" highlight></summary-card>` +
     `</div>`;
 }
 

@@ -155,58 +155,6 @@ function drawGroupCharts(groupId, gRows) {
     });
 }
 
-function drawGroupedBarsThemed(canvas, labels, datasets) {
-    var isLight = document.documentElement.classList.contains('light');
-    var theme = isLight
-        ? { bg: 'transparent', grid: '#e5e7eb', gridMid: '#d1d5db', text: '#4b5563', textDim: '#9ca3af', track: '#f3f4f6' }
-        : { bg: 'transparent', grid: '#1a2d54', gridMid: '#2b4680', text: '#8f9fb7', textDim: '#5b74b1', track: '#06122d' };
-    var font = 'monospace';
-    var fontBody = "'Inter', system-ui, sans-serif";
-
-    var dpr = window.devicePixelRatio || 1;
-    var W = canvas.parentElement.clientWidth || 300, H = canvas.height || 120;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
-    var ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
-
-    var pad = { t: 16, r: 12, b: 46, l: 10 };
-    var cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
-    var n = labels.length, nd = datasets.length, gw = cw / n;
-    var bw = Math.min(18, Math.max(5, (gw - 10) / nd));
-    ctx.clearRect(0, 0, W, H);
-
-    [0, 0.5, 1].forEach(function (v) {
-        var y = pad.t + ch * (1 - v);
-        ctx.strokeStyle = v === 0.5 ? theme.gridMid : theme.grid;
-        ctx.lineWidth = 1; ctx.setLineDash(v === 0.5 ? [3, 3] : []);
-        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cw, y); ctx.stroke(); ctx.setLineDash([]);
-    });
-
-    labels.forEach(function (lbl, gi) {
-        var gx = pad.l + gi * gw + gw / 2;
-        datasets.forEach(function (ds, di) {
-            var v = Math.max(0, Math.min(1, ds.vals[gi] || 0));
-            var x = gx + (di - (nd - 1) / 2) * (bw + 2) - bw / 2;
-            ctx.fillStyle = ds.color; ctx.globalAlpha = 0.8;
-            roundedRect(ctx, x, pad.t + ch * (1 - v), bw, v * ch || 2, [2, 2, 0, 0]); ctx.fill();
-            ctx.globalAlpha = 1;
-        });
-        ctx.fillStyle = theme.text; ctx.font = `9px ${font}`; ctx.textAlign = 'center';
-        var short = lbl.length > 12 ? lbl.slice(0, 11) + '\u2026' : lbl;
-        ctx.fillText(short, gx, H - pad.b + 12);
-    });
-
-    var lx = pad.l + 2, ly = H - 4;
-    ctx.font = `9px ${fontBody}`;
-    datasets.forEach(function (ds) {
-        ctx.fillStyle = ds.color; ctx.globalAlpha = 0.8;
-        roundedRect(ctx, lx, ly - 6, 8, 6, 2); ctx.fill(); ctx.globalAlpha = 1;
-        ctx.fillStyle = theme.text; ctx.textAlign = 'left';
-        ctx.fillText(ds.label, lx + 11, ly);
-        lx += ctx.measureText(ds.label).width + 22;
-    });
-}
-
 function buildCoversTab(data, runId) {
     var covers = data.covers || [];
     // Store quality rows for per-group access

@@ -38,8 +38,18 @@ function formatMaybeNumber(value, digits) {
     return value == null || Number.isNaN(Number(value)) ? '\u2014' : Number(value).toFixed(digits);
 }
 
+var DETECTOR_LABELS = {
+    'rs':                     'RS Analysis',
+    'chi_square_spatial':     'Chi-Square (Spatial)',
+    'sample_pairs':           'Sample Pairs',
+    'chi_square_dct':         'Chi-Square (DCT)',
+    'calibration_chi_square': 'Calibration Chi-Square',
+};
+
+function fmtDetector(name) { return DETECTOR_LABELS[name] || name; }
+
 function statusPill(label, tone) {
-    return `<span class="status-pill ${tone}">${escapeHtml(label)}</span>`;
+    return `<status-pill label="${escapeAttr(label)}" tone="${escapeAttr(tone)}"></status-pill>`;
 }
 
 function uniqueValues(list, key) {
