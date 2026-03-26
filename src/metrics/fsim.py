@@ -43,6 +43,4 @@ def fsim(cover: Image.Image, stego: Image.Image) -> float:
   
     score = piq_fsim(cover_tensor, stego_tensor, chromatic=False) 
 
-    return score.item() 
-   
-    raise NotImplementedError("FSIM is not implemented yet.")
+    return score.item()

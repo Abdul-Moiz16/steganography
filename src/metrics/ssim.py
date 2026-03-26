@@ -20,7 +20,6 @@ from __future__ import annotations
 import numpy as np
 from PIL import Image
 from skimage.metrics import structural_similarity
-import numpy as np
 
 def ssim(cover: Image.Image, stego: Image.Image) -> float:
 
