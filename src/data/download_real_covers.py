@@ -402,8 +402,15 @@ def download_real_covers(
     rng = random.Random(seed)
     rng.shuffle(collected)
 
+    from tqdm import tqdm
+
     records: list[DownloadRecord] = []
-    for idx, candidate in enumerate(collected, start=1):
+    for idx, candidate in tqdm(
+        enumerate(collected, start=1),
+        total=len(collected),
+        desc="Downloading covers",
+        unit="img",
+    ):
         group_id = idx
         raw_path = _raw_image_path(paths, group_id, candidate.dataset, candidate.image_url)
         raw_path.parent.mkdir(parents=True, exist_ok=True)

@@ -44,6 +44,11 @@ def chi_square_spatial_score(image: Image.Image) -> float:
     if degrees_of_frdm <= 1:
         return 0.0
 
-    p_value = chi2.cdf(chi_stat, df=degrees_of_frdm - 1)
+    # chi2.sf = 1 − chi2.cdf (survival function).
+    # A stego image has equalised pairs → low chi_stat → high survival probability
+    # → score close to 1.  A clean cover has unequal pairs → large chi_stat →
+    # survival probability near 0.  This aligns with the convention that
+    # larger score = stronger stego evidence (Westfeld & Pfitzmann, 1999).
+    embedding_probability = chi2.sf(chi_stat, df=degrees_of_frdm - 1)
 
-    return float(p_value)
+    return float(embedding_probability)

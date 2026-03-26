@@ -7,6 +7,9 @@ __pycache__/
 .venv/
 venv/
 
+# Secrets
+.env
+
 # macOS metadata
 .DS_Store
 
@@ -23,9 +26,12 @@ venv/
 /data/covers/**/*.tif
 /data/covers/**/*.tiff
 
-# Generated outputs
-/results/
+# Generated model weights
 /models
+
+# Legacy flat results directory (superseded by runs/)
+/results/
+
 
 # Test output artifacts
 tests/output/

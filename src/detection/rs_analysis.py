@@ -105,7 +105,7 @@ def get_color_blocks(image: Image.Image) -> list[np.ndarray]:
 
     image = image.convert("RGB")
     pixels = np.array(image, dtype = np.int16)
-    height, width, channgels = pixels.shape
+    height, width, channels = pixels.shape
 
     safe_height = height - (height %2) #2 is the block size
     safe_width = width - (width%2)

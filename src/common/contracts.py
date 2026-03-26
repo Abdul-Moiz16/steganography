@@ -51,31 +51,12 @@ class PipelinePaths:
             figures_dir=results_root / "figures",
         )
 
-    def covers_dir(self, branch: CoverBranch, source: Source) -> Path:
-        return self.data_root / "covers" / branch / source
-
-    def payload_dir(self, encryption: EncryptionState, payload: PayloadLevel) -> Path:
-        return self.data_root / "payloads" / encryption / payload
-
-    def stego_dir(
-        self,
-        method: Method,
-        payload: PayloadLevel,
-        encryption: EncryptionState,
-        source: Source,
-    ) -> Path:
-        return self.data_root / "stego" / method / payload / encryption / source
+    def covers_dir(self, source: Source) -> Path:
+        """All cover variants for one source live together; branch is implicit in extension."""
+        return self.data_root / "covers" / source
 
     def cover_path(self, group_id: int, source: Source, branch: CoverBranch) -> Path:
-        return self.covers_dir(branch, source) / cover_filename(group_id, source, branch)
-
-    def payload_path(
-        self,
-        group_id: int,
-        payload: PayloadLevel,
-        encryption: EncryptionState,
-    ) -> Path:
-        return self.payload_dir(encryption, payload) / payload_filename(group_id, payload, encryption)
+        return self.covers_dir(source) / cover_filename(group_id, source, branch)
 
     def stego_path(
         self,
@@ -85,35 +66,39 @@ class PipelinePaths:
         payload: PayloadLevel,
         encryption: EncryptionState,
     ) -> Path:
-        return self.stego_dir(method, payload, encryption, source) / stego_filename(
-            group_id=group_id,
-            source=source,
-            method=method,
-            payload=payload,
-            encryption=encryption,
+        """Fallback stego path (used when no run_dir is set)."""
+        return (
+            self.data_root / "stego" / method / payload / encryption / source
+            / stego_filename(
+                group_id=group_id,
+                source=source,
+                method=method,
+                payload=payload,
+                encryption=encryption,
+            )
+        )
+
+    def payload_path(
+        self,
+        group_id: int,
+        payload: PayloadLevel,
+        encryption: EncryptionState,
+    ) -> Path:
+        """Fallback payload path (used when no run_dir is set)."""
+        return (
+            self.data_root / "payloads" / encryption / payload
+            / payload_filename(group_id, payload, encryption)
         )
 
     def ensure_layout(self) -> None:
-        for branch in COVER_BRANCHES:
-            for source in SOURCES:
-                self.covers_dir(branch, source).mkdir(parents=True, exist_ok=True)
+        """Create only the directories that must exist before the pipeline starts.
 
-        for encryption in ENCRYPTION_STATES:
-            for payload in PAYLOAD_LEVELS:
-                self.payload_dir(encryption, payload).mkdir(parents=True, exist_ok=True)
-
-        for method in METHODS:
-            for payload in PAYLOAD_LEVELS:
-                for encryption in ENCRYPTION_STATES:
-                    for source in SOURCES:
-                        self.stego_dir(method, payload, encryption, source).mkdir(
-                            parents=True, exist_ok=True
-                        )
-
+        Stego and payload directories are created on-demand per run; only the
+        cover image directories and manifests directory need to be pre-created.
+        """
         self.manifests_dir.mkdir(parents=True, exist_ok=True)
-        self.predictions_dir.mkdir(parents=True, exist_ok=True)
-        self.metrics_dir.mkdir(parents=True, exist_ok=True)
-        self.figures_dir.mkdir(parents=True, exist_ok=True)
+        for source in SOURCES:
+            self.covers_dir(source).mkdir(parents=True, exist_ok=True)
 
 
 def cover_filename(group_id: int, source: Source, branch: CoverBranch) -> str:

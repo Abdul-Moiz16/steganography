@@ -57,11 +57,11 @@ def decrypt_payload_aes_256_cbc(ciphertext: bytes, key: bytes, iv: bytes) -> byt
     ``encrypt_payload_aes_256_cbc`` exactly, including key/IV validation and
     padding removal.
     """
-    if len(key) != 32: 
-        raise ValueError("Key is not of the appropriate length.")
-        
-    if len(iv) != 16: 
-        raise ValueError("IV is not of the appropriate length.")
+    if len(key) != 32:
+        raise ValueError("Key must be 32 bytes.")
+
+    if len(iv) != 16:
+        raise ValueError("IV must be 16 bytes.")
     
     cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
     decryptor = cipher.decryptor()

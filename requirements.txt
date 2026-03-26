@@ -17,6 +17,9 @@ sentencepiece>=0.2
 tiktoken>=0.7
 protobuf>=4.25
 
+# Progress bars
+tqdm>=4.66
+
 # Test tooling
 pytest>=8.0
 

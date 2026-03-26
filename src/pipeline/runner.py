@@ -12,12 +12,14 @@ stay closed-loop (in-memory in/out), while this module:
 """
 
 import hashlib
+import json
 import random
 import secrets
+import shutil
+from datetime import datetime
 from pathlib import Path
-import json
 
-from src.common.contracts import ENCRYPTION_STATES, METHODS, PAYLOAD_LEVELS
+from src.common.contracts import ENCRYPTION_STATES, payload_filename, stego_filename
 from src.data.images import (
     load_bytes,
     load_image,
@@ -140,6 +142,7 @@ class PipelineRunner:
         covers_manifest_path: Path,
         output_manifest_path: Path | None = None,
         write_payload_files: bool = False,
+        payload_root: Path | None = None,
     ) -> Path:
         """Generate payload rows for all groups, payload levels, and encryption states.
 
@@ -154,16 +157,37 @@ class PipelineRunner:
                 f"Expected {self.config.n_groups} groups in covers manifest, got {len(groups)}."
             )
 
+        # AES-CBC (PKCS7) adds up to one full 16-byte padding block to the
+        # ciphertext.  To keep the encrypted payload exactly at capacity we
+        # generate 16 bytes less plaintext; PKCS7 then pads back to the
+        # original size so the ciphertext == capacity bytes exactly.
+        _AES_BLOCK_BYTES = 16
+
         rng = random.Random(self.config.payload_seed)
         records: list[PayloadRecord] = []
         for group_id in groups:
-            for payload_level in PAYLOAD_LEVELS:
+            for payload_level in self.config.active_payload_levels:
                 payload_stream_bits = self.config.spatial_payload_bits(payload_level)
-                payload_bytes = self._generate_payload_bytes(payload_stream_bits, rng)
                 fill_rate = self.config.payload_fill_rates[payload_level]
                 for encryption in ENCRYPTION_STATES:
+                    # Plain payload fills capacity exactly; encrypted payload
+                    # is generated 16 bytes shorter so its ciphertext (after
+                    # PKCS7 padding) matches capacity.
+                    plaintext_bits = (
+                        payload_stream_bits - _AES_BLOCK_BYTES * 8
+                        if encryption == "encrypted"
+                        else payload_stream_bits
+                    )
+                    payload_bytes = self._generate_payload_bytes(plaintext_bits, rng)
+
                     payload_path = self.paths.payload_path(group_id, payload_level, encryption)
                     iv = _stable_iv(group_id, payload_level)
+
+                    if payload_root is not None:
+                        payload_path = (
+                            payload_root / encryption / payload_level
+                            / payload_filename(group_id, payload_level, encryption)
+                        )
 
                     if write_payload_files:
                         payload_path.parent.mkdir(parents=True, exist_ok=True)
@@ -198,8 +222,14 @@ class PipelineRunner:
         covers_manifest_path: Path,
         payload_manifest_path: Path,
         output_manifest_path: Path | None = None,
+        stego_root: Path | None = None,
     ) -> Path:
-        """Enumerate all main stego jobs from covers x methods x payloads x encryption."""
+        """Enumerate all main stego jobs from covers x methods x payloads x encryption.
+
+        When *stego_root* is supplied stego image paths are placed under that
+        directory (e.g. ``runs/prototype_001/stego/``) rather than the shared
+        ``data/stego/`` tree.  This keeps every run fully self-contained.
+        """
         cover_rows = read_rows_csv(covers_manifest_path)
         payload_rows = read_rows_csv(payload_manifest_path)
 
@@ -212,21 +242,40 @@ class PipelineRunner:
         for cover in cover_rows:
             group_id = int(cover["group_id"])
             source = cover["source"]
-            for method in METHODS:
+            for method in self.config.active_methods:
                 cover_path = (
                     cover["spatial_path"] if method == "lsb" else cover["frequency_path"]
                 )
-                for payload_level in PAYLOAD_LEVELS:
+                for payload_level in self.config.active_payload_levels:
                     for encryption in ENCRYPTION_STATES:
                         payload_row = payload_index[(group_id, payload_level, encryption)]
                         payload_path = self._to_project_relative(payload_row["payload_path"])
-                        stego_path = self.paths.stego_path(
-                            group_id=group_id,
-                            source=source,  # type: ignore[arg-type]
-                            method=method,  # type: ignore[arg-type]
-                            payload=payload_level,  # type: ignore[arg-type]
-                            encryption=encryption,  # type: ignore[arg-type]
-                        )
+
+                        if stego_root is not None:
+                            # Per-run isolated stego storage
+                            stego_path: Path = (
+                                stego_root
+                                / method
+                                / payload_level
+                                / encryption
+                                / source
+                                / stego_filename(
+                                    group_id=group_id,
+                                    source=source,  # type: ignore[arg-type]
+                                    method=method,  # type: ignore[arg-type]
+                                    payload=payload_level,  # type: ignore[arg-type]
+                                    encryption=encryption,  # type: ignore[arg-type]
+                                )
+                            )
+                        else:
+                            stego_path = self.paths.stego_path(
+                                group_id=group_id,
+                                source=source,  # type: ignore[arg-type]
+                                method=method,  # type: ignore[arg-type]
+                                payload=payload_level,  # type: ignore[arg-type]
+                                encryption=encryption,  # type: ignore[arg-type]
+                            )
+
                         embed_params = self._embed_params_json(method, payload_level)
                         records.append(
                             StegoRecord(
@@ -256,14 +305,18 @@ class PipelineRunner:
 
         With ``execute=False`` this is a dry-run counter only.
         """
+        from tqdm import tqdm
+
         rows = read_rows_csv(stego_manifest_path)
         if not execute:
             return len(rows)
 
-        for row in rows:
+        for row in tqdm(rows, desc="Embedding", unit="img"):
             payload_bytes = self._resolve_manifest_path(row["payload_path"]).read_bytes()
             params = json.loads(row["embed_params"])
             method = row["method"]
+            stego_path = self._resolve_manifest_path(row["stego_path"])
+            stego_path.parent.mkdir(parents=True, exist_ok=True)
             if method == "lsb":
                 cover_image = load_image(self._resolve_manifest_path(row["cover_path"]))
                 stego = embed_lsb(
@@ -272,7 +325,7 @@ class PipelineRunner:
                     fill_rate=float(params["fill_rate"]),
                     bit_depth=int(params["bit_depth"]),
                 )
-                save_png(stego, self._resolve_manifest_path(row["stego_path"]))
+                save_png(stego, stego_path)
             elif method == "dct":
                 cover_jpeg_bytes = load_bytes(self._resolve_manifest_path(row["cover_path"]))
                 stego_bytes = embed_dct_lsb_jpeg(
@@ -281,7 +334,7 @@ class PipelineRunner:
                     fill_rate=float(params["fill_rate"]),
                     jpeg_quality=int(params["jpeg_quality"]),
                 )
-                save_bytes(stego_bytes, self._resolve_manifest_path(row["stego_path"]))
+                save_bytes(stego_bytes, stego_path)
             else:
                 raise ValueError(f"Unknown method: {method}")
         return len(rows)
@@ -299,10 +352,12 @@ class PipelineRunner:
         Output schema:
         detector, group_id, source, method, payload_level, encryption, label, score
         """
+        from tqdm import tqdm
+
         stego_rows = read_rows_csv(stego_manifest_path)
 
         pred_rows: list[dict[str, object]] = []
-        for row in stego_rows:
+        for row in tqdm(stego_rows, desc="Detecting", unit="img"):
             group_id = int(row["group_id"])
             for detector in self._detectors_for_method(row["method"]):
                 pos_score = ""
@@ -493,18 +548,56 @@ class PipelineRunner:
         skip_unimplemented: bool = False,
         quality_metrics_input: Path | None = None,
         generate_figures: bool = False,
+        run_dir: Path | None = None,
+        profile_name: str | None = None,
     ) -> dict[str, Path | int]:
-        """Run all non-deferred mainline pipeline stages in sequence."""
+        """Run all non-deferred mainline pipeline stages in sequence.
+
+        When *run_dir* is supplied every output (manifests, predictions,
+        metrics, figures, config snapshot) is written inside that directory
+        so multiple runs never overwrite each other.  When omitted the
+        legacy ``data/manifests`` + ``results/`` layout is used unchanged.
+        """
         self.init_layout()
 
+        # ── Determine output roots ────────────────────────────────────────
+        if run_dir is not None:
+            run_dir.mkdir(parents=True, exist_ok=True)
+            manifests_out   = run_dir / "manifests"
+            predictions_out = run_dir / "predictions"
+            metrics_out     = run_dir / "metrics"
+            figures_out     = run_dir / "figures"
+            stego_root      = run_dir / "stego"
+            payload_root    = run_dir / "payloads"
+            for d in (manifests_out, predictions_out, metrics_out, figures_out):
+                d.mkdir(parents=True, exist_ok=True)
+            self._save_run_config(run_dir, profile_name)
+        else:
+            manifests_out   = self.paths.manifests_dir
+            predictions_out = self.paths.predictions_dir
+            metrics_out     = self.paths.metrics_dir
+            figures_out     = self.paths.figures_dir
+            stego_root      = None
+            payload_root    = None
+
         resolved_covers = self._resolve_manifest_path(covers_manifest_path)
+
+        # Copy covers manifest into run dir for a complete, self-contained record
+        if run_dir is not None:
+            covers_snapshot = manifests_out / "covers.csv"
+            shutil.copy2(resolved_covers, covers_snapshot)
+
         payload_manifest = self.build_payload_manifest(
             covers_manifest_path=resolved_covers,
+            output_manifest_path=manifests_out / "payload_manifest.csv",
             write_payload_files=execute_embeddings,
+            payload_root=payload_root,
         )
         stego_manifest = self.build_stego_manifest(
             covers_manifest_path=resolved_covers,
             payload_manifest_path=payload_manifest,
+            output_manifest_path=manifests_out / "stego_manifest.csv",
+            stego_root=stego_root,
         )
         embedding_rows = self.run_embedding_stage(
             stego_manifest_path=stego_manifest,
@@ -512,15 +605,18 @@ class PipelineRunner:
         )
         predictions = self.run_detector_stage(
             stego_manifest_path=stego_manifest,
+            output_path=predictions_out / "predictions.csv",
             execute=execute_detectors,
             skip_unimplemented=skip_unimplemented,
         )
         metrics_outputs = self.compute_metrics_from_predictions(
             predictions_path=predictions,
+            metrics_dir=metrics_out,
             quality_metrics_input=quality_metrics_input,
         )
 
         out: dict[str, Path | int] = {
+            "run_dir": run_dir or self.config.project_root,
             "payload_manifest": payload_manifest,
             "stego_manifest": stego_manifest,
             "predictions": predictions,
@@ -529,9 +625,45 @@ class PipelineRunner:
         out.update(metrics_outputs)
 
         if generate_figures:
-            out.update(self.generate_metrics_figures())
+            out.update(self.generate_metrics_figures(
+                metrics_dir=metrics_out,
+                figures_dir=figures_out,
+            ))
 
         return out
+
+    # ── Run-directory helpers ────────────────────────────────────────────────
+
+    def _next_run_dir(self, profile_name: str) -> Path:
+        """Return a timestamp-based run directory for *profile_name*.
+
+        Directories are named ``runs/{profile}_{YYYYMMDD}_{HHMMSS}`` so every
+        run is unique and lexicographically sortable by date.
+        """
+        runs_root = self.config.project_root / "runs"
+        runs_root.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        return runs_root / f"{profile_name}_{stamp}"
+
+    def _save_run_config(self, run_dir: Path, profile_name: str | None) -> None:
+        """Snapshot config + timestamp into *run_dir*/config.json."""
+        run_dir.mkdir(parents=True, exist_ok=True)
+        snapshot = {
+            "profile": profile_name,
+            "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "n_groups": self.config.n_groups,
+            "active_methods": list(self.config.active_methods),
+            "active_payload_levels": list(self.config.active_payload_levels),
+            "image_size": list(self.config.image_size),
+            "split_seed": self.config.split_seed,
+            "payload_seed": self.config.payload_seed,
+            "embed_seed": self.config.embed_seed,
+            "jpeg_quality": self.config.jpeg_quality,
+            "primary_lsb_bit_depth": self.config.primary_lsb_bit_depth,
+            "payload_fill_rates": self.config.payload_fill_rates,
+            "aes_key_id": self.config.aes_key_id,
+        }
+        write_json(run_dir / "config.json", snapshot)
 
     def _generate_payload_bytes(self, payload_bits: int, rng: random.Random) -> bytes:
         """Generate deterministic pseudo-random payload bytes for one condition row."""
@@ -571,21 +703,26 @@ class PipelineRunner:
         label: int,
         row: dict[str, str],
     ) -> float:
-        """Score one detector on either stego (label=1) or cover (label=0)."""
+        """Score one detector on either stego (label=1) or cover (label=0).
+
+        All detector functions follow the convention: higher score = stronger
+        evidence of steganographic embedding.  Scores are returned as-is;
+        AUC is rank-based and does not require a [0, 1] range.
+        """
         image_path_key = "stego_path" if label == 1 else "cover_path"
         path = self._resolve_manifest_path(row[image_path_key])
 
         if detector == "rs":
-            return rs_analysis_score(load_image(path))
+            return float(rs_analysis_score(load_image(path)))
         if detector == "chi_square_spatial":
-            return chi_square_spatial_score(load_image(path))
+            return float(chi_square_spatial_score(load_image(path)))
         if detector == "sample_pairs":
-            return sample_pairs_score(load_image(path))
+            return float(sample_pairs_score(load_image(path)))
         if detector == "chi_square_dct":
-            return chi_square_dct_score(load_bytes(path))
+            return float(chi_square_dct_score(load_bytes(path)))
         if detector == "calibration_chi_square":
-            return calibration_chi_square_score(
+            return float(calibration_chi_square_score(
                 load_bytes(path),
                 jpeg_quality=self.config.jpeg_quality,
-            )
+            ))
         raise ValueError(f"Unknown detector: {detector}")

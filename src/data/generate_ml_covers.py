@@ -357,6 +357,8 @@ def generate_ml_covers_from_prompts(
     rows_ml_b: list[dict[str, object]] = []
     rows_ml_all: list[dict[str, object]] = []
 
+    from tqdm import tqdm
+
     for source in ("ml_a", "ml_b"):
         generator = _init_generator(
             engine=engine,
@@ -366,7 +368,7 @@ def generate_ml_covers_from_prompts(
         )
         spec = specs[source]
 
-        for row in prompt_rows:
+        for row in tqdm(prompt_rows, desc=f"Generating {source}", unit="img"):
             group_id = int(row["group_id"])
             prompt = row["caption_text"]
             seed = _seed_for(group_id, source, seed_base)

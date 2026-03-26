@@ -3,14 +3,16 @@ from __future__ import annotations
 """Pipeline configuration locked to ``proposal_updated_3.tex``.
 
 The final proposal fixes the repository to:
-- 500 caption-linked groups
+- 500 caption-linked groups (full design) / 60 groups (prototype)
 - grayscale 512x512 carriers
 - branch-specific storage: PNG for spatial LSB, JPEG Q=95 for DCT-LSB
 - main payload levels defined by fill rate (25/50/75%)
 - classical statistical primary detectors
 
-This file stores those experiment-wide constants in one place so the
-manifests, runner, and docs stay in sync.
+``active_methods`` and ``active_payload_levels`` narrow the experiment
+scope for a named profile without altering any locked constants.  When
+built via ``from_project_root`` both fields default to the full proposal
+set so all existing code and tests remain unaffected.
 """
 
 from dataclasses import dataclass, field
@@ -38,6 +40,12 @@ class PipelineConfig:
     include_bd_sens_auxiliary: bool = False
     payload_fill_rates: dict[str, float] = field(
         default_factory=lambda: {"low": 0.25, "medium": 0.50, "high": 0.75}
+    )
+    # Profile-scoped constraints — defaults keep all methods/levels active so
+    # existing code and tests that construct PipelineConfig directly are unaffected.
+    active_methods: tuple[str, ...] = field(default_factory=lambda: ("lsb", "dct"))
+    active_payload_levels: tuple[str, ...] = field(
+        default_factory=lambda: ("low", "medium", "high")
     )
 
     @property
@@ -70,3 +78,27 @@ class PipelineConfig:
     def from_project_root(cls, project_root: Path) -> "PipelineConfig":
         """Build config with defaults and a resolved absolute project root."""
         return cls(project_root=project_root.resolve())
+
+    @classmethod
+    def from_profile(cls, project_root: Path, profile_name: str) -> "PipelineConfig":
+        """Build a profile-scoped config from a named experiment profile.
+
+        Recognised profile names: ``"prototype"``, ``"full_design"``.
+        All locked constants (image size, seeds, JPEG quality, etc.) remain
+        at their proposal values; only ``n_groups``, ``active_methods``, and
+        ``active_payload_levels`` are narrowed by the profile.
+        """
+        from src.pipeline.profile import PROFILES
+
+        if profile_name not in PROFILES:
+            raise ValueError(
+                f"Unknown profile '{profile_name}'. "
+                f"Available: {list(PROFILES.keys())}"
+            )
+        profile = PROFILES[profile_name]
+        return cls(
+            project_root=project_root.resolve(),
+            n_groups=profile.n_groups,
+            active_methods=profile.active_methods,
+            active_payload_levels=profile.active_payload_levels,
+        )

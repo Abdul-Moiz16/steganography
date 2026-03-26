@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from src.pipeline.config import PipelineConfig
+from src.pipeline.profile import PROFILES
 from src.pipeline.runner import PipelineRunner
 
 
@@ -120,6 +121,25 @@ def _parser() -> argparse.ArgumentParser:
     )
     p_all.add_argument("--covers-manifest", type=Path, required=True)
     p_all.add_argument(
+        "--profile",
+        choices=list(PROFILES.keys()),
+        default=None,
+        help=(
+            "Named experiment profile ('prototype' or 'full_design'). "
+            "When set, config is scoped to that profile and results are "
+            "written to runs/{profile}_{NNN}/."
+        ),
+    )
+    p_all.add_argument(
+        "--run-id",
+        type=str,
+        default=None,
+        help=(
+            "Override the auto-generated run identifier (e.g. 'prototype_001'). "
+            "Output is written to runs/{run-id}/. Ignored when --profile is not set."
+        ),
+    )
+    p_all.add_argument(
         "--execute-embeddings",
         action="store_true",
         help="Execute embedding functions (disabled by default).",
@@ -152,7 +172,14 @@ def main() -> None:
     """Dispatch one CLI command to the corresponding ``PipelineRunner`` stage."""
     args = _parser().parse_args()
     project_root = args.project_root.resolve()
-    config = PipelineConfig.from_project_root(project_root)
+
+    # Build a profile-scoped config when --profile is given, else use full defaults.
+    profile_name: str | None = getattr(args, "profile", None)
+    if profile_name:
+        config = PipelineConfig.from_profile(project_root, profile_name)
+    else:
+        config = PipelineConfig.from_project_root(project_root)
+
     runner = PipelineRunner(config)
 
     if args.command == "init-layout":
@@ -213,6 +240,16 @@ def main() -> None:
         print(f"AUC by source figure: {out['auc_by_source_detector']}")
         print(f"AUC by method figure: {out['auc_by_method_detector']}")
     elif args.command == "run-all":
+        # Resolve run directory when a profile is active.
+        run_dir: Path | None = None
+        if profile_name:
+            if args.run_id:
+                run_dir = project_root / "runs" / args.run_id
+            else:
+                run_dir = runner._next_run_dir(profile_name)
+            print(f"Profile  : {profile_name}")
+            print(f"Run dir  : {run_dir}")
+
         out = runner.run_full_pipeline(
             covers_manifest_path=_resolve_path(args.covers_manifest, project_root),
             execute_embeddings=args.execute_embeddings,
@@ -224,6 +261,8 @@ def main() -> None:
                 else None
             ),
             generate_figures=args.generate_figures,
+            run_dir=run_dir,
+            profile_name=profile_name,
         )
         print(f"Payload manifest: {out['payload_manifest']}")
         print(f"Stego manifest: {out['stego_manifest']}")
