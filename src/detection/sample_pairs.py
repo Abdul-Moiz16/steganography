@@ -61,7 +61,7 @@ def sample_pairs_score(image: Image.Image) -> float:
 
                 if diff % 2 == 1 and diff <= 2 * j + 1:  # for odd numbers <= 62
 
-                    if u % 2 == 0:  # determine which value is equal
+                    if u % 2 == 0:  # determine which value is even
                         even_val = u
                         odd_val = v
                     else:
@@ -115,20 +115,3 @@ def sample_pairs_score(image: Image.Image) -> float:
 
     p_est = min(candidates)  # smaller p is proven to be the better approximation
     return max(0.0, min(p_est, 1.0))  # clip p to 0,1
-
-if __name__ == "__main__":
-    files = ["test.png", "output_keyed.png", "output_sequential.png"]
-
-    for filename in files:
-        image = Image.open(filename)
-        score = sample_pairs_score(image)
-
-        print(f"{filename}: score = {score:.6f}", end="  →  ")
-
-        if score < 0.02:
-            print("most likely clean")
-        elif score < 0.10:
-            print("small embedding")
-        else:
-            print(f"embedding recognized({score * 100:.1f}%)")
-
