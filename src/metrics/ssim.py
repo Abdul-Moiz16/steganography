@@ -19,24 +19,15 @@ from __future__ import annotations
 
 import numpy as np
 from PIL import Image
-
+from skimage.metrics import structural_similarity
+import numpy as np
 
 def ssim(cover: Image.Image, stego: Image.Image) -> float:
-    """Compute SSIM between a cover and stego grayscale image.
 
-    Parameters
-    ----------
-    cover : original cover image.
-    stego : stego image after embedding.
-
-    Returns
-    -------
-    SSIM value in [-1, 1].  Values close to 1 indicate near-identical
-    perceptual quality.
-
-    Raises
-    ------
-    ValueError
-        If the images have different sizes.
-    """
-    raise NotImplementedError("SSIM is not implemented yet.")
+    if cover.size != stego.size:
+        raise ValueError(f"Size mismatch: {cover.size} vs {stego.size}")
+    c = np.asarray(cover.convert("L"))
+    s = np.asarray(stego.convert("L"))
+    score, _ = structural_similarity(c, s, full=True)
+    return float(score)
+ 
