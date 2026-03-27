@@ -41,15 +41,26 @@ pipeline runs, monitor progress, and browse results interactively.
 To run a pipeline directly from the CLI:
 
 ```bash
-# Prototype run (20 groups, LSB only, low payload — fast)
-python -m src.pipeline.cli --project-root . run-all \
-    --covers-manifest data/manifests/covers_master.csv \
-    --profile prototype --execute-embeddings --execute-detectors
+# Prototype run (20 groups, LSB only, medium payload — fast)
+python run.py prototype
 
 # Full design (500 groups, LSB + DCT, all payload levels)
-python -m src.pipeline.cli --project-root . run-all \
-    --covers-manifest data/manifests/covers_master.csv \
-    --profile full_design --execute-embeddings --execute-detectors
+python run.py full_design
+
+# Use stub ML engine (no GPU/API needed — for testing)
+python run.py prototype --ml-engine stub
+
+# Explicit run ID
+python run.py prototype --run-id my_experiment_001
+```
+
+All outputs are written to `runs/{profile}_{timestamp}/`, keeping each run
+self-contained (covers, manifests, stego images, predictions, metrics, figures).
+
+To run all tests:
+
+```bash
+pytest tests/
 ```
 
 ## Stego Explorer (Web UI)
@@ -116,18 +127,16 @@ The pipeline supports named profiles that scope the experimental configuration:
 
 ```bash
 # Prototype: fast validation run
-python -m src.pipeline.cli --project-root . run-all \
-    --covers-manifest data/manifests/covers_master.csv \
-    --profile prototype --execute-embeddings --execute-detectors
+python run.py prototype
 
 # Full design: complete factorial experiment
-python -m src.pipeline.cli --project-root . run-all \
-    --covers-manifest data/manifests/covers_master.csv \
-    --profile full_design --execute-embeddings --execute-detectors
+python run.py full_design
 ```
 
-Results are written to `runs/{profile}_{timestamp}/` with self-contained
-config, metrics, predictions, and cover manifests.
+Each run automatically downloads/generates covers, builds manifests, embeds
+payloads, runs detectors, computes metrics, and generates figures. Results are
+written to `runs/{profile}_{timestamp}/` with self-contained config, covers,
+metrics, predictions, and figures.
 
 ## Repository Structure
 
@@ -138,11 +147,24 @@ src/
 ├── embedding/     # AES-256-CBC encryption, LSB, DCT-LSB embedding
 ├── detection/     # RS, Chi-Square, Sample Pairs, Calibration detectors
 ├── evaluation/    # Metric aggregation (ROC-AUC, EER, accuracy, PSNR/SSIM)
+├── metrics/       # Quality metrics (PSNR, SSIM, FSIM, BRISQUE)
 └── pipeline/      # Orchestration, profiles, CLI
 
-public/            # Explorer web UI (HTML, CSS, JS)
+run.py             # Top-level pipeline entry point
 viewer.py          # HTTP server for explorer + pipeline API
+public/            # Explorer web UI (HTML, CSS, JS)
+
 runs/              # Pipeline output (one directory per run)
+├── prototype_20260327_120000/
+│   ├── config.json        # Run configuration snapshot
+│   ├── manifests/         # covers.csv, payload_manifest.csv, stego_manifest.csv
+│   ├── covers/            # Cover images (real/, ml_a/, ml_b/)
+│   ├── stego/             # Stego images
+│   ├── payloads/          # Payload binary files
+│   ├── predictions/       # Detector score CSVs
+│   ├── metrics/           # Aggregated metric tables
+│   └── figures/           # Generated plots
+└── ...
 
 docs/
 ├── proposals/     # LaTeX/PDF proposal documents
@@ -155,52 +177,46 @@ notebooks/         # Jupyter notebooks for exploration
 
 ## Manual Pipeline Steps
 
-If you need to run individual stages rather than `run-all`:
+The recommended way to run the pipeline is via `python run.py <profile>`, which
+handles cover preparation and orchestrates all stages automatically. All outputs
+are written under `runs/{profile}_{timestamp}/`.
+
+If you need to run individual low-level CLI stages against an existing run
+directory (e.g. `runs/prototype_20260327_120000`):
 
 ```bash
-# Initialize directory layout
-python -m src.pipeline.cli --project-root . init-layout
-
-# Download real images (prototype: 12 COCO + 8 Flickr30k = 20 groups)
-python -m src.data.download_real_covers --project-root . --coco-target 12 --flickr-target 8
-
-# Generate ML covers
-python -m src.data.generate_ml_covers --project-root . \
-    --prompts-csv data/manifests/generation_prompts.csv \
-    --engine inference_api --max-groups 20
-
-# Merge cover manifests
-python -m src.data.merge_covers_master --project-root . --expected-groups 20
+RUN=runs/prototype_20260327_120000
 
 # Build payload manifest
 python -m src.pipeline.cli --project-root . build-payload-manifest \
-    --covers-manifest data/manifests/covers_master.csv
+    --covers-manifest $RUN/manifests/covers.csv
 
 # Build stego manifest
 python -m src.pipeline.cli --project-root . build-stego-manifest \
-    --covers-manifest data/manifests/covers_master.csv \
-    --payload-manifest data/manifests/payload_manifest.csv
+    --covers-manifest $RUN/manifests/covers.csv \
+    --payload-manifest $RUN/manifests/payload_manifest.csv
 
 # Run embedding
 python -m src.pipeline.cli --project-root . run-embedding-stage \
-    --stego-manifest data/manifests/stego_manifest.csv
+    --stego-manifest $RUN/manifests/stego_manifest.csv --execute
 
 # Run detectors
 python -m src.pipeline.cli --project-root . run-detectors \
-    --stego-manifest data/manifests/stego_manifest.csv
+    --stego-manifest $RUN/manifests/stego_manifest.csv --execute
 
 # Compute metrics
 python -m src.pipeline.cli --project-root . compute-metrics \
-    --predictions results/predictions/predictions.csv
+    --predictions $RUN/predictions/predictions.csv
 
 # Generate plots
-python -m src.pipeline.cli --project-root . plot-metrics
+python -m src.pipeline.cli --project-root . plot-metrics \
+    --metrics-dir $RUN/metrics --figures-dir $RUN/figures
 ```
 
-For HuggingFace Inference API access, authenticate first:
+For HuggingFace Inference API access, set your token in `.env`:
 
 ```bash
-python -c "from huggingface_hub import login; login()"
+echo 'HF_TOKEN=hf_your_token_here' > .env
 ```
 
 ## Proposal Deviation: PixArt-α → FLUX.1-schnell

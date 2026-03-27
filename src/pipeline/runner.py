@@ -597,8 +597,6 @@ class PipelineRunner:
         so multiple runs never overwrite each other.  When omitted the
         legacy ``data/manifests`` + ``results/`` layout is used unchanged.
         """
-        self.init_layout()
-
         # ── Determine output roots ────────────────────────────────────────
         if run_dir is not None:
             run_dir.mkdir(parents=True, exist_ok=True)
@@ -615,6 +613,7 @@ class PipelineRunner:
                 cover_seed = _r.randrange(2**31)
             self._save_run_config(run_dir, profile_name, cover_seed=cover_seed)
         else:
+            self.init_layout()
             manifests_out   = self.paths.manifests_dir
             predictions_out = self.paths.predictions_dir
             metrics_out     = self.paths.metrics_dir
