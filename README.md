@@ -214,13 +214,6 @@ This preserves the experimental design because both are Diffusion Transformer
 SDXL against a transformer-based generator). FLUX.1-schnell is also widely
 adopted, API-accessible, and actively maintained.
 
-## AI Disclosure
-
-> **Note:** Claude Sonnet 4.6 (Anthropic) was used to convert the project report
-> from latex into the HTML document served by the explorer
-> (`public/docs-content.html`). The pipeline, detectors, evaluation logic, GUI and
-> all research code are human-written. The work was divided between teammates.
-
 ## References
 
 A complete list of references can be found in the Project Proposal (`proposal_updated_3.pdf`).

@@ -204,8 +204,8 @@ function buildResultsTab(data, detailStats) {
     if (hasRq5) {
         const d5 = Math.abs(oEnc - oPlain);
         const finding = d5 < 0.01
-            ? 'As expected, encryption has negligible effect on detectability (\u0394 < 0.01). Detectors respond to embedding distortion, not payload structure.'
-            : `Unexpected: encryption shows a detectable effect (\u0394 = ${d5.toFixed(3)}). This may indicate detectors are partially reacting to payload structure rather than embedding distortion alone.`;
+            ? 'Encryption shows no meaningful effect on detectability (\u0394 < 0.01), which is what we\'d expect if detectors react to distortion rather than payload content.'
+            : `Encryption has a noticeable effect here (\u0394 = ${d5.toFixed(3)}), which shouldn\'t happen if detectors only respond to embedding distortion.`;
         rq5 = pairVis('Plain', oPlain, 'enc-plain', 'unencrypted payload', 'AES-256-CBC', oEnc, 'enc-encrypted', 'encrypted payload') +
             bdTable('Plain', 'Encrypted', 'enc-plain', 'enc-encrypted',
                 d => condAuc({ detector: d, encryption: 'plain' }),

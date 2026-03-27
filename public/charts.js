@@ -1,12 +1,12 @@
-// canvas chart helpers (dark theme)
+// canvas chart helpers (light theme)
 
 const CHART_THEME = {
-    bg:       '#05183c',
-    grid:     '#1a2d54',
-    gridMid:  '#2b4680',
-    text:     '#8f9fb7',
-    textDim:  '#5b74b1',
-    track:    '#06122d',
+    bg:       '#ffffff',
+    grid:     '#e5e7eb',
+    gridMid:  '#d1d5db',
+    text:     '#374151',
+    textDim:  '#9ca3af',
+    track:    '#f3f4f6',
     font:     "monospace",
     fontBody: "'Inter', system-ui, sans-serif"
 };

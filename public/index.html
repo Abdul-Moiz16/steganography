@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="dark" lang="en">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,8 +20,6 @@
     <link rel="stylesheet" href="/public/css/gallery.css">
     <link rel="stylesheet" href="/public/css/conditions.css">
     <link rel="stylesheet" href="/public/css/launch.css">
-    <link rel="stylesheet" href="/public/css/docs.css">
-    <link rel="stylesheet" href="/public/css/carousel.css">
     <link rel="stylesheet" href="/public/css/proposal.css">
     <link rel="stylesheet" href="/public/css/dialogs.css">
     <link rel="stylesheet" href="/public/css/animations.css">
@@ -35,24 +33,10 @@
             <span class="topbar-brand">Stego Explorer</span>
             <div class="topbar-nav">
                 <a id="nav-runs" class="topbar-link active" onclick="go('runs')">Runs</a>
-                <a id="nav-docs" class="topbar-link" onclick="go('docs')">Docs</a>
                 <a id="nav-proposal" class="topbar-link" onclick="go('proposal')">Proposal</a>
             </div>
         </div>
-        <div class="topbar-right">
-            <div class="topbar-search">
-                <div class="topbar-search-wrap">
-                    <span class="material-symbols-outlined topbar-search-icon">search</span>
-                    <input type="text" class="topbar-search-input" id="search-input" placeholder="Search runs…" oninput="handleSearch(this.value)">
-                    <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" title="Clear search" style="display:none">
-                        <span class="material-symbols-outlined">close</span>
-                    </button>
-                </div>
-            </div>
-            <button class="topbar-icon-btn" id="theme-toggle-btn" title="Toggle theme" onclick="toggleTheme()">
-                <span class="material-symbols-outlined" id="theme-toggle-icon">dark_mode</span>
-            </button>
-        </div>
+        <div class="topbar-right"></div>
     </nav>
 
     <aside class="sidebar is-hidden" id="sidebar">
@@ -147,12 +131,9 @@
     <script src="/public/components/bento-card.js"></script>
     <script src="/public/components/summary-card.js"></script>
     <script src="/public/components/proto-banner.js"></script>
-    <script src="/public/components/edu-carousel.js"></script>
     <script src="/public/components/terminal-panel.js"></script>
     <script src="/public/js/sidebar.js"></script>
-    <script src="/public/js/search.js"></script>
     <script src="/public/js/router.js"></script>
-    <script src="/public/js/docs.js"></script>
     <script src="/public/js/proposal.js"></script>
 <script src="/public/js/runs-list.js"></script>
     <script src="/public/js/results.js"></script>
@@ -162,7 +143,6 @@
     <script src="/public/js/launch.js"></script>
     <script src="/public/js/streaming.js"></script>
     <script src="/public/js/dialogs.js"></script>
-    <script src="/public/js/theme.js"></script>
     <script src="/public/js/init.js"></script>
 </body>
 </html>

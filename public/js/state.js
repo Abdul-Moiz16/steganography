@@ -8,7 +8,6 @@ const STATE = {
     page: 'runs',
     runId: null,
     tab: 'overview',
-    search: '',
     renderToken: 0,
     terminalOpen: true,
     lastEngine: 'stub',

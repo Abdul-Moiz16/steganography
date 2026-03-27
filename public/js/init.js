@@ -12,7 +12,6 @@ window.addEventListener('beforeunload', () => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
-    applyStoredTheme();
     render();
     const syncSource = new EventSource('/api/events');
     syncSource.addEventListener('refresh', () => {

@@ -108,8 +108,3 @@
 }
 
 
-html.light .proposal-header { background: #fff; border-bottom-color: #e0e0e8; }
-html.light .div-card { background: rgba(99,102,241,0.04); border-color: rgba(99,102,241,0.18); }
-html.light .div-card-badge { color: #b45309; }
-html.light .div-arrow { color: #b45309; }
-html.light .div-actual { color: var(--primary); }

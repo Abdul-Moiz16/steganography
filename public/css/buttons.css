@@ -16,12 +16,12 @@
 .btn-primary {
     background: var(--primary);
     color: var(--on-primary);
-    box-shadow: 0 4px 16px rgba(123, 208, 255, 0.15);
+    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.2);
 }
 
 .btn-primary:hover {
     filter: brightness(1.1);
-    box-shadow: 0 4px 24px rgba(123, 208, 255, 0.25);
+    box-shadow: 0 4px 24px rgba(79, 70, 229, 0.3);
     transform: translateY(-1px);
 }
 
@@ -40,8 +40,8 @@
 }
 
 .btn-danger:hover {
-    background: #8f3130;
-    box-shadow: 0 0 16px rgba(238, 125, 119, 0.2);
+    background: #fef2f2;
+    box-shadow: 0 0 16px rgba(220, 38, 38, 0.15);
 }
 
 .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
@@ -80,10 +80,10 @@
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 6px 24px rgba(123, 208, 255, 0.3);
+    box-shadow: 0 6px 24px rgba(79, 70, 229, 0.3);
     z-index: 100;
     transition: all 0.2s ease;
 }
 
-.fab:hover { transform: scale(1.05); box-shadow: 0 8px 32px rgba(123, 208, 255, 0.4); }
+.fab:hover { transform: scale(1.05); box-shadow: 0 8px 32px rgba(79, 70, 229, 0.4); }
 .fab .material-symbols-outlined { font-size: 24px; }

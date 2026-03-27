@@ -1,9 +1,3 @@
-function clearSearch() {
-    STATE.search = '';
-    syncSearchInput();
-    render();
-}
-
 function confirmDeleteRun(runId) {
     const overlay = document.getElementById('confirm-dialog');
     document.getElementById('dialog-title').textContent = 'Delete Run';

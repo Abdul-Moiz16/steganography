@@ -1,63 +1,7 @@
 :root {
-    color-scheme: dark;
-
-    /* M3 surfaces */
-    --bg:              #060e20;
-    --surface:         #060e20;
-    --surface-cont-lo: #06122d;
-    --surface-cont:    #05183c;
-    --surface-cont-hi: #031d4b;
-    --surface-cont-max:#00225a;
-    --surface-bright:  #002867;
-
-    --on-bg:           #dee5ff;
-    --on-surface:      #dee5ff;
-    --on-surface-var:  #91aaeb;
-    --secondary:       #8f9fb7;
-    --secondary-dim:   #6b7d98;
-
-    /* borders */
-    --outline:         #5b74b1;
-    --outline-var:     #2b4680;
-
-    --primary:         #7bd0ff;
-    --primary-dim:     #47c4ff;
-    --primary-cont:    #004c69;
-    --on-primary:      #004560;
-    --on-primary-cont: #97d8ff;
-
-    --error:           #ee7d77;
-    --error-dim:       #bb5551;
-    --error-cont:      #7f2927;
-    --on-error:        #490106;
-
-    /* tertiary */
-    --tertiary:        #f1ebff;
-    --tertiary-dim:    #d4cdee;
-    --tertiary-cont:   #e3dbfd;
-
-    --green:           #66d9a0;
-    --amber:           #f0c050;
-
-    /* layout */
-    --topbar-h:  56px;
-    --sidebar-w: 300px;
-    --radius:    2px;
-    --radius-lg: 4px;
-    --radius-xl: 8px;
-    --radius-full: 12px;
-
-    --headline: 'Space Grotesk', system-ui, sans-serif;
-    --body:     'Inter', system-ui, sans-serif;
-}
-
-
-/* light theme */
-
-html.light {
-    background: #f5f6fa;
     color-scheme: light;
 
+    /* M3 surfaces */
     --bg:              #f5f6fa;
     --surface:         #f5f6fa;
     --surface-cont-lo: #ffffff;
@@ -70,10 +14,10 @@ html.light {
     --on-surface:      #111827;
     --on-surface-var:  #1f2937;
 
-    /* darken secondary so it reads on white */
     --secondary:       #374151;
     --secondary-dim:   #6b7280;
 
+    /* borders */
     --outline:         #d1d5db;
     --outline-var:     #e5e7eb;
 
@@ -88,82 +32,22 @@ html.light {
     --error-cont:      #fef2f2;
     --on-error:        #ffffff;
 
+    /* tertiary */
     --tertiary:        #7c3aed;
     --tertiary-dim:    #8b5cf6;
     --tertiary-cont:   #f5f3ff;
 
     --green:           #16a34a;
     --amber:           #d97706;
-}
 
-/* light theme structural overrides */
-html.light .topbar {
-    background: rgba(255, 255, 255, 0.90);
-    border-bottom-color: rgba(209, 213, 235, 0.8);
-    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.08);
-}
-html.light .topbar-brand { color: #111827; }
-html.light .topbar-link  { color: #374151; }
-html.light .topbar-link.active { color: var(--primary); }
-html.light .topbar-link.active::after { background: var(--primary); }
-html.light .topbar-search-input {
-    background: #f3f4f6;
-    border-color: #e5e7eb;
-    color: #111827;
-}
-html.light .topbar-search-input:focus {
-    background: #ffffff;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-}
-html.light .topbar-search-input::placeholder { color: #9ca3af; }
-html.light .topbar-search-icon { color: #9ca3af; }
-html.light .topbar-icon-btn { color: #6b7280; }
-html.light .topbar-icon-btn:hover { background: #f3f4f6; color: #111827; }
+    /* layout */
+    --topbar-h:  56px;
+    --sidebar-w: 300px;
+    --radius:    2px;
+    --radius-lg: 4px;
+    --radius-xl: 8px;
+    --radius-full: 12px;
 
-html.light .sidebar {
-    background: #ffffff;
-    border-right-color: #e5e7eb;
-}
-html.light .sidebar-section { border-bottom-color: #e5e7eb; }
-html.light .sidebar-bottom  { border-top-color: #e5e7eb; }
-html.light .sidebar-foot    { border-top-color: #e5e7eb; }
-html.light .sidebar-tab { color: #374151; }
-html.light .sidebar-tab:hover { background: #f3f4f6; color: #111827; }
-html.light .sidebar-tab.active { color: var(--primary); background: #eef2ff; }
-html.light .sidebar-bottom-link { color: #374151; }
-html.light .sidebar-bottom-link:hover { background: #f3f4f6; color: #111827; }
-
-html.light body::before,
-html.light body::after { display: none; }
-
-html.light .glass-panel {
-    background: #ffffff;
-    border-color: #e5e7eb;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
-html.light .glass-panel-head { border-bottom-color: #e5e7eb; }
-
-html.light .bento-card { border-top-color: #e5e7eb; }
-html.light .bento-sub { color: #6b7280; }
-html.light .card { border-color: #e5e7eb; }
-html.light .card-head { border-bottom-color: #e5e7eb; }
-html.light .activity-item { border-bottom-color: #f3f4f6; }
-
-html.light .data-table-wrap {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
-    border-color: #e5e7eb;
-}
-
-html.light .sidebar {
-    box-shadow: none;
-}
-
-html.light .btn-primary,
-html.light .btn-launch {
-    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
-}
-html.light .btn-primary:hover,
-html.light .btn-launch:hover:not(:disabled) {
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    --headline: 'Space Grotesk', system-ui, sans-serif;
+    --body:     'Inter', system-ui, sans-serif;
 }

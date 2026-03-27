@@ -28,7 +28,7 @@
 
 .rd-terminal {
     margin-bottom: 20px;
-    border: 1px solid rgba(43, 70, 128, 0.18);
+    border: 1px solid #e5e7eb;
     border-radius: var(--radius-xl);
     overflow: hidden;
 }

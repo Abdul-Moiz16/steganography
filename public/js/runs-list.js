@@ -12,16 +12,13 @@ async function renderRunsList(el, token) {
                     <div class="empty-actions">
                         <button class="btn btn-primary" onclick="openLaunchPanel()">${icon('add')} New Run</button>
                     </div>
-                </div>` +
-                `<edu-carousel></edu-carousel>`;
+                </div>`;
             return;
         }
 
-        const filtered = filterRunCollection(runs, STATE.search);
         const stats = summarizeRuns(runs);
         const activity = buildActivityFeed(runs);
-        const tip = buildRunsTip(runs, stats);
-        const rows = filtered.map(buildRunRow).join('');
+        const rows = runs.map(buildRunRow).join('');
 
         el.innerHTML =
             `<div class="breadcrumb">
@@ -32,7 +29,7 @@ async function renderRunsList(el, token) {
             <div class="page-header">
                 <div>
                     <div class="page-title">Runs Overview</div>
-                    <div class="page-subtitle">${escapeHtml(buildRunsSubtitle(filtered.length, runs.length, STATE.search))}</div>
+                    <div class="page-subtitle">${runs.length} run${runs.length !== 1 ? 's' : ''} tracked</div>
                 </div>
                 <button class="btn btn-primary" onclick="openLaunchPanel()">${icon('add')} New Run</button>
             </div>
@@ -42,37 +39,15 @@ async function renderRunsList(el, token) {
                 <bento-card label="Processed Covers" value="${formatNumber(stats.totalImages)}" sub="${formatNumber(stats.totalGroups)} grouped specimens"></bento-card>
                 <bento-card label="Detector Evaluations" value="${formatNumber(stats.totalDetectors)}" sub="${escapeAttr(stats.coverageLabel)}"></bento-card>
             </div>` +
-            buildRunsTable(filtered, runs.length, rows) +
-            `<div class="panels-row">
-                <div class="glass-panel">
-                    <div class="glass-panel-head"><div class="glass-panel-title">Recent Activity</div></div>
-                    <div class="glass-panel-body"><div class="activity-feed">${activity}</div></div>
-                </div>
-                <div class="glass-panel">
-                    <div class="glass-panel-head"><div class="glass-panel-title">Analysis Tip</div></div>
-                    <div class="glass-panel-body">${tip}</div>
-                </div>
-            </div>
-            <edu-carousel></edu-carousel>`;
+            buildRunsTable(runs, runs.length, rows) +
+            `<div style="margin-top:24px">
+                <div class="section-title" style="font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--secondary-dim);margin-bottom:12px">Recent Activity</div>
+                <div class="activity-feed">${activity}</div>
+            </div>`;
     } catch (error) {
         if (token !== STATE.renderToken) return;
         el.innerHTML = renderError(error.message, 'Retry', 'render()');
     }
-}
-
-function filterRunCollection(runs, search) {
-    const query = (search || '').trim().toLowerCase();
-    if (!query) return runs;
-    return runs.filter(run => {
-        const cfg = run.config || {};
-        const haystack = [
-            run.id, cfg.profile,
-            toArray(cfg.active_methods).join(' '),
-            toArray(cfg.active_payload_levels).join(' '),
-            cfg.timestamp
-        ].join(' ').toLowerCase();
-        return haystack.indexOf(query) !== -1;
-    });
 }
 
 function summarizeRuns(runs) {
@@ -104,13 +79,6 @@ function summarizeRuns(runs) {
         summary.coverageLabel = formatNumber(summary.totalDetectors) + ' total detector rows';
     }
     return summary;
-}
-
-function buildRunsSubtitle(filteredCount, totalCount, search) {
-    if (search) {
-        return `Showing ${filteredCount} of ${totalCount} runs for "${search}".`;
-    }
-    return `${totalCount} experiment run${totalCount === 1 ? '' : 's'} currently available in the local explorer.`;
 }
 
 function buildRunRow(run) {
@@ -169,9 +137,9 @@ function buildRunRow(run) {
     );
 }
 
-function buildRunsTable(filteredRuns, totalRuns, rows) {
-    if (!filteredRuns.length) {
-        return `<div class="data-table-wrap"><div class="empty-state"><h3>No runs match this search</h3><p>Try a run id, profile name, method, or payload level.</p><div class="empty-actions"><button class="btn btn-ghost" onclick="clearSearch()">Clear Search</button></div></div></div>`;
+function buildRunsTable(runs, totalRuns, rows) {
+    if (!runs.length) {
+        return `<div class="data-table-wrap"><div class="empty-state"><h3>No runs yet</h3><p>Launch a pipeline run to get started.</p></div></div>`;
     }
     return (
         `<div class="data-table-wrap">
@@ -192,7 +160,7 @@ function buildRunsTable(filteredRuns, totalRuns, rows) {
                 </table>
             </div>
             <div class="table-footer">
-                <span>Displaying ${filteredRuns.length} of ${totalRuns} runs</span>
+                <span>Displaying ${runs.length} of ${totalRuns} runs</span>
                 <div class="table-footer-actions">
                     <span class="inline-note">${icon('tips_and_updates')}<strong>Tip:</strong> click a row to inspect run detail.</span>
                 </div>
@@ -214,16 +182,3 @@ function buildActivityFeed(runs) {
     }).join('');
 }
 
-function buildRunsTip(runs, stats) {
-    const bestRun = runs.find(run => stats.bestRunLabel === run.id);
-    const bestProfile = bestRun && bestRun.config && bestRun.config.profile ? bestRun.config.profile : 'prototype';
-    const payloads = bestRun && bestRun.config ? toArray(bestRun.config.active_payload_levels) : [];
-    return (
-        `<div class="tip-icon">${icon('info')}</div>
-        <div class="tip-title">Best-performing configuration</div>
-        <div class="tip-text">
-            Right now the strongest local run is <strong>${escapeHtml(stats.bestRunLabel)}</strong>.
-            If you want the redesign to guide analysis, start by comparing new runs against the <strong>${escapeHtml(bestProfile)}</strong> profile${payloads.length ? ` across payloads ${escapeHtml(payloads.join(', '))}.` : '.'}
-        </div>`
-    );
-}

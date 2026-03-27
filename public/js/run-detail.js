@@ -194,21 +194,13 @@ function buildOverviewTab(cfg, detailStats, runId) {
                 `<table class="config-table">${rows}</table>` +
             `</div>` +
             `<div class="detail-note">` +
-                `<h3>Operational Note</h3>` +
+                `<h3>Note</h3>` +
                 `<p>` +
                     (detailStats.hasResults
-                        ? 'This run already has detector output, so the fastest way to compare it is through the Results and Conditions tabs. Use the overview as the experiment contract for reproducing the same profile later.'
-                        : 'This run has been created, but the explorer cannot see detector metrics yet. That usually means the pipeline has not finished, or the run only produced config scaffolding so far.') +
+                        ? 'Results are in \u2014 check the Results and Conditions tabs to compare. This overview is mainly useful for reproducing the run later.'
+                        : 'No detector output yet. The pipeline probably hasn\'t finished, or only the config scaffold has been written so far.') +
                 `</p>` +
             `</div>` +
-        `</div>` +
-        `<div class="stats">` +
-            `<div class="stat"><div class="stat-val">${formatNumber(groups)}</div><div class="stat-lbl">Groups</div></div>` +
-            `<div class="stat"><div class="stat-val">${formatNumber(groups * 3)}</div><div class="stat-lbl">Cover Slots</div></div>` +
-            `<div class="stat"><div class="stat-val">${formatNumber(conditionCount)}</div><div class="stat-lbl">Conditions</div></div>` +
-            `<div class="stat"><div class="stat-val">${formatNumber(methods.length)}</div><div class="stat-lbl">Methods</div></div>` +
-            `<div class="stat"><div class="stat-val">${formatNumber(payloads.length)}</div><div class="stat-lbl">Payload Levels</div></div>` +
-            `<div class="stat"><div class="stat-val">${formatMaybeNumber(detailStats.bestAuc, 3)}</div><div class="stat-lbl">Best ROC-AUC</div></div>` +
         `</div>`
     );
 }

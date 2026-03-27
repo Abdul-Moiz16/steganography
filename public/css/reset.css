@@ -26,7 +26,7 @@ body::before {
     right: -80px;
     width: 380px;
     height: 380px;
-    background: radial-gradient(circle, rgba(123, 208, 255, 0.22) 0%, rgba(123, 208, 255, 0) 72%);
+    background: radial-gradient(circle, rgba(79, 70, 229, 0.12) 0%, rgba(79, 70, 229, 0) 72%);
 }
 
 body::after {
@@ -37,7 +37,7 @@ body::after {
     background: radial-gradient(circle, rgba(212, 205, 238, 0.12) 0%, rgba(212, 205, 238, 0) 70%);
 }
 
-::selection { background: rgba(123, 208, 255, 0.3); }
+::selection { background: rgba(79, 70, 229, 0.2); }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
@@ -45,7 +45,7 @@ body::after {
 ::-webkit-scrollbar-thumb:hover { background: var(--outline); }
 
 /* web components display */
-proto-banner, edu-carousel, terminal-panel { display: contents; }
+proto-banner, terminal-panel { display: contents; }
 status-pill { display: inline-flex; }
 
 .material-symbols-outlined {

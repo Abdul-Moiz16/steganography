@@ -18,7 +18,7 @@
 
 .cond-detail-wrap > td {
     padding: 0 !important;
-    border-bottom: 2px solid rgba(43, 70, 128, 0.08) !important;
+    border-bottom: 2px solid #e5e7eb !important;
     background: var(--surface);
 }
 
@@ -29,17 +29,10 @@
 
 .cond-detail-table td {
     padding: 6px 16px;
-    border-bottom: 1px solid rgba(43, 70, 128, 0.04);
+    border-bottom: 1px solid #f3f4f6;
 }
 
 .cond-detail-metric:last-child td { border-bottom: none; }
-
-html.light .cond-detail-wrap > td {
-    background: #f9fafb;
-    border-bottom-color: #e5e7eb !important;
-}
-
-html.light .cond-detail-table td { border-bottom-color: #f0f0f0; }
 
 .auc-inline { display: flex; align-items: center; gap: 8px; }
 
