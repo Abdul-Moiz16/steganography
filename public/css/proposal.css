@@ -1,11 +1,3 @@
-/* ==========================================================================
-   Proposal page styles
-   Extracted from style.css
-   ========================================================================== */
-
-
-/* ── Proposal page ────────────────────────────────────────────────────────── */
-
 .proposal-page {
     display: flex;
     flex-direction: column;
@@ -112,12 +104,9 @@
     width: 100%;
     border: none;
     display: block;
-    /* tall enough for at least one A4 page at fit-width zoom */
     height: max(calc(100vh - var(--topbar-h) - 190px), 1050px);
 }
 
-
-/* ── Proposal light-mode overrides ── */
 
 html.light .proposal-header { background: #fff; border-bottom-color: #e0e0e8; }
 html.light .div-card { background: rgba(99,102,241,0.04); border-color: rgba(99,102,241,0.18); }

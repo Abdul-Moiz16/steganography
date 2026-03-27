@@ -1,8 +1,6 @@
-/* Stego Explorer — Documentation page: TOC generation, content loading, and scroll spy */
+const _CHILD_PARENT = {};
 
-var _CHILD_PARENT = {};
-
-var DOCS_TOC = [
+const DOCS_TOC = [
     { id: 'overview',   label: 'Overview' },
     { id: 'platform',   label: 'Platform Architecture' },
     { id: 'structure',  label: 'Directory Structure' },
@@ -29,31 +27,27 @@ var DOCS_TOC = [
     { id: 'refs',       label: 'References' }
 ];
 
-/* Build child → parent index for scroll spy */
+// build child->parent index for scroll spy
 (function() {
-    DOCS_TOC.forEach(function(item) {
-        (item.children || []).forEach(function(c) { _CHILD_PARENT[c.id] = item.id; });
+    DOCS_TOC.forEach(item => {
+        (item.children || []).forEach(c => { _CHILD_PARENT[c.id] = item.id; });
     });
 })();
 
-/* ── Cache for fetched docs HTML ──────────────────────────────────────────── */
-var _docsContentCache = null;
+let _docsContentCache = null;
 
-/* ── Build TOC sidebar from DOCS_TOC array ────────────────────────────────── */
 function buildDocsToc() {
-    var items = DOCS_TOC.map(function(item) {
-        var sub = (item.children || []).map(function(c) {
-            return `<a class="docs-toc-link docs-toc-child" href="#${c.id}">${escapeHtml(c.label)}</a>`;
-        }).join('');
+    const items = DOCS_TOC.map(item => {
+        const sub = (item.children || []).map(c =>
+            `<a class="docs-toc-link docs-toc-child" href="#${c.id}">${escapeHtml(c.label)}</a>`
+        ).join('');
         return `<a class="docs-toc-link" href="#${item.id}">${escapeHtml(item.label)}</a>${sub}`;
     }).join('');
-
     return `<nav class="docs-toc" id="docs-toc">` +
         `<div class="docs-toc-title">Contents</div>${items}` +
     `</nav>`;
 }
 
-/* ── Render docs page (async — fetches HTML content on first load) ────────── */
 async function renderDocsPage(el) {
     el.innerHTML =
         `<div class="docs-layout">` +
@@ -63,7 +57,7 @@ async function renderDocsPage(el) {
 
     if (!_docsContentCache) {
         try {
-            var response = await fetch('/public/docs-content.html');
+            const response = await fetch('/public/docs-content.html');
             _docsContentCache = await response.text();
         } catch (e) {
             document.getElementById('docs-main').innerHTML =
@@ -72,41 +66,40 @@ async function renderDocsPage(el) {
         }
     }
 
-    var main = document.getElementById('docs-main');
+    const main = document.getElementById('docs-main');
     if (main) main.innerHTML = _docsContentCache;
     initDocsSpy();
 }
 
-/* ── Scroll spy + smooth TOC navigation ───────────────────────────────────── */
 function initDocsSpy() {
-    var links    = document.querySelectorAll('.docs-toc-link');
-    var sections = document.querySelectorAll('.docs-section[id]');
+    const links    = document.querySelectorAll('.docs-toc-link');
+    const sections = document.querySelectorAll('.docs-section[id]');
     if (!sections.length) return;
 
-    links.forEach(function(a) {
-        a.addEventListener('click', function(e) {
+    links.forEach(a => {
+        a.addEventListener('click', e => {
             e.preventDefault();
-            var target = document.getElementById(a.getAttribute('href').slice(1));
+            const target = document.getElementById(a.getAttribute('href').slice(1));
             if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });
 
-    var obs = new IntersectionObserver(function(entries) {
-        entries.forEach(function(entry) {
+    const obs = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
             if (!entry.isIntersecting) return;
-            links.forEach(function(l) { l.classList.remove('active'); });
-            var id = entry.target.id;
-            var a = document.querySelector(`.docs-toc-link[href="#${id}"]`);
+            links.forEach(l => { l.classList.remove('active'); });
+            const id = entry.target.id;
+            const a = document.querySelector(`.docs-toc-link[href="#${id}"]`);
             if (a) {
                 a.classList.add('active');
-                var parentId = _CHILD_PARENT[id];
+                const parentId = _CHILD_PARENT[id];
                 if (parentId) {
-                    var pa = document.querySelector(`.docs-toc-link[href="#${parentId}"]`);
+                    const pa = document.querySelector(`.docs-toc-link[href="#${parentId}"]`);
                     if (pa) pa.classList.add('active');
                 }
             }
         });
     }, { rootMargin: '-8% 0px -78% 0px', threshold: 0 });
 
-    sections.forEach(function(s) { obs.observe(s); });
+    sections.forEach(s => { obs.observe(s); });
 }

@@ -1,6 +1,5 @@
-/* Stego Explorer — Proposal divergences page renderer */
-
-var PROPOSAL_DIVERGENCES = [
+// proposal divergences
+const PROPOSAL_DIVERGENCES = [
     {
         title: 'Image Generation Model',
         proposed: 'PixArt-\u03b1',
@@ -22,8 +21,8 @@ var PROPOSAL_DIVERGENCES = [
 ];
 
 function renderProposalPage() {
-    var cards = PROPOSAL_DIVERGENCES.map(function(d) {
-        return `<div class="div-card">
+    const cards = PROPOSAL_DIVERGENCES.map(d =>
+        `<div class="div-card">
             <div class="div-card-badge">DIVERGENCE</div>
             <div class="div-card-title">${escapeHtml(d.title)}</div>
             <div class="div-card-diff">
@@ -32,8 +31,8 @@ function renderProposalPage() {
                 <span class="div-actual">${escapeHtml(d.actual)}</span>
             </div>
             <div class="div-card-reason">${escapeHtml(d.reason)}</div>
-        </div>`;
-    }).join('');
+        </div>`
+    ).join('');
 
     return `<div class="proposal-page">
         <div class="proposal-header">

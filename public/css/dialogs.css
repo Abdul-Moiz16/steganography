@@ -1,10 +1,4 @@
-/* ==========================================================================
-   Dialogs, lightbox, empty state, loader, and section header styles
-   Extracted from style.css
-   ========================================================================== */
-
-
-/* ── Section header ───────────────────────────────────────────────────────── */
+/* section header */
 
 .section-header {
     display: flex;
@@ -28,8 +22,6 @@
 }
 
 
-/* ── Empty state ──────────────────────────────────────────────────────────── */
-
 .empty-state {
     text-align: center;
     padding: 72px 24px;
@@ -46,7 +38,7 @@
 .empty-state p { font-size: 13px; }
 
 
-/* ── Loader ───────────────────────────────────────────────────────────────── */
+/* loader */
 
 .loader {
     display: inline-block;
@@ -62,8 +54,6 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-
-/* ── Lightbox ─────────────────────────────────────────────────────────────── */
 
 .lightbox {
     display: none;
@@ -99,7 +89,7 @@
 .lightbox-close:hover { color: var(--on-surface); }
 
 
-/* ── Dialog ───────────────────────────────────────────────────────────────── */
+/* confirm dialog */
 
 .dialog-overlay {
     position: fixed;

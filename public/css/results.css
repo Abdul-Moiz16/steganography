@@ -1,12 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   Results
-   Results page redesign, RQ research cards, RQ pair comparison,
-   color tokens, per-detector breakdown, RQ3/RQ4 grids,
-   RQ embedded chart, RQ light-mode overrides, charts
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-
-/* ── Results page redesign ────────────────────────────────────────────────── */
+/* results page */
 
 .results-hero-grid {
     display: grid;
@@ -258,7 +250,7 @@
 }
 
 
-/* ── RQ Research Cards ─────────────────────────────────────────────────────── */
+/* RQ cards */
 
 .rq-card {
     background: var(--surface-cont);
@@ -317,7 +309,7 @@
 }
 
 
-/* ── RQ pair comparison ── */
+/* RQ pair comparison */
 
 .rq-pair {
     display: grid;
@@ -380,8 +372,7 @@
 .rq-auc--low  { color: var(--error); }
 
 
-/* ── source / method / encryption color tokens ── */
-
+/* color tokens */
 .src-real      { color: var(--primary); }
 .src-ml        { color: var(--tertiary-dim); }
 .src-mla       { color: var(--error); }
@@ -401,8 +392,7 @@
 .rq-fill-enc-encrypted { background: var(--tertiary-dim); }
 
 
-/* ── RQ per-detector breakdown ── */
-
+/* per-detector breakdown */
 .rq-breakdown { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
 .rq-breakdown th {
     padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 700;
@@ -429,7 +419,7 @@
 }
 
 
-/* ── RQ3 payload level grid ── */
+/* RQ3 payload grid */
 
 .rq3-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
 
@@ -446,7 +436,7 @@
 .rq3-det-val { font-family: monospace; font-size: 11px; font-weight: 600; }
 
 
-/* ── RQ4 branch columns ── */
+/* RQ4 */
 
 .rq4-branches { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
 .rq4-branch {
@@ -456,7 +446,7 @@
 .rq4-branch-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
 
 
-/* ── RQ embedded chart ── */
+/* embedded chart */
 
 .rq-chart-wrap {
     margin-top: 20px;
@@ -468,7 +458,7 @@
 html.light .rq-chart-wrap { background: #f9fafb; border-color: #e5e7eb; }
 
 
-/* ── RQ light-mode overrides ── */
+/* light mode */
 
 html.light .rq-card         { background: #ffffff; border-color: #e5e7eb; }
 html.light .rq-side         { background: #f9fafb; border-color: #e5e7eb; }
@@ -494,7 +484,7 @@ html.light .rq-breakdown td       { border-bottom-color: #f3f4f6; }
 }
 
 
-/* ── Charts ───────────────────────────────────────────────────────────────── */
+/* charts */
 
 .chart-box {
     background: var(--surface-cont);

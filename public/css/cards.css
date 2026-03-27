@@ -1,11 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   Cards & Panels
-   Stats bento grid, glass panels, activity feed, tip panel,
-   prototype banner, stat cards (overview), cards
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-
-/* ── Stats bento grid ─────────────────────────────────────────────────────── */
+/* stats bento grid */
 
 .stats-bento {
     display: grid;
@@ -50,8 +43,6 @@
 }
 
 
-/* ── Glass panels (below table) ───────────────────────────────────────────── */
-
 .panels-row {
     display: grid;
     grid-template-columns: 1fr 320px;
@@ -88,8 +79,6 @@
     padding: 16px 20px;
 }
 
-
-/* ── Activity feed ────────────────────────────────────────────────────────── */
 
 .activity-feed {
     display: flex;
@@ -136,7 +125,7 @@
 }
 
 
-/* ── Tip panel ────────────────────────────────────────────────────────────── */
+/* tip panel */
 
 .tip-icon {
     display: flex;
@@ -247,7 +236,7 @@ html.light .sc2-highlight {
 }
 
 
-/* ── Prototype banner ─────────────────────────────────── */
+/* prototype banner */
 
 .proto-banner {
     display: flex;
@@ -380,7 +369,7 @@ html.light .detail-note p { color: #4a5568; }
 }
 
 
-/* ── Stat cards (overview) ────────────────────────────────────────────────── */
+/* stat cards (overview) */
 
 .stats {
     display: grid;
@@ -415,8 +404,6 @@ html.light .detail-note p { color: #4a5568; }
     font-weight: 600;
 }
 
-
-/* ── Cards ────────────────────────────────────────────────────────────────── */
 
 .card {
     background: var(--surface-cont);

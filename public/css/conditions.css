@@ -1,11 +1,3 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   Foldable Condition Rows
-   Expandable detail rows in metrics tables
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-
-/* ── Foldable condition rows ── */
-
 .cond-row td:first-child { user-select: none; }
 
 .cond-arrow {

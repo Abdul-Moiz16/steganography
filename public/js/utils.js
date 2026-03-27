@@ -1,9 +1,7 @@
-/* Stego Explorer — Utility functions (API, formatting, rendering helpers) */
-
 async function api(url, options) {
-    var response = await fetch(url, options);
+    const response = await fetch(url, options);
     if (!response.ok) {
-        var text = await response.text();
+        const text = await response.text();
         throw new Error(text || `Request failed: ${response.status}`);
     }
     return response.json();
@@ -38,7 +36,7 @@ function formatMaybeNumber(value, digits) {
     return value == null || Number.isNaN(Number(value)) ? '\u2014' : Number(value).toFixed(digits);
 }
 
-var DETECTOR_LABELS = {
+const DETECTOR_LABELS = {
     'rs':                     'RS Analysis',
     'chi_square_spatial':     'Chi-Square (Spatial)',
     'sample_pairs':           'Sample Pairs',
@@ -53,12 +51,12 @@ function statusPill(label, tone) {
 }
 
 function uniqueValues(list, key) {
-    var seen = {};
-    return list.filter(function (item) {
+    const seen = {};
+    return list.filter(item => {
         if (seen[item[key]]) return false;
         seen[item[key]] = true;
         return true;
-    }).map(function (item) { return item[key]; });
+    }).map(item => item[key]);
 }
 
 function renderLoading() {
@@ -66,7 +64,7 @@ function renderLoading() {
 }
 
 function renderError(message, actionLabel, actionFn) {
-    var button = actionLabel && actionFn
+    const button = actionLabel && actionFn
         ? `<div class="empty-actions"><button class="btn btn-primary" onclick="${actionFn}">${escapeHtml(actionLabel)}</button></div>`
         : '';
     return `<div class="empty-state"><h3>Something went off-track</h3><p>${escapeHtml(message)}</p>${button}</div>`;

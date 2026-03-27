@@ -1,24 +1,23 @@
-/* Stego Explorer — Pipeline streaming, log output, and run lifecycle */
+// pipeline streaming + run lifecycle
 
 function attachStream(jobId) {
-    var job = getJob(jobId);
+    const job = getJob(jobId);
     if (!job || job.streamSource) return;
 
-    var source = new EventSource(`/api/pipeline/stream/${jobId}`);
+    const source = new EventSource(`/api/pipeline/stream/${jobId}`);
     job.streamSource = source;
 
-    source.onmessage = function (event) {
+    source.onmessage = (event) => {
         job.streamErrors = 0;
-        var line = event.data;
+        const line = event.data;
         job.logLines.push(line);
         appendLogForJob(jobId, line);
 
-        /* Parse the run directory name from the pipeline header line */
+        // grab the run directory name from the pipeline header line
         if (!job.runId) {
-            var m = line.match(/Run dir\s*:\s*.*[\/\\]runs[\/\\]([^\s\/\\]+)/);
+            const m = line.match(/Run dir\s*:\s*.*[\/\\]runs[\/\\]([^\s\/\\]+)/);
             if (m) {
                 job.runId = m[1];
-                /* If we're currently on the job-id placeholder page, redirect to real run */
                 if (STATE.page === 'run-detail' && STATE.runId === jobId) {
                     go('run-detail', job.runId);
                 }
@@ -26,8 +25,8 @@ function attachStream(jobId) {
         }
     };
 
-    source.addEventListener('done', function (event) {
-        var exitCode = Number(event.data);
+    source.addEventListener('done', (event) => {
+        const exitCode = Number(event.data);
         job.streamSource = null;
         source.close();
         appendLogForJob(jobId, '');
@@ -35,22 +34,19 @@ function attachStream(jobId) {
 
         if (exitCode !== 0) {
             job.failed = true;
-            var errLine = job.logLines.slice().reverse().find(function (l) {
-                return /error|failed|exception|traceback/i.test(l) && l.trim();
-            });
+            const errLine = job.logLines.slice().reverse().find(l => /error|failed|exception|traceback/i.test(l) && l.trim());
             job.error = errLine || `Pipeline exited with code ${exitCode}`;
         }
 
         updateTerminalBadgeForJob(jobId, exitCode);
 
-        /* Re-render run detail to pick up final data */
-        var targetRunId = job.runId || job.jobId;
+        const targetRunId = job.runId || job.jobId;
         if (STATE.page === 'run-detail' && STATE.runId === targetRunId) {
-            setTimeout(function () { if (STATE.page === 'run-detail') render(); }, 2000);
+            setTimeout(() => { if (STATE.page === 'run-detail') render(); }, 2000);
         }
     });
 
-    source.onerror = function () {
+    source.onerror = () => {
         job.streamErrors = (job.streamErrors || 0) + 1;
         if (job.streamErrors >= 5) {
             source.close();
@@ -64,21 +60,21 @@ function attachStream(jobId) {
 
 function appendLogForJob(jobId, line) {
     if (STATE.page !== 'run-detail') return;
-    var job = getJobForRun(STATE.runId);
+    const job = getJobForRun(STATE.runId);
     if (!job || job.jobId !== jobId) return;
-    var panel = document.querySelector('terminal-panel');
+    const panel = document.querySelector('terminal-panel');
     if (panel) panel.appendLog(line);
 }
 
 function updateTerminalBadgeForJob(jobId, exitCode) {
-    var panel = document.querySelector('terminal-panel');
+    const panel = document.querySelector('terminal-panel');
     if (panel) panel.updateBadge(exitCode);
 }
 
 function killRun(jobId) {
-    var job = getJob(jobId);
+    const job = getJob(jobId);
     if (!job) return;
-    api(`/api/pipeline/kill/${jobId}`, { method: 'POST' }).then(function () {
+    api(`/api/pipeline/kill/${jobId}`, { method: 'POST' }).then(() => {
         if (job.streamSource) { job.streamSource.close(); job.streamSource = null; }
         job.killed = true;
         job.failed = true;
@@ -86,10 +82,9 @@ function killRun(jobId) {
         updateTerminalBadgeForJob(jobId, -1);
         appendLogForJob(jobId, '');
         appendLogForJob(jobId, '\u2717 Run killed by user.');
-        /* Refresh the current view so the "Running" pill and kill button disappear */
         render();
-    }).catch(function () {
-        /* job may have already finished — still mark locally */
+    }).catch(() => {
+        // job may have already finished
         if (job.streamSource) { job.streamSource.close(); job.streamSource = null; }
         job.killed = true;
         job.failed = true;

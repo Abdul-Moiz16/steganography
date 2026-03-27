@@ -1,12 +1,3 @@
-/* Stego Explorer — <terminal-panel> custom element
-   Usage: <terminal-panel run-id="prototype_001"></terminal-panel>
-
-   Exposes methods:
-     .appendLog(line)      — append a line to the terminal output
-     .updateBadge(code)    — update the status badge (0=done, else=error)
-     .toggle()             — expand / collapse the terminal body
-     .refresh()            — re-render from current job state              */
-
 class TerminalPanel extends HTMLElement {
     connectedCallback() {
         this.refresh();
@@ -14,15 +5,12 @@ class TerminalPanel extends HTMLElement {
 
     get runId() { return this.getAttribute('run-id') || ''; }
 
-    /* ── Public API ──────────────────────────────────────────── */
-
     refresh() {
-        var runId = this.runId;
-        var job = getJobForRun(runId);
+        const runId = this.runId;
+        const job = getJobForRun(runId);
 
-        /* No job or no logs → killed banner or nothing */
         if (!job || !job.logLines.length) {
-            var isKilled = !isRunActive(runId) && ((getJobForRun(runId) || {}).killed);
+            const isKilled = !isRunActive(runId) && ((getJobForRun(runId) || {}).killed);
             if (isKilled) {
                 this.innerHTML = this._killedBannerHtml(runId);
             } else {
@@ -31,8 +19,8 @@ class TerminalPanel extends HTMLElement {
             return;
         }
 
-        var isRunning = !!job.streamSource && !job.failed && !job.killed;
-        var isOpen = STATE.terminalOpen;
+        const isRunning = !!job.streamSource && !job.failed && !job.killed;
+        const isOpen = STATE.terminalOpen;
 
         this.innerHTML =
             `<div class="rd-terminal">` +
@@ -40,13 +28,11 @@ class TerminalPanel extends HTMLElement {
                 (isOpen ? this._bodyHtml(job) : '') +
             `</div>`;
 
-        /* Attach header click */
-        var hdr = this.querySelector('.rd-terminal-hdr');
+        const hdr = this.querySelector('.rd-terminal-hdr');
         if (hdr) hdr.addEventListener('click', () => this.toggle());
 
-        /* Attach kill button */
-        var killBtn = this.querySelector('.rd-kill-btn');
-        if (killBtn) killBtn.addEventListener('click', e => {
+        const killBtn = this.querySelector('.rd-kill-btn');
+        if (killBtn) killBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             killRun(job.jobId);
         });
@@ -54,19 +40,19 @@ class TerminalPanel extends HTMLElement {
 
     toggle() {
         STATE.terminalOpen = !STATE.terminalOpen;
-        var section = this.querySelector('.rd-terminal');
+        const section = this.querySelector('.rd-terminal');
         if (!section) return;
 
-        var chevron = section.querySelector('.rd-term-chevron');
-        var existingBody = section.querySelector('.rd-terminal-body');
-        var job = getJobForRun(this.runId);
+        const chevron = section.querySelector('.rd-term-chevron');
+        const existingBody = section.querySelector('.rd-terminal-body');
+        const job = getJobForRun(this.runId);
 
         if (STATE.terminalOpen && job) {
-            var div = document.createElement('div');
+            const div = document.createElement('div');
             div.className = 'rd-terminal-body';
             div.innerHTML = this._bodyInnerHtml(job);
             section.appendChild(div);
-            var box = div.querySelector('#run-terminal-log');
+            const box = div.querySelector('#run-terminal-log');
             if (box) box.scrollTop = box.scrollHeight;
         } else {
             if (existingBody) existingBody.remove();
@@ -76,16 +62,16 @@ class TerminalPanel extends HTMLElement {
     }
 
     appendLog(line) {
-        var box = this.querySelector('#run-terminal-log');
+        const box = this.querySelector('#run-terminal-log');
         if (!box) return;
         box.textContent += (box.textContent ? '\n' : '') + line;
         box.scrollTop = box.scrollHeight;
     }
 
     updateBadge(exitCode) {
-        var job = getJobForRun(this.runId);
+        const job = getJobForRun(this.runId);
         if (!job) return;
-        var badge = this.querySelector('.badge');
+        const badge = this.querySelector('.badge');
         if (!badge) return;
 
         if (job.killed) {
@@ -99,11 +85,10 @@ class TerminalPanel extends HTMLElement {
             badge.textContent = '\u2717 Failed';
         }
 
-        /* Inject error banner if needed */
         if ((exitCode !== 0 || job.killed) && job.error && STATE.terminalOpen) {
-            var body = this.querySelector('.rd-terminal-body');
+            const body = this.querySelector('.rd-terminal-body');
             if (body && !body.querySelector('.rd-error-banner')) {
-                var banner = document.createElement('div');
+                const banner = document.createElement('div');
                 banner.className = 'rd-error-banner';
                 banner.innerHTML =
                     `<span class="material-symbols-outlined">error_outline</span>` +
@@ -114,16 +99,14 @@ class TerminalPanel extends HTMLElement {
         }
     }
 
-    /* ── Private HTML builders ───────────────────────────────── */
-
     _headerHtml(job, isRunning, isOpen) {
-        var statusBadge = isRunning
+        const statusBadge = isRunning
             ? `<span class="badge badge-running">\u25cf Live</span>`
             : (job.failed || job.killed)
                 ? `<span class="badge badge-error">${job.killed ? '\u2717 Killed' : '\u2717 Failed'}</span>`
                 : `<span class="badge badge-done">\u2713 Completed</span>`;
 
-        var killBtn = isRunning
+        const killBtn = isRunning
             ? `<button class="rd-kill-btn" title="Kill this run">` +
                   `<span class="material-symbols-outlined">stop_circle</span> Kill` +
               `</button>`
@@ -147,7 +130,7 @@ class TerminalPanel extends HTMLElement {
     }
 
     _bodyInnerHtml(job) {
-        var errorBanner = ((job.failed || job.killed) && job.error)
+        const errorBanner = ((job.failed || job.killed) && job.error)
             ? `<div class="rd-error-banner">` +
                   `<span class="material-symbols-outlined">error_outline</span>` +
                   `<div><strong>Pipeline error detected</strong>` +

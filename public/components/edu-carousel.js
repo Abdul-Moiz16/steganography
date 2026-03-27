@@ -1,8 +1,3 @@
-/* Stego Explorer — <edu-carousel> custom element
-   Usage: <edu-carousel></edu-carousel>
-   Fully self-contained: slides data, auto-advance timer, navigation.
-   Call .destroy() or let disconnectedCallback clean up the timer.     */
-
 class EduCarousel extends HTMLElement {
     constructor() {
         super();
@@ -19,11 +14,9 @@ class EduCarousel extends HTMLElement {
         this._stopTimer();
     }
 
-    /* ── Navigation ─────────────────────────────────────────────── */
-
     goTo(idx) {
         this._idx = (idx + EduCarousel.SLIDES.length) % EduCarousel.SLIDES.length;
-        var track = this.querySelector('.edu-track');
+        const track = this.querySelector('.edu-track');
         if (track) track.style.transform = `translateX(-${this._idx * 100}%)`;
         this.querySelectorAll('.edu-dot').forEach((dot, i) => {
             dot.classList.toggle('active', i === this._idx);
@@ -34,8 +27,6 @@ class EduCarousel extends HTMLElement {
     next() { this.goTo(this._idx + 1); }
     prev() { this.goTo(this._idx - 1); }
     destroy() { this._stopTimer(); }
-
-    /* ── Internal ───────────────────────────────────────────────── */
 
     _startTimer() {
         this._stopTimer();
@@ -49,7 +40,7 @@ class EduCarousel extends HTMLElement {
     }
 
     _render() {
-        var slides = EduCarousel.SLIDES.map(s =>
+        const slides = EduCarousel.SLIDES.map(s =>
             `<div class="edu-slide">` +
                 `<div class="edu-visual">${s.visual}</div>` +
                 `<div class="edu-text">` +
@@ -60,7 +51,7 @@ class EduCarousel extends HTMLElement {
             `</div>`
         ).join('');
 
-        var dots = EduCarousel.SLIDES.map((_, i) =>
+        const dots = EduCarousel.SLIDES.map((_, i) =>
             `<button class="edu-dot${i === 0 ? ' active' : ''}" data-idx="${i}"></button>`
         ).join('');
 
@@ -75,9 +66,8 @@ class EduCarousel extends HTMLElement {
                 `</div>` +
             `</div>`;
 
-        /* Attach event listeners via delegation */
-        this.addEventListener('click', e => {
-            var target = e.target.closest('.edu-prev, .edu-next, .edu-dot');
+        this.addEventListener('click', (e) => {
+            const target = e.target.closest('.edu-prev, .edu-next, .edu-dot');
             if (!target) return;
             if (target.classList.contains('edu-prev')) this.prev();
             else if (target.classList.contains('edu-next')) this.next();
@@ -85,8 +75,6 @@ class EduCarousel extends HTMLElement {
         });
     }
 }
-
-/* ── Slide data ─────────────────────────────────────────────────────── */
 
 EduCarousel.SLIDES = [
     {
@@ -122,15 +110,15 @@ EduCarousel.SLIDES = [
         body: 'Least Significant Bit replacement encodes a secret bit by overwriting the final bit of a pixel. A pixel of 150 (10010110\u2082) with a secret bit 1 becomes 151 (10010111\u2082). The \u00b11 change is invisible to the eye, but creates statistical regularities that trained detectors can measure.',
         visual: `<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
             <text x="8" y="22" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">Cover pixel  150\u2081\u2080</text>` +
-            ['1','0','0','1','0','1','1','0'].map(function(b,i){
-                var x = 8 + i*28; var isLSB = i===7;
+            ['1','0','0','1','0','1','1','0'].map((b, i) => {
+                const x = 8 + i*28; const isLSB = i===7;
                 return `<rect x="${x}" y="28" width="24" height="24" rx="3" fill="${isLSB?'rgba(99,179,255,0.18)':'rgba(255,255,255,0.06)'}" stroke="${isLSB?'rgba(99,179,255,0.5)':'rgba(255,255,255,0.15)'}" stroke-width="1.2"/>
                        <text x="${x+12}" y="45" text-anchor="middle" font-size="11" fill="${isLSB?'rgba(99,179,255,0.9)':'rgba(255,255,255,0.6)'}" font-family="monospace" font-weight="600">${b}</text>`;
             }).join('') +
             `<text x="8" y="76" font-size="8" fill="rgba(255,255,255,0.25)" font-family="monospace">bit 7 (MSB)                bit 0 (LSB)</text>
             <text x="8" y="100" font-size="9" fill="rgba(255,255,255,0.4)" font-family="monospace">Stego pixel  151\u2081\u2080</text>` +
-            ['1','0','0','1','0','1','1','1'].map(function(b,i){
-                var x = 8 + i*28; var isLSB = i===7;
+            ['1','0','0','1','0','1','1','1'].map((b, i) => {
+                const x = 8 + i*28; const isLSB = i===7;
                 return `<rect x="${x}" y="106" width="24" height="24" rx="3" fill="${isLSB?'rgba(102,217,160,0.25)':'rgba(255,255,255,0.06)'}" stroke="${isLSB?'rgba(102,217,160,0.7)':'rgba(255,255,255,0.15)'}" stroke-width="1.2"/>
                        <text x="${x+12}" y="123" text-anchor="middle" font-size="11" fill="${isLSB?'#66d9a0':'rgba(255,255,255,0.6)'}" font-family="monospace" font-weight="600">${b}</text>`;
             }).join('') +
@@ -144,14 +132,14 @@ EduCarousel.SLIDES = [
         body: 'Pixels are partitioned into groups of 4. A flipping mask (+1/\u22121) is applied, and each group is classified as Regular (lower variance after flip), Singular (higher variance), or Unusable. In a clean image R \u2248 R\u0304 and S \u2248 S\u0304. LSB replacement predictably shifts these counts, revealing embedding.',
         visual: `<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">` +
             `<text x="8" y="18" font-size="8.5" fill="rgba(255,255,255,0.35)" font-family="monospace">Pixel group (4 px)</text>` +
-            [148,151,149,150].map(function(v,i){
-                var x = 8+i*46;
+            [148,151,149,150].map((v, i) => {
+                const x = 8+i*46;
                 return `<rect x="${x}" y="24" width="38" height="28" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
                        <text x="${x+19}" y="43" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.7)" font-family="monospace">${v}</text>`;
             }).join('') +
             `<text x="8" y="68" font-size="8.5" fill="rgba(255,255,255,0.35)" font-family="monospace">Apply mask  [+1,\u22121,+1,\u22121]</text>` +
-            [149,150,150,149].map(function(v,i){
-                var x = 8+i*46;
+            [149,150,150,149].map((v, i) => {
+                const x = 8+i*46;
                 return `<rect x="${x}" y="74" width="38" height="28" rx="4" fill="rgba(130,120,255,0.1)" stroke="rgba(130,120,255,0.3)" stroke-width="1"/>
                        <text x="${x+19}" y="93" text-anchor="middle" font-size="10" fill="rgba(130,120,255,0.9)" font-family="monospace">${v}</text>`;
             }).join('') +
@@ -166,8 +154,8 @@ EduCarousel.SLIDES = [
         body: 'LSB replacement pairs up pixel values that differ only in their final bit (2k \u2194 2k+1). In a natural image these pairs have different frequencies; embedding equalises them toward a 50/50 split. The chi-square statistic quantifies how far the observed pair frequencies deviate from this expected equipartition.',
         visual: `<svg viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
             <text x="14" y="16" font-size="8.5" fill="rgba(255,255,255,0.35)" font-family="monospace">Cover image pairs</text>` +
-            [[14,62],[20,38],[18,28],[24,48],[16,34],[22,44],[12,18],[20,32]].map(function(pair,i){
-                var x = 14+i*28; var h1=pair[0]*1.1; var h2=pair[1]*1.1; var base=130;
+            [[14,62],[20,38],[18,28],[24,48],[16,34],[22,44],[12,18],[20,32]].map((pair, i) => {
+                const x = 14+i*28; const h1=pair[0]*1.1; const h2=pair[1]*1.1; const base=130;
                 return `<rect x="${x}" y="${base-h1}" width="10" height="${h1}" rx="1" fill="rgba(99,179,255,0.5)"/>
                        <rect x="${x+12}" y="${base-h2}" width="10" height="${h2}" rx="1" fill="rgba(99,179,255,0.25)"/>`;
             }).join('') +
@@ -185,10 +173,10 @@ EduCarousel.SLIDES = [
                 [148,151],[150,149],[147,152],[151,148],
                 [149,150],[152,151],[148,149],[150,151],
                 [151,152],[147,148],[150,149],[152,153]
-            ].map(function(pair,i){
-                var col=i%4; var row=Math.floor(i/4);
-                var x=8+col*60; var y=26+row*36;
-                var isOddEven = (pair[0]%2===0 && pair[1]%2===1)||(pair[0]%2===1 && pair[1]%2===0);
+            ].map((pair, i) => {
+                const col=i%4; const row=Math.floor(i/4);
+                const x=8+col*60; const y=26+row*36;
+                const isOddEven = (pair[0]%2===0 && pair[1]%2===1)||(pair[0]%2===1 && pair[1]%2===0);
                 return `<rect x="${x}" y="${y}" width="24" height="22" rx="3" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
                        <text x="${x+12}" y="${y+15}" text-anchor="middle" font-size="8.5" fill="rgba(255,255,255,${pair[0]%2===1?'0.75':'0.45'})" font-family="monospace">${pair[0]}</text>
                        <rect x="${x+28}" y="${y}" width="24" height="22" rx="3" fill="${isOddEven?'rgba(240,192,80,0.15)':'rgba(255,255,255,0.06)'}" stroke="${isOddEven?'rgba(240,192,80,0.4)':'rgba(255,255,255,0.12)'}" stroke-width="1"/>
@@ -207,15 +195,15 @@ EduCarousel.SLIDES = [
             `<line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>` +
             [
                 ['20','groups'],['1','method'],['1','payload'],['3','detectors']
-            ].map(function(s,i){
-                var x = 10 + i*60;
+            ].map((s, i) => {
+                const x = 10 + i*60;
                 return `<text x="${x+22}" y="47" text-anchor="middle" font-size="18" fill="rgba(102,217,160,0.9)" font-family="monospace" font-weight="700">${s[0]}</text>
                        <text x="${x+22}" y="57" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,0.3)" font-family="monospace">${s[1]}</text>`;
             }).join('') +
             [
                 ['500','groups'],['2','methods'],['3','payloads'],['5','detectors']
-            ].map(function(s,i){
-                var x = 10 + i*60;
+            ].map((s, i) => {
+                const x = 10 + i*60;
                 return `<text x="${x+22}" y="115" text-anchor="middle" font-size="18" fill="rgba(99,179,255,0.9)" font-family="monospace" font-weight="700">${s[0]}</text>
                        <text x="${x+22}" y="125" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,0.3)" font-family="monospace">${s[1]}</text>`;
             }).join('') +

@@ -22,7 +22,6 @@ venv/
 /data/covers/**/*.jpg
 /data/covers/**/*.jpeg
 /data/covers/**/*.webp
-.claude
 /data/covers/**/*.bmp
 /data/covers/**/*.tif
 /data/covers/**/*.tiff

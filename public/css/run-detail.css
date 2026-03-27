@@ -1,10 +1,4 @@
-/* ==========================================================================
-   Run Detail page styles (terminal section + tabs)
-   Extracted from style.css
-   ========================================================================== */
-
-
-/* ── Tabs (used in run detail) ────────────────────────────────────────────── */
+/* tabs */
 
 .tabs {
     display: flex;
@@ -30,7 +24,7 @@
 .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
 
-/* ── Run Detail Terminal Section ── */
+/* run detail terminal */
 
 .rd-terminal {
     margin-bottom: 20px;

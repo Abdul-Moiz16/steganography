@@ -1,58 +1,56 @@
-/* Stego Explorer — Gallery / Covers tab: group cards, per-image metrics, bar charts */
-
-var _predictionsCache = {};
+// gallery view
+const _predictionsCache = {};
 
 function loadPredictions(runId) {
     if (_predictionsCache[runId]) return Promise.resolve(_predictionsCache[runId]);
-    return api(`/api/runs/${encodeURIComponent(runId)}/predictions`).then(function (rows) {
+    return api(`/api/runs/${encodeURIComponent(runId)}/predictions`).then(rows => {
         _predictionsCache[runId] = rows;
         return rows;
     });
 }
 
 function toggleGroupMetrics(groupId, runId) {
-    var panel = document.getElementById(`gm-${groupId}`);
+    const panel = document.getElementById(`gm-${groupId}`);
     if (!panel) return;
-    var isOpen = panel.classList.toggle('gm-open');
-    var arrow = document.getElementById(`gm-arrow-${groupId}`);
+    const isOpen = panel.classList.toggle('gm-open');
+    const arrow = document.getElementById(`gm-arrow-${groupId}`);
     if (arrow) arrow.textContent = isOpen ? 'expand_less' : 'expand_more';
     if (!isOpen) return;
     if (panel.dataset.loaded) return;
     panel.dataset.loaded = '1';
     panel.innerHTML = `<div class="gm-loading">${icon('hourglass_empty')} Loading metrics\u2026</div>`;
 
-    loadPredictions(runId).then(function (allRows) {
-        var qualityRows = toArray((STATE._galData || {}).quality);
-        var gRows = allRows.filter(function (r) { return String(r.group_id) === String(groupId); });
+    loadPredictions(runId).then(allRows => {
+        const qualityRows = toArray((STATE._galData || {}).quality);
+        const gRows = allRows.filter(r => String(r.group_id) === String(groupId));
         if (!gRows.length) {
             panel.innerHTML = '<div class="gm-empty">No prediction data for this group.</div>';
             return;
         }
         panel.innerHTML = buildGroupMetricsContent(groupId, gRows, qualityRows);
-        requestAnimationFrame(function () { drawGroupCharts(groupId, gRows); });
-    }).catch(function () {
+        requestAnimationFrame(() => { drawGroupCharts(groupId, gRows); });
+    }).catch(() => {
         panel.innerHTML = '<div class="gm-empty">Failed to load predictions.</div>';
     });
 }
 
 function buildGroupMetricsContent(groupId, gRows, qualityRows) {
-    var sources = ['real', 'ml_a', 'ml_b'];
-    var SOURCE_NAMES = { real: 'Real', ml_a: 'ML-A (SDXL)', ml_b: 'ML-B (FLUX.1)' };
-    var detectors = [];
-    gRows.forEach(function (r) { if (detectors.indexOf(r.detector) === -1) detectors.push(r.detector); });
+    const sources = ['real', 'ml_a', 'ml_b'];
+    const SOURCE_NAMES = { real: 'Real', ml_a: 'ML-A (SDXL)', ml_b: 'ML-B (FLUX.1)' };
+    const detectors = [];
+    gRows.forEach(r => { if (detectors.indexOf(r.detector) === -1) detectors.push(r.detector); });
 
-    // Build per-source tables: detector × cover/stego scores
-    var tables = sources.map(function (src) {
-        var srcRows = gRows.filter(function (r) { return r.source === src; });
+    const tables = sources.map(src => {
+        const srcRows = gRows.filter(r => r.source === src);
         if (!srcRows.length) return '';
 
-        var tableRows = detectors.map(function (det) {
-            var rows = srcRows.filter(function (r) { return r.detector === det; });
-            var coverRows = rows.filter(function (r) { return String(r.label) === '0'; });
-            var stegoRows = rows.filter(function (r) { return String(r.label) === '1'; });
-            var cs = coverRows.length ? coverRows.reduce(function (s, r) { return s + Number(r.score); }, 0) / coverRows.length : null;
-            var ss = stegoRows.length ? stegoRows.reduce(function (s, r) { return s + Number(r.score); }, 0) / stegoRows.length : null;
-            var sep = (cs != null && ss != null) ? Math.abs(ss - cs) : null;
+        const tableRows = detectors.map(det => {
+            const rows = srcRows.filter(r => r.detector === det);
+            const coverRows = rows.filter(r => String(r.label) === '0');
+            const stegoRows = rows.filter(r => String(r.label) === '1');
+            const cs = coverRows.length ? coverRows.reduce((s, r) => s + Number(r.score), 0) / coverRows.length : null;
+            const ss = stegoRows.length ? stegoRows.reduce((s, r) => s + Number(r.score), 0) / stegoRows.length : null;
+            const sep = (cs != null && ss != null) ? Math.abs(ss - cs) : null;
             return `<tr>
                 <td class="gm-det">${escapeHtml(fmtDetector(det))}</td>
                 <td class="gm-val">${cs != null ? fmtScore(cs) : '\u2014'}</td>
@@ -61,12 +59,11 @@ function buildGroupMetricsContent(groupId, gRows, qualityRows) {
             </tr>`;
         }).join('');
 
-        // Quality metrics for this group+source
-        var qRows = qualityRows.filter(function (r) { return String(r.group_id) === String(groupId) && r.source === src; });
-        var qualityHtml = '';
+        const qRows = qualityRows.filter(r => String(r.group_id) === String(groupId) && r.source === src);
+        let qualityHtml = '';
         if (qRows.length) {
-            var avgPsnr = qRows.reduce(function (s, r) { return s + (r.psnr ? Number(r.psnr) : 0); }, 0) / qRows.length;
-            var avgSsim = qRows.reduce(function (s, r) { return s + (r.ssim ? Number(r.ssim) : 0); }, 0) / qRows.length;
+            const avgPsnr = qRows.reduce((s, r) => s + (r.psnr ? Number(r.psnr) : 0), 0) / qRows.length;
+            const avgSsim = qRows.reduce((s, r) => s + (r.ssim ? Number(r.ssim) : 0), 0) / qRows.length;
             qualityHtml = `<div class="gm-quality">
                 <span>PSNR: <strong>${avgPsnr.toFixed(1)} dB</strong></span>
                 <span>SSIM: <strong>${avgSsim.toFixed(4)}</strong></span>
@@ -90,7 +87,7 @@ function buildGroupMetricsContent(groupId, gRows, qualityRows) {
 
 function fmtScore(v) {
     if (v == null || isNaN(v)) return '\u2014';
-    var abs = Math.abs(v);
+    const abs = Math.abs(v);
     if (abs === 0) return '0';
     if (abs >= 1000) return v.toFixed(0);
     if (abs >= 1) return v.toFixed(2);
@@ -99,45 +96,44 @@ function fmtScore(v) {
 }
 
 function drawGroupCharts(groupId, gRows) {
-    var sources = ['real', 'ml_a', 'ml_b'];
-    var detectors = [];
-    gRows.forEach(function (r) { if (detectors.indexOf(r.detector) === -1) detectors.push(r.detector); });
+    const sources = ['real', 'ml_a', 'ml_b'];
+    const detectors = [];
+    gRows.forEach(r => { if (detectors.indexOf(r.detector) === -1) detectors.push(r.detector); });
 
-    // Helper: average absolute scores for a set of rows
     function avgScore(rows) {
         if (!rows.length) return 0;
-        return rows.reduce(function (s, r) { return s + Math.abs(Number(r.score) || 0); }, 0) / rows.length;
+        return rows.reduce((s, r) => s + Math.abs(Number(r.score) || 0), 0) / rows.length;
     }
 
-    // Compute per-detector max across ALL sources
-    var detMax = {};
-    detectors.forEach(function (det) {
-        var detRows = gRows.filter(function (r) { return r.detector === det; });
-        var mx = 0;
-        sources.forEach(function (src) {
-            var sr = detRows.filter(function (r) { return r.source === src; });
-            var c = avgScore(sr.filter(function (r) { return String(r.label) === '0'; }));
-            var s = avgScore(sr.filter(function (r) { return String(r.label) === '1'; }));
+    // per-detector max across all sources (for normalization)
+    const detMax = {};
+    detectors.forEach(det => {
+        const detRows = gRows.filter(r => r.detector === det);
+        let mx = 0;
+        sources.forEach(src => {
+            const sr = detRows.filter(r => r.source === src);
+            const c = avgScore(sr.filter(r => String(r.label) === '0'));
+            const s = avgScore(sr.filter(r => String(r.label) === '1'));
             if (c > mx) mx = c;
             if (s > mx) mx = s;
         });
         detMax[det] = mx || 1;
     });
 
-    sources.forEach(function (src) {
-        var container = document.getElementById(`gm-bars-${groupId}-${src}`);
+    sources.forEach(src => {
+        const container = document.getElementById(`gm-bars-${groupId}-${src}`);
         if (!container) return;
-        var srcRows = gRows.filter(function (r) { return r.source === src; });
+        const srcRows = gRows.filter(r => r.source === src);
         if (!srcRows.length) return;
 
-        var html = detectors.map(function (det) {
-            var rows = srcRows.filter(function (r) { return r.detector === det; });
-            var cs = avgScore(rows.filter(function (r) { return String(r.label) === '0'; }));
-            var ss = avgScore(rows.filter(function (r) { return String(r.label) === '1'; }));
-            var mx = detMax[det];
-            var cPct = Math.round((cs / mx) * 100);
-            var sPct = Math.round((ss / mx) * 100);
-            var bothZero = cs === 0 && ss === 0;
+        const html = detectors.map(det => {
+            const rows = srcRows.filter(r => r.detector === det);
+            const cs = avgScore(rows.filter(r => String(r.label) === '0'));
+            const ss = avgScore(rows.filter(r => String(r.label) === '1'));
+            const mx = detMax[det];
+            const cPct = Math.round((cs / mx) * 100);
+            const sPct = Math.round((ss / mx) * 100);
+            const bothZero = cs === 0 && ss === 0;
 
             return `<div class="gm-bar-row">
                 <div class="gm-bar-label">${escapeHtml(fmtDetector(det))}</div>
@@ -156,35 +152,33 @@ function drawGroupCharts(groupId, gRows) {
 }
 
 function buildCoversTab(data, runId) {
-    var covers = data.covers || [];
-    // Store quality rows for per-group access
+    const covers = data.covers || [];
     STATE._galData = { quality: toArray((data.metrics || {}).quality) };
 
     if (!covers.length) {
         return '<div class="empty-state"><h3>No cover manifest found</h3><p>This run has not exported grouped cover previews yet.</p></div>';
     }
 
-    var hasPredictions = data.has_results;
+    const hasPredictions = data.has_results;
 
-    var groups = covers.map(function (group) {
-        var cells = ['real', 'ml_a', 'ml_b'].map(function (source) {
-            var path = (group.sources || {})[source];
-            var label = source.replace('_', ' ');
+    const groups = covers.map(group => {
+        const cells = ['real', 'ml_a', 'ml_b'].map(source => {
+            const path = (group.sources || {})[source];
+            const label = source.replace('_', ' ');
             if (!path) {
                 return `<div class="source-cell">
                     <div class="source-label ${source}">${escapeHtml(label)}</div>
                     <div class="image-none">\u2014</div>
                 </div>`;
             }
-
-            var url = `/api/image?path=${encodeURIComponent(path)}`;
+            const url = `/api/image?path=${encodeURIComponent(path)}`;
             return `<div class="source-cell">
                 <div class="source-label ${source}">${escapeHtml(label)}</div>
                 <img class="cover-thumb" src="${escapeAttr(url)}" loading="lazy" alt="${escapeAttr(label)}" onclick="openLightbox('${escapeAttr(url)}')">
             </div>`;
         }).join('');
 
-        var metricsToggle = hasPredictions
+        const metricsToggle = hasPredictions
             ? `<button class="gm-toggle" onclick="toggleGroupMetrics('${escapeAttr(group.group_id)}', '${escapeAttr(runId)}')">
                   ${icon('analytics')} <span>Metrics</span>
                   <span class="material-symbols-outlined gm-arrow" id="gm-arrow-${escapeAttr(group.group_id)}">expand_more</span>

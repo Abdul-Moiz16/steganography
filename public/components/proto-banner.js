@@ -1,13 +1,10 @@
-/* Stego Explorer — <proto-banner> custom element
-   Usage: <proto-banner profile="prototype"></proto-banner>
-   Renders nothing if profile !== 'prototype'.                         */
-
+// renders nothing if profile !== 'prototype'
 class ProtoBanner extends HTMLElement {
     connectedCallback() {
-        var profile = this.getAttribute('profile') || '';
+        const profile = this.getAttribute('profile') || '';
         if (profile !== 'prototype') { this.remove(); return; }
 
-        var nGroups = (typeof PROFILE_META !== 'undefined' && PROFILE_META.prototype)
+        const nGroups = (typeof PROFILE_META !== 'undefined' && PROFILE_META.prototype)
             ? PROFILE_META.prototype.n_groups
             : 20;
 

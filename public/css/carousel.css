@@ -1,10 +1,4 @@
-/* ==========================================================================
-   Educational carousel (empty runs page)
-   Extracted from style.css
-   ========================================================================== */
-
-
-/* ── Educational carousel (empty runs page) ──────────────────────────────── */
+/* edu carousel for empty runs page */
 
 .edu-section {
     max-width: 860px;
@@ -137,7 +131,7 @@
 .edu-next { right: 10px; }
 
 
-/* ── Carousel light-mode overrides ── */
+/* light mode */
 
 html.light .edu-carousel { background: #fff; border-color: #e0e0e8; }
 html.light .edu-visual {

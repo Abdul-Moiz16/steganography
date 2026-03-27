@@ -1,10 +1,4 @@
-/* ==========================================================================
-   Documentation page styles
-   Extracted from style.css
-   ========================================================================== */
-
-
-/* ── Documentation page ──────────────────────────────────────────────────── */
+/* docs page */
 
 .docs-layout {
     display: grid;
@@ -69,7 +63,7 @@
 .docs-section { margin-bottom: 8px; transition: opacity 0.15s ease; }
 
 
-/* ── Docs search keyword highlighting ── */
+/* search highlighting */
 
 .docs-search-mark {
     background: rgba(255, 193, 7, 0.35);
@@ -86,7 +80,7 @@ html.light .docs-search-mark { background: rgba(255, 193, 7, 0.45); }
 html.light .docs-search-active { background: rgba(255, 152, 0, 0.5); }
 
 
-/* ── Docs search navigation widget ── */
+/* search nav */
 
 .search-nav {
     display: inline-flex;
@@ -257,8 +251,6 @@ html.light .docs-search-active { background: rgba(255, 152, 0, 0.5); }
 .docs-ref-list strong { color: var(--on-surface); font-family: monospace; }
 .docs-ref-list em { font-style: italic; }
 
-
-/* ── Docs light-mode overrides ── */
 
 html.light .docs-toc { background: #f5f5fb; border-right-color: #e0e0e8; }
 html.light .docs-toc-link:hover { background: rgba(0,0,0,0.04); }

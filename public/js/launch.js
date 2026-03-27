@@ -1,29 +1,27 @@
-/* Stego Explorer — Launch panel: pipeline configuration, system check, and run initiation */
-
 function openLaunchPanel() {
-    var overlay = document.getElementById('launch-drawer-overlay');
-    var drawer = document.getElementById('launch-drawer');
+    const overlay = document.getElementById('launch-drawer-overlay');
+    const drawer = document.getElementById('launch-drawer');
     if (overlay) overlay.classList.add('open');
     if (drawer) drawer.classList.add('open');
     renderLaunchDrawer();
 }
 
 function closeLaunchPanel() {
-    var overlay = document.getElementById('launch-drawer-overlay');
-    var drawer = document.getElementById('launch-drawer');
+    const overlay = document.getElementById('launch-drawer-overlay');
+    const drawer = document.getElementById('launch-drawer');
     if (overlay) overlay.classList.remove('open');
     if (drawer) drawer.classList.remove('open');
 }
 
 function renderLaunchDrawer() {
-    var el = document.getElementById('launch-drawer-body');
+    const el = document.getElementById('launch-drawer-body');
     if (!el) return;
-    var activeCount = getActiveJobs().length;
-    var curEngine  = STATE.lastEngine  || 'stub';
-    var curProfile = STATE.lastProfile || 'prototype';
+    const activeCount = getActiveJobs().length;
+    const curEngine  = STATE.lastEngine  || 'stub';
+    const curProfile = STATE.lastProfile || 'prototype';
 
     function engineOpt(value, label, sub) {
-        var checked = curEngine === value;
+        const checked = curEngine === value;
         return `<label class="lp-engine-opt${checked ? ' lp-engine-opt--checked' : ''}">
             <div class="lp-engine-opt-left">
                 <input type="radio" class="lp-engine-radio" name="launch-engine" value="${escapeAttr(value)}"${checked ? ' checked' : ''}>
@@ -34,7 +32,6 @@ function renderLaunchDrawer() {
     }
 
     el.innerHTML =
-        /* System check */
         `<div class="drawer-section">
             <div class="sc-row">
                 <div class="lp-field-label" style="margin-bottom:0">System Check</div>
@@ -83,46 +80,43 @@ function renderLaunchDrawer() {
             </button>
         </div>`;
 
-    /* wire up radio → state */
-    var radios = el.querySelectorAll('input[name="launch-engine"]');
-    radios.forEach(function(r) {
+    const radios = el.querySelectorAll('input[name="launch-engine"]');
+    radios.forEach(r => {
         r.addEventListener('change', function() {
             STATE.lastEngine = this.value;
-            el.querySelectorAll('.lp-engine-opt').forEach(function(opt) {
+            el.querySelectorAll('.lp-engine-opt').forEach(opt => {
                 opt.classList.toggle('lp-engine-opt--checked', opt.querySelector('input').value === r.value);
             });
         });
     });
-
     loadSystemCheck();
 }
 
 function loadSystemCheck() {
-    var panel = document.getElementById('sc-panel');
+    const panel = document.getElementById('sc-panel');
     if (!panel) return;
     panel.innerHTML = '<div class="sc-loading"><span class="loader sc-loader"></span> Checking…</div>';
-    api('/api/system/check').then(function(data) {
-        var panel = document.getElementById('sc-panel');
+    api('/api/system/check').then(data => {
+        const panel = document.getElementById('sc-panel');
         if (!panel) return;
         panel.innerHTML = renderSystemCheck(data);
-    }).catch(function() {
-        var panel = document.getElementById('sc-panel');
+    }).catch(() => {
+        const panel = document.getElementById('sc-panel');
         if (panel) panel.innerHTML = '<div class="sc-error">Could not reach server check endpoint.</div>';
     });
 }
 
 function renderSystemCheck(data) {
-    var pyOk = data.python_ok;
-    var pyBadge = pyOk
+    const pyOk = data.python_ok;
+    const pyBadge = pyOk
         ? `<span class="sc-badge sc-badge--ok">Python ${escapeHtml(data.python_version)}</span>`
         : `<span class="sc-badge sc-badge--err">Python ${escapeHtml(data.python_version)} (need ≥3.9)</span>`;
-
-    var core = data.packages.filter(function(p) { return p.required; });
-    var optional = data.packages.filter(function(p) { return !p.required; });
+    const core = data.packages.filter(p => p.required);
+    const optional = data.packages.filter(p => !p.required);
 
     function pkgRow(p) {
-        var icon = p.installed ? 'check_circle' : 'cancel';
-        var cls  = p.installed ? 'sc-pkg--ok' : (p.required ? 'sc-pkg--err' : 'sc-pkg--warn');
+        const icon = p.installed ? 'check_circle' : 'cancel';
+        const cls  = p.installed ? 'sc-pkg--ok' : (p.required ? 'sc-pkg--err' : 'sc-pkg--warn');
         return `<div class="sc-pkg ${cls}">
             <span class="material-symbols-outlined sc-pkg-icon">${icon}</span>
             <span class="sc-pkg-name">${escapeHtml(p.name)}</span>
@@ -142,60 +136,58 @@ function renderSystemCheck(data) {
 }
 
 function toggleLpDropdown() {
-    var menu = document.getElementById('lp-profile-menu');
-    var dropdown = document.getElementById('lp-profile-dropdown');
+    const menu = document.getElementById('lp-profile-menu');
+    const dropdown = document.getElementById('lp-profile-dropdown');
     if (!menu || !dropdown) return;
-    var open = dropdown.classList.toggle('lp-dropdown--open');
+    const open = dropdown.classList.toggle('lp-dropdown--open');
     if (open) {
-        var close = function(e) {
+        const close = e => {
             if (!dropdown.contains(e.target)) {
                 dropdown.classList.remove('lp-dropdown--open');
                 document.removeEventListener('click', close);
             }
         };
-        setTimeout(function() { document.addEventListener('click', close); }, 0);
+        setTimeout(() => document.addEventListener('click', close), 0);
     }
 }
 
 function selectLpProfile(value, label, optEl) {
-    var input = document.getElementById('launch-profile');
-    var labelEl = document.getElementById('lp-profile-label');
-    var dropdown = document.getElementById('lp-profile-dropdown');
+    const input = document.getElementById('launch-profile');
+    const labelEl = document.getElementById('lp-profile-label');
+    const dropdown = document.getElementById('lp-profile-dropdown');
     if (input) input.value = value;
     if (labelEl) labelEl.textContent = label;
     if (dropdown) dropdown.classList.remove('lp-dropdown--open');
-    /* update check marks */
-    document.querySelectorAll('#lp-profile-menu .lp-dropdown-opt').forEach(function(opt) {
+    document.querySelectorAll('#lp-profile-menu .lp-dropdown-opt').forEach(opt => {
         opt.classList.toggle('lp-dropdown-opt--selected', opt === optEl);
     });
     STATE.lastProfile = value;
 }
 
 function launchRun() {
-    var profile = document.getElementById('launch-profile').value;
-    var engineEl = document.querySelector('input[name="launch-engine"]:checked');
-    var engine = engineEl ? engineEl.value : 'stub';
+    const profile = document.getElementById('launch-profile').value;
+    const engineEl = document.querySelector('input[name="launch-engine"]:checked');
+    const engine = engineEl ? engineEl.value : 'stub';
     STATE.lastProfile = profile;
     STATE.lastEngine = engine;
 
-    var btn = document.getElementById('launch-btn');
+    const btn = document.getElementById('launch-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loader lp-loader"></span> Starting…'; }
 
     api('/api/pipeline/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ profile: profile, engine: engine })
-    }).then(function (res) {
+    }).then(res => {
         if (!res.job_id) throw new Error('No job id returned by backend');
-        var job = createJob(res.job_id, profile, engine);
-        // Backend pre-assigns the run_id — use it immediately for direct navigation
+        const job = createJob(res.job_id, profile, engine);
         if (res.run_id) job.runId = res.run_id;
         closeLaunchPanel();
         attachStream(res.job_id);
         go('run-detail', res.run_id || res.job_id);
-    }).catch(function (error) {
+    }).catch(error => {
         if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-symbols-outlined">bolt</span> START RUN'; }
-        var panel = document.getElementById('sc-panel');
+        const panel = document.getElementById('sc-panel');
         if (panel) panel.innerHTML = `<div class="sc-error">Launch failed: ${escapeHtml(error.message)}</div>`;
     });
 }

@@ -1,11 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   Gallery
-   Covers grid, group metrics toggle & panel, per-detector horizontal bars,
-   light-mode overrides, responsive
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-
-/* ── Covers grid ──────────────────────────────────────────────────────────── */
+/* covers grid */
 
 .covers-grid {
     display: flex;
@@ -88,7 +81,7 @@
 .cover-thumb:hover { opacity: 0.85; transform: scale(1.02); }
 
 
-/* ── Group metrics toggle & panel ──────────────────────── */
+/* group metrics */
 
 .gm-toggle {
     display: inline-flex;
@@ -201,8 +194,6 @@
 .gm-val--sep { color: var(--primary); font-weight: 600; }
 
 
-/* ── Per-detector horizontal bars ── */
-
 .gm-bars { margin-top: 6px; }
 
 .gm-bar-row {
@@ -285,8 +276,6 @@
 html.light .gm-bar-row + .gm-bar-row { border-top-color: #e5e7eb; }
 
 
-/* ── Light mode overrides ─────────────────────────────────────────────────── */
-
 html.light .gm-toggle {
     background: rgba(37, 99, 235, 0.06);
     border-color: rgba(37, 99, 235, 0.15);
@@ -302,8 +291,6 @@ html.light .gm-panel {
 
 html.light .gm-table th { border-bottom-color: #e5e7eb; }
 
-
-/* ── Responsive ───────────────────────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
     .gm-sources-grid { grid-template-columns: 1fr; }

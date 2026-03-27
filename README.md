@@ -71,13 +71,13 @@ significant but validate pipeline functionality and LSB integration.
 
 ## Research Questions
 
-| ID  | Type         | Question |
-|-----|--------------|----------|
+| ID  | Type         | Question                                                          |
+| --- | ------------ | ----------------------------------------------------------------- |
 | RQ1 | Primary      | Does carrier source (real vs. ML-generated) affect detectability? |
-| RQ2 | Primary      | Within ML carriers, does the generator (SDXL vs. FLUX.1) matter? |
-| RQ3 | Exploratory  | Does payload size change the detectability gap between sources? |
-| RQ4 | Exploratory  | Do spatial (LSB+PNG) and frequency (DCT+JPEG) branches differ? |
-| RQ5 | Verification | Does AES-256-CBC encryption of the payload affect detectability? |
+| RQ2 | Primary      | Within ML carriers, does the generator (SDXL vs. FLUX.1) matter?  |
+| RQ3 | Exploratory  | Does payload size change the detectability gap between sources?   |
+| RQ4 | Exploratory  | Do spatial (LSB+PNG) and frequency (DCT+JPEG) branches differ?    |
+| RQ5 | Verification | Does AES-256-CBC encryption of the payload affect detectability?  |
 
 ## Experimental Design
 
@@ -92,23 +92,23 @@ significant but validate pipeline functionality and LSB integration.
 
 ### Full design scale
 
-| Quantity | Count |
-|----------|-------|
-| Groups | 500 (300 COCO + 200 Flickr30k) |
-| Covers per group | 3 (real + ML-A + ML-B) |
-| Total covers | 1,500 |
+| Quantity                 | Count                                      |
+| ------------------------ | ------------------------------------------ |
+| Groups                   | 500 (300 COCO + 200 Flickr30k)             |
+| Covers per group         | 3 (real + ML-A + ML-B)                     |
+| Total covers             | 1,500                                      |
 | Stego variants per cover | 12 (2 methods × 3 payloads × 2 encryption) |
-| Total stego images | 18,000 |
+| Total stego images       | 18,000                                     |
 
 ## Prototype vs Full Design
 
-| Aspect | Prototype | Full Design |
-|--------|-----------|-------------|
-| Groups | 20 | 500 |
-| Methods | LSB only | LSB + DCT |
-| Payload levels | Low only | Low + Medium + High |
-| Detectors | 3 (spatial) | 5 (spatial + frequency) |
-| Purpose | Validate pipeline end-to-end | Publishable results |
+| Aspect         | Prototype                    | Full Design             |
+| -------------- | ---------------------------- | ----------------------- |
+| Groups         | 20                           | 500                     |
+| Methods        | LSB only                     | LSB + DCT               |
+| Payload levels | Low only                     | Low + Medium + High     |
+| Detectors      | 3 (spatial)                  | 5 (spatial + frequency) |
+| Purpose        | Validate pipeline end-to-end | Publishable results     |
 
 ## Pipeline Profiles
 
@@ -210,14 +210,46 @@ discovered PixArt-α is unavailable on the HuggingFace Inference API and its
 weights download extremely slowly. We replaced it with **FLUX.1-schnell**.
 
 This preserves the experimental design because both are Diffusion Transformer
-(DiT) architectures — the property that matters for RQ2 (contrasting UNet-based
+(DiT) architectures, the property that matters for RQ2 (contrasting UNet-based
 SDXL against a transformer-based generator). FLUX.1-schnell is also widely
 adopted, API-accessible, and actively maintained.
 
-## Notes for Teammates
+## AI Disclosure
 
-- The pipeline uses classical statistical detectors only (no deep learning).
-- The default DCT branch uses JSteg-style DCT-LSB, not QIM.
-- Covers are stored as both PNG (spatial) and JPEG Q=95 (frequency).
-- If implementing new methods, follow the reference named in each function's docstring.
-- Run `python -m pytest tests/` to execute the test suite.
+> **Note:** Claude Sonnet 4.6 (Anthropic) was used to convert the project report
+> from latex into the HTML document served by the explorer
+> (`public/docs-content.html`). The pipeline, detectors, evaluation logic, GUI and
+> all research code are human-written. The work was divided between teammates.
+
+## References
+
+A complete list of references can be found in the Project Proposal (`proposal_updated_3.pdf`).
+All the papers we reviewed that we were able to download for later review (i.e. not behind paywalls or download restrictions), are available at `docs/references`
+
+### Steganography & Steganalysis
+
+- J. Fridrich, M. Goljan, and R. Du, "Reliable detection of LSB steganography in color and grayscale images," _Proc. ACM Workshop on Multimedia and Security_, 2001. (RS Analysis)
+- A. Westfeld and A. Pfitzmann, "Attacks on steganographic systems," _Proc. Information Hiding_, LNCS 1768, Springer, 2000. (Chi-Square Attack)
+- S. Dumitrescu, X. Wu, and Z. Wang, "Detection of LSB steganography via sample pair analysis," _IEEE Trans. Signal Processing_, vol. 51, no. 7, pp. 1995–2007, 2003. (Sample Pairs)
+- J. Fridrich, M. Goljan, and D. Hogea, "Steganalysis of JPEG images: Breaking the F5 algorithm," _Proc. Information Hiding_, LNCS 2578, Springer, 2003. (Calibration Chi-Square)
+- D. Upham, "JSteg," 1993. (DCT-LSB / JSteg embedding method)
+
+### Image Generation Models
+
+- Stability AI, "SDXL 1.0 — Stable Diffusion XL," 2023. (ML-A carrier source)
+- Black Forest Labs, "FLUX.1-schnell," 2024. (ML-B carrier source, replacing PixArt-α)
+
+### Web UI
+
+- Google, "Material Design 3 — Design tokens and color system," https://m3.material.io/. (M3 design system used for the explorer UI)
+- Google Fonts, "Material Symbols Outlined," https://fonts.google.com/icons. (Icon set)
+- Google Fonts, "Inter typeface," https://fonts.google.com/specimen/Inter. (Typography)
+
+### Datasets
+
+- T.-Y. Lin et al., "Microsoft COCO: Common Objects in Context," _Proc. ECCV_, Springer, 2014. (Real carrier images — COCO subset)
+- P. Young, A. Lai, M. Hodosh, and J. Hockenmaier, "From image descriptions to visual denotations," _TACL_, vol. 2, pp. 67–78, 2014. (Real carrier images — Flickr30k subset)
+
+### Cryptography
+
+- NIST, "Advanced Encryption Standard (AES)," FIPS PUB 197, 2001. (AES-256-CBC payload encryption)

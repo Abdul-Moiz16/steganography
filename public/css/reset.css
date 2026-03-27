@@ -1,7 +1,3 @@
-/* Stego Explorer — Reset, base body styles, scrollbar, and global defaults */
-
-/* ── Reset ────────────────────────────────────────────────────────────────── */
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -48,8 +44,7 @@ body::after {
 ::-webkit-scrollbar-thumb { background: var(--outline-var); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--outline); }
 
-/* Custom elements: wrapper-only elements use display:contents to be layout-transparent.
-   bento-card and summary-card need their own box model (background, padding, border) so they must NOT use contents. */
+/* web components display */
 proto-banner, edu-carousel, terminal-panel { display: contents; }
 status-pill { display: inline-flex; }
 

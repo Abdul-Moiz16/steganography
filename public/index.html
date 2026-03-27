@@ -8,25 +8,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    <!-- Stylesheets (split from style.css) -->
-    <link rel="stylesheet" href="/public/css/variables.css?v=11">
-    <link rel="stylesheet" href="/public/css/reset.css?v=11">
-    <link rel="stylesheet" href="/public/css/topbar.css?v=11">
-    <link rel="stylesheet" href="/public/css/sidebar.css?v=11">
-    <link rel="stylesheet" href="/public/css/layout.css?v=11">
-    <link rel="stylesheet" href="/public/css/buttons.css?v=11">
-    <link rel="stylesheet" href="/public/css/cards.css?v=11">
-    <link rel="stylesheet" href="/public/css/table.css?v=11">
-    <link rel="stylesheet" href="/public/css/results.css?v=11">
-    <link rel="stylesheet" href="/public/css/gallery.css?v=11">
-    <link rel="stylesheet" href="/public/css/conditions.css?v=11">
-    <link rel="stylesheet" href="/public/css/launch.css?v=11">
-    <link rel="stylesheet" href="/public/css/docs.css?v=11">
-    <link rel="stylesheet" href="/public/css/carousel.css?v=11">
-    <link rel="stylesheet" href="/public/css/proposal.css?v=11">
-    <link rel="stylesheet" href="/public/css/dialogs.css?v=11">
-    <link rel="stylesheet" href="/public/css/animations.css?v=11">
-    <link rel="stylesheet" href="/public/css/run-detail.css?v=11">
+    <link rel="stylesheet" href="/public/css/variables.css">
+    <link rel="stylesheet" href="/public/css/reset.css">
+    <link rel="stylesheet" href="/public/css/topbar.css">
+    <link rel="stylesheet" href="/public/css/sidebar.css">
+    <link rel="stylesheet" href="/public/css/layout.css">
+    <link rel="stylesheet" href="/public/css/buttons.css">
+    <link rel="stylesheet" href="/public/css/cards.css">
+    <link rel="stylesheet" href="/public/css/table.css">
+    <link rel="stylesheet" href="/public/css/results.css">
+    <link rel="stylesheet" href="/public/css/gallery.css">
+    <link rel="stylesheet" href="/public/css/conditions.css">
+    <link rel="stylesheet" href="/public/css/launch.css">
+    <link rel="stylesheet" href="/public/css/docs.css">
+    <link rel="stylesheet" href="/public/css/carousel.css">
+    <link rel="stylesheet" href="/public/css/proposal.css">
+    <link rel="stylesheet" href="/public/css/dialogs.css">
+    <link rel="stylesheet" href="/public/css/animations.css">
+    <link rel="stylesheet" href="/public/css/run-detail.css">
 </head>
 <body>
     <!-- Top nav -->
@@ -56,7 +55,6 @@
         </div>
     </nav>
 
-    <!-- Always-visible sidebar -->
     <aside class="sidebar is-hidden" id="sidebar">
         <div class="sidebar-section">
             <div class="sidebar-run-label-row">
@@ -105,7 +103,6 @@
     <!-- Main content -->
     <main class="content" id="main"></main>
 
-    <!-- Floating action button (mobile) -->
     <button class="fab" id="fab" onclick="go('launch')" title="New Run">
         <span class="material-symbols-outlined">add</span>
     </button>
@@ -125,7 +122,6 @@
         <div class="launch-drawer-body" id="launch-drawer-body"></div>
     </aside>
 
-    <!-- Lightbox -->
     <div class="lightbox" id="lightbox" onclick="closeLightbox()">
         <span class="lightbox-close">&times;</span>
         <img id="lightbox-img" src="" alt="">
@@ -143,34 +139,30 @@
         </div>
     </div>
 
-    <!-- Chart helpers (Canvas 2D) -->
-    <script src="/public/charts.js?v=11"></script>
+    <script src="/public/charts.js"></script>
 
-    <!-- Application scripts (split from app.js, load order matters) -->
-    <script src="/public/js/state.js?v=11"></script>
-    <script src="/public/js/utils.js?v=11"></script>
-
-    <!-- Web Components (loaded after state.js + utils.js which they depend on) -->
-    <script src="/public/components/status-pill.js?v=11"></script>
-    <script src="/public/components/bento-card.js?v=11"></script>
-    <script src="/public/components/summary-card.js?v=11"></script>
-    <script src="/public/components/proto-banner.js?v=11"></script>
-    <script src="/public/components/edu-carousel.js?v=11"></script>
-    <script src="/public/components/terminal-panel.js?v=11"></script>
-    <script src="/public/js/sidebar.js?v=11"></script>
-    <script src="/public/js/search.js?v=11"></script>
-    <script src="/public/js/router.js?v=11"></script>
-    <script src="/public/js/docs.js?v=11"></script>
-    <script src="/public/js/proposal.js?v=11"></script>
-<script src="/public/js/runs-list.js?v=11"></script>
-    <script src="/public/js/results.js?v=11"></script>
-    <script src="/public/js/run-detail.js?v=11"></script>
-    <script src="/public/js/gallery.js?v=11"></script>
-    <script src="/public/js/conditions.js?v=11"></script>
-    <script src="/public/js/launch.js?v=11"></script>
-    <script src="/public/js/streaming.js?v=11"></script>
-    <script src="/public/js/dialogs.js?v=11"></script>
-    <script src="/public/js/theme.js?v=11"></script>
-    <script src="/public/js/init.js?v=11"></script>
+    <script src="/public/js/state.js"></script>
+    <script src="/public/js/utils.js"></script>
+    <script src="/public/components/status-pill.js"></script>
+    <script src="/public/components/bento-card.js"></script>
+    <script src="/public/components/summary-card.js"></script>
+    <script src="/public/components/proto-banner.js"></script>
+    <script src="/public/components/edu-carousel.js"></script>
+    <script src="/public/components/terminal-panel.js"></script>
+    <script src="/public/js/sidebar.js"></script>
+    <script src="/public/js/search.js"></script>
+    <script src="/public/js/router.js"></script>
+    <script src="/public/js/docs.js"></script>
+    <script src="/public/js/proposal.js"></script>
+<script src="/public/js/runs-list.js"></script>
+    <script src="/public/js/results.js"></script>
+    <script src="/public/js/run-detail.js"></script>
+    <script src="/public/js/gallery.js"></script>
+    <script src="/public/js/conditions.js"></script>
+    <script src="/public/js/launch.js"></script>
+    <script src="/public/js/streaming.js"></script>
+    <script src="/public/js/dialogs.js"></script>
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/init.js"></script>
 </body>
 </html>

@@ -1,12 +1,10 @@
-/* Stego Explorer — Run detail view: header, summary strip, terminal, and overview tab */
-
 async function renderRunDetail(el, runId, token) {
     try {
-        var data = await api(`/api/runs/${encodeURIComponent(runId)}/detail`);
+        const data = await api(`/api/runs/${encodeURIComponent(runId)}/detail`);
         if (token !== STATE.renderToken) return;
-        var isThisRunActive = isRunActive(runId) || !!(data && data.is_active);
-        var isThisRunKilled = !isThisRunActive && !!(data && data.is_killed || (getJobForRun(runId) || {}).killed);
-        var jobForRun = getJobForRun(runId);
+        const isThisRunActive = isRunActive(runId) || !!(data && data.is_active);
+        const isThisRunKilled = !isThisRunActive && !!(data && data.is_killed || (getJobForRun(runId) || {}).killed);
+        const jobForRun = getJobForRun(runId);
 
         if (!data || !Object.keys(data).length) {
             if (!isThisRunActive) {
@@ -14,7 +12,7 @@ async function renderRunDetail(el, runId, token) {
                 el.innerHTML = renderError('The selected run could not be found.', 'Back to Runs', 'go(\'runs\')');
                 return;
             }
-            /* Run just started — show terminal-only initializing state */
+            // run just started -- show terminal-only initializing state
             hideSidebar();
             el.innerHTML =
                 `<div class="breadcrumb">` +
@@ -34,11 +32,11 @@ async function renderRunDetail(el, runId, token) {
             return;
         }
 
-        var cfg = data.config || {};
-        var detailStats = summarizeRunDetail(data);
+        const cfg = data.config || {};
+        const detailStats = summarizeRunDetail(data);
         showSidebar(runId, STATE.tab);
 
-        var body = '';
+        let body = '';
         if (STATE.tab === 'overview') body = buildOverviewTab(cfg, detailStats, runId);
         if (STATE.tab === 'results') body = buildResultsTab(data, detailStats);
         if (STATE.tab === 'covers') body = buildCoversTab(data, runId);
@@ -59,15 +57,15 @@ async function renderRunDetail(el, runId, token) {
             `</div>` +
             (getJobForRun(runId) ? buildTerminalSection(runId) : (isThisRunKilled ? buildKilledBanner(runId) : '')) +
             (!detailStats.detectorCount && !detailStats.coverGroups
-                ? ''  /* suppress stat cards when there is no data to show */
+                ? ''
                 : buildSummaryStrip(cfg, detailStats, data)) +
             ((isThisRunActive || isThisRunKilled) && !data.has_results && !detailStats.coverGroups
-                ? ''  /* suppress empty tabs while pipeline is still running or was killed early */
+                ? ''
                 : buildPrototypeBanner(cfg) + `<div id="tab-body">${body}</div>`);
 
         if (isThisRunActive && jobForRun) attachStream(jobForRun.jobId);
         if (STATE.tab === 'results' && data.has_results) {
-            requestAnimationFrame(function () { drawAllCharts(data); });
+            requestAnimationFrame(() => { drawAllCharts(data); });
         }
     } catch (error) {
         if (token !== STATE.renderToken) return;
@@ -85,23 +83,21 @@ function buildKilledBanner(runId) {
 }
 
 function toggleRunTerminal() {
-    var panel = document.querySelector('terminal-panel');
+    const panel = document.querySelector('terminal-panel');
     if (panel) panel.toggle();
 }
 
 function summarizeRunDetail(data) {
-    var detectorRows = toArray((data.metrics || {}).detector);
-    var covers = toArray(data.covers);
-    var bestRow = null;
-    var sampleTotal = 0;
-
-    detectorRows.forEach(function (row) {
+    const detectorRows = toArray((data.metrics || {}).detector);
+    const covers = toArray(data.covers);
+    let bestRow = null;
+    let sampleTotal = 0;
+    detectorRows.forEach(row => {
         sampleTotal += Number(row.n_samples || 0);
         if (row.roc_auc != null && (!bestRow || Number(row.roc_auc) > Number(bestRow.roc_auc))) {
             bestRow = row;
         }
     });
-
     return {
         bestAuc: bestRow ? Number(bestRow.roc_auc) : null,
         bestDetectorLabel: bestRow ? bestRow.detector : 'No detector metrics yet',
@@ -114,16 +110,15 @@ function summarizeRunDetail(data) {
 }
 
 function buildRunHeader(cfg, detailStats, runId) {
-    var profileFromId = runId ? (Object.keys(PROFILE_META).find(function(k) { return runId.startsWith(k); }) || null) : null;
-    var profile = cfg.profile || profileFromId || 'unconfigured profile';
-    var meta = PROFILE_META[profile] || null;
-    var methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta ? meta.active_methods : []);
-    var payloads = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta ? meta.active_payload_levels : []);
-    var nGroups = cfg.n_groups != null ? cfg.n_groups : (meta ? meta.n_groups : null);
-    var groups = nGroups != null ? nGroups + ' groups' : 'group count unavailable';
+    const profileFromId = runId ? (Object.keys(PROFILE_META).find(k => runId.startsWith(k)) || null) : null;
+    const profile = cfg.profile || profileFromId || 'unconfigured profile';
+    const meta = PROFILE_META[profile] || null;
+    const methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta ? meta.active_methods : []);
+    const payloads = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta ? meta.active_payload_levels : []);
+    const nGroups = cfg.n_groups != null ? cfg.n_groups : (meta ? meta.n_groups : null);
+    const groups = nGroups != null ? nGroups + ' groups' : 'group count unavailable';
     return [
-        profile,
-        groups,
+        profile, groups,
         methods.length ? methods.join(', ') : 'no methods listed',
         payloads.length ? 'payloads ' + payloads.join(', ') : 'no payload levels listed',
         detailStats.hasResults ? 'metrics ready' : 'metrics pending'
@@ -131,34 +126,32 @@ function buildRunHeader(cfg, detailStats, runId) {
 }
 
 function buildSummaryStrip(cfg, detailStats, data) {
-    var profile = cfg.profile || 'unknown';
-    var meta = PROFILE_META[profile] || {};
-    var methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta.active_methods || []);
-    var payloads = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta.active_payload_levels || []);
-    var groups = cfg.n_groups != null ? Number(cfg.n_groups) : (meta.n_groups || 0);
-    var isProto = profile === 'prototype';
+    const profile = cfg.profile || 'unknown';
+    const meta = PROFILE_META[profile] || {};
+    const methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta.active_methods || []);
+    const payloads = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta.active_payload_levels || []);
+    const groups = cfg.n_groups != null ? Number(cfg.n_groups) : (meta.n_groups || 0);
+    const isProto = profile === 'prototype';
 
-    // Card 1: Experimental profile
-    var profileLabel = isProto ? 'Horizontal Prototype' : 'Full Factorial Design';
-    var profileIcon = isProto ? 'science' : 'experiment';
-    var designDesc = methods.join(' + ').toUpperCase() + ' \u00b7 ' + payloads.length + ' payload level' + (payloads.length !== 1 ? 's' : '') + ' \u00b7 ' + groups + ' groups';
+    const profileLabel = isProto ? 'Horizontal Prototype' : 'Full Factorial Design';
+    const profileIcon = isProto ? 'science' : 'experiment';
+    const designDesc = methods.join(' + ').toUpperCase() + ' \u00b7 ' + payloads.length + ' payload level' + (payloads.length !== 1 ? 's' : '') + ' \u00b7 ' + groups + ' groups';
 
-    // Card 2: Coverage
-    var nSources = detailStats.coverGroups ? 3 : 0;
-    var nDetectors = detailStats.detectorCount || 0;
-    var coverageDesc = nSources + ' sources \u00b7 ' + nDetectors + ' detectors \u00b7 ' + (methods.length * payloads.length * 2) + ' conditions';
+    const nSources = detailStats.coverGroups ? 3 : 0;
+    const nDetectors = detailStats.detectorCount || 0;
+    const coverageDesc = nSources + ' sources \u00b7 ' + nDetectors + ' detectors \u00b7 ' + (methods.length * payloads.length * 2) + ' conditions';
 
-    // Card 3: Source Effect (RQ1 — core finding)
-    var sourceRows = toArray((data && data.metrics || {}).source);
-    var realRows = sourceRows.filter(function (r) { return r.source === 'real' && r.roc_auc && !isNaN(Number(r.roc_auc)); });
-    var mlRows = sourceRows.filter(function (r) { return r.source !== 'real' && r.roc_auc && !isNaN(Number(r.roc_auc)); });
-    var realAvg = realRows.length ? realRows.reduce(function (s, r) { return s + Number(r.roc_auc); }, 0) / realRows.length : null;
-    var mlAvg = mlRows.length ? mlRows.reduce(function (s, r) { return s + Number(r.roc_auc); }, 0) / mlRows.length : null;
-    var hasDelta = realAvg != null && mlAvg != null;
-    var delta = hasDelta ? mlAvg - realAvg : null;
-    var deltaStr = hasDelta ? (delta >= 0 ? '+' : '') + delta.toFixed(3) : '\u2014';
-    var deltaCls = hasDelta ? (Math.abs(delta) < 0.01 ? 'sc2-delta--neutral' : (delta > 0 ? 'sc2-delta--pos' : 'sc2-delta--neg')) : '';
-    var sourceDesc = hasDelta
+    // source effect (RQ1)
+    const sourceRows = toArray((data && data.metrics || {}).source);
+    const realRows = sourceRows.filter(r => r.source === 'real' && r.roc_auc && !isNaN(Number(r.roc_auc)));
+    const mlRows = sourceRows.filter(r => r.source !== 'real' && r.roc_auc && !isNaN(Number(r.roc_auc)));
+    const realAvg = realRows.length ? realRows.reduce((s, r) => s + Number(r.roc_auc), 0) / realRows.length : null;
+    const mlAvg = mlRows.length ? mlRows.reduce((s, r) => s + Number(r.roc_auc), 0) / mlRows.length : null;
+    const hasDelta = realAvg != null && mlAvg != null;
+    const delta = hasDelta ? mlAvg - realAvg : null;
+    const deltaStr = hasDelta ? (delta >= 0 ? '+' : '') + delta.toFixed(3) : '\u2014';
+    const deltaCls = hasDelta ? (Math.abs(delta) < 0.01 ? 'sc2-delta--neutral' : (delta > 0 ? 'sc2-delta--pos' : 'sc2-delta--neg')) : '';
+    const sourceDesc = hasDelta
         ? `Real ${realAvg.toFixed(3)} vs ML ${mlAvg.toFixed(3)}`
         : 'Awaiting source metrics';
 
@@ -170,20 +163,18 @@ function buildSummaryStrip(cfg, detailStats, data) {
 }
 
 function buildOverviewTab(cfg, detailStats, runId) {
-    var profileFromId = runId ? (Object.keys(PROFILE_META).find(function(k) { return runId.startsWith(k); }) || null) : null;
-    var profile = cfg.profile || profileFromId || null;
-    var meta = PROFILE_META[profile] || null;
-    var groups = cfg.n_groups != null ? Number(cfg.n_groups) : (meta ? meta.n_groups : 0);
-    var methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta ? meta.active_methods : []);
-    var payloads = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta ? meta.active_payload_levels : []);
-    var conditionCount = methods.length * payloads.length * 2;
-    var fillRates = Object.keys(cfg.payload_fill_rates || {}).length
-        ? Object.keys(cfg.payload_fill_rates).map(function (key) {
-            return key + '=' + cfg.payload_fill_rates[key];
-        }).join(', ')
+    const profileFromId = runId ? (Object.keys(PROFILE_META).find(k => runId.startsWith(k)) || null) : null;
+    const profile = cfg.profile || profileFromId || null;
+    const meta = PROFILE_META[profile] || null;
+    const groups = cfg.n_groups != null ? Number(cfg.n_groups) : (meta ? meta.n_groups : 0);
+    const methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta ? meta.active_methods : []);
+    const payloads = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta ? meta.active_payload_levels : []);
+    const conditionCount = methods.length * payloads.length * 2;
+    const fillRates = Object.keys(cfg.payload_fill_rates || {}).length
+        ? Object.keys(cfg.payload_fill_rates).map(key => key + '=' + cfg.payload_fill_rates[key]).join(', ')
         : '\u2014';
 
-    var rows = [
+    const rows = [
         ['Profile', profile || '\u2014'],
         ['Groups', groups || '\u2014'],
         ['Methods', methods.length ? methods.join(', ') : '\u2014'],
@@ -194,9 +185,7 @@ function buildOverviewTab(cfg, detailStats, runId) {
         ['Cover seed', cfg.cover_seed != null ? cfg.cover_seed : '\u2014'],
         ['Payload seed', cfg.payload_seed != null ? cfg.payload_seed : '\u2014'],
         ['Timestamp', cfg.timestamp || '\u2014']
-    ].map(function (pair) {
-        return `<tr><td>${escapeHtml(pair[0])}</td><td>${escapeHtml(pair[1])}</td></tr>`;
-    }).join('');
+    ].map(pair => `<tr><td>${escapeHtml(pair[0])}</td><td>${escapeHtml(pair[1])}</td></tr>`).join('');
 
     return (
         `<div class="detail-grid">` +

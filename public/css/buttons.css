@@ -1,7 +1,3 @@
-/* Stego Explorer — Buttons and floating action button (FAB) */
-
-/* ── Buttons ──────────────────────────────────────────────────────────────── */
-
 .btn {
     display: inline-flex;
     align-items: center;
@@ -68,7 +64,7 @@
 .btn-icon:hover { background: rgba(238, 125, 119, 0.1); color: var(--error); }
 
 
-/* ── FAB ──────────────────────────────────────────────────────────────────── */
+/* fab */
 
 .fab {
     display: none;
