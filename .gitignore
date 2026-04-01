@@ -13,19 +13,6 @@ venv/
 # macOS metadata
 .DS_Store
 
-# Downloaded reference artifacts
-/docs/references/downloaded/files/
-
-# Local data assets
-/data/raw/
-/data/covers/**/*.png
-/data/covers/**/*.jpg
-/data/covers/**/*.jpeg
-/data/covers/**/*.webp
-/data/covers/**/*.bmp
-/data/covers/**/*.tif
-/data/covers/**/*.tiff
-
 # Generated model weights
 /models
 
@@ -34,8 +21,6 @@ venv/
 
 
 # Per-run cover image copies (regenerable from pool)
-runs/**/covers/**/*.png
-runs/**/covers/**/*.jpg
 
 # Test output artifacts
 tests/output/
