@@ -44,7 +44,7 @@ def grayscale_std(image: Image.Image) -> float:
     -------
     Standard deviation of pixel values.
     """
-    raise NotImplementedError("Grayscale std is not implemented yet.")
+    return float(ImageStat.Stat(image.convert("L")).stddev[0])
 
 def is_saturated(image: Image.Image, *, low: float = 10.0, high: float = 245.0) -> bool:
     """Check whether the image is saturated (near-black or near-white).
@@ -73,7 +73,7 @@ def is_near_uniform(image: Image.Image, *, min_std: float = 5.0) -> bool:
     -------
     True if the pixel standard deviation is below *min_std*.
     """
-    raise NotImplementedError("Near-uniform check is not implemented yet.")
+    return grayscale_std(image)<min_std
 
 def qc_pass(image: Image.Image) -> bool:
     """Run all grayscale quality-control checks.
@@ -86,4 +86,4 @@ def qc_pass(image: Image.Image) -> bool:
     -------
     True if the image passes all checks (not saturated, not near-uniform).
     """
-    raise NotImplementedError("QC pass check is not implemented yet.")
+    return not is_saturated(image) and not is_near_uniform(image)
