@@ -12,7 +12,9 @@ window.addEventListener('beforeunload', () => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
-    render();
+    const page = new URLSearchParams(window.location.search).get('page');
+    if (page) go(page);
+    else render();
     const syncSource = new EventSource('/api/events');
     syncSource.addEventListener('refresh', () => {
         if (STATE.page === 'runs') render();
