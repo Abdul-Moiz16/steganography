@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.toolbox.encode import _get_extension
+from src.detection.chi_square_spatial import chi_square_spatial_score
 
 
 @dataclass
@@ -26,7 +27,15 @@ def analyze(image_bytes: bytes,filename: str) -> AnalyzeResult:
 
 def _analyze_png(image_bytes: bytes) -> AnalyzeResult:
     # create a AnalyzeResult object with all the scores for the corresponding embedding method
-    raise NotImplementedError("to be done")
+    img = Image.open(io.BytesIO(image_bytes))
+
+    #Run through test
+    chi_score = chi_square_spatial_score(img)
+
+    #Save the score
+    score_data = DetectorScore(detector="Chi-Square (Spatial)", score=stego_score)
+    
+    return AnalyzeResult(scores=[score_data], format="png")
 
 
 def _analyze_jpeg(image_bytes: bytes) -> AnalyzeResult:
