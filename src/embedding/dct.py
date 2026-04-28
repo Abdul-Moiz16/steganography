@@ -5,7 +5,17 @@ from __future__ import annotations
 import os
 import tempfile
 import numpy as np
-import jpegio as jio
+
+
+def _load_jpegio():
+    try:
+        import jpegio as jio
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "DCT embedding requires the optional 'jpegio' dependency. "
+            "Install it before running DCT embedding or decoding."
+        ) from exc
+    return jio
 
 def embed_dct_lsb_jpeg(
     cover_jpeg_bytes: bytes,
@@ -51,6 +61,7 @@ def embed_dct_lsb_jpeg(
     Output:
     - Encoded JPEG bytes for the stego image.
     """
+    jio = _load_jpegio()
     with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_in:
         tmp_in.write(cover_jpeg_bytes)
         tmp_in_path = tmp_in.name
@@ -108,6 +119,7 @@ def decode_dct_lsb_jpeg(
     payload_length_bytes: int,
     fill_rate: float,
 ) -> bytes:
+    jio = _load_jpegio()
     with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_in:
         tmp_in.write(stego_jpeg_bytes)
         tmp_in_path = tmp_in.name

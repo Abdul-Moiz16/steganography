@@ -59,7 +59,7 @@ def is_saturated(image: Image.Image, *, low: float = 10.0, high: float = 245.0) 
     -------
     True if the grayscale mean falls outside [low, high].
     """
-    return grayscale_mean(image) < low or grayscale_mean(image) > high 
+    return grayscale_mean(image) < low or grayscale_mean(image) > high
 
 def is_near_uniform(image: Image.Image, *, min_std: float = 5.0) -> bool:
     """Check whether the image is near-uniform (very low variance).
