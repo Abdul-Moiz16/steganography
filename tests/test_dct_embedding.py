@@ -37,8 +37,64 @@ def _payload_bits(payload: bytes) -> np.ndarray:
     return np.unpackbits(np.frombuffer(payload, dtype=np.uint8))
 
 
+def _jsteg_reference_embed(
+    cover_coeffs: np.ndarray,
+    payload: bytes,
+    fill_rate: float,
+) -> tuple[np.ndarray, list[tuple[int, int, int, int]]]:
+    """Independent JSteg-style reference from Westfeld/Pfitzmann's rule.
+
+    The reference walks non-zero, non-abs(1) AC coefficients in block row-major
+    order, skips DC coefficients, and replaces the absolute-value LSB while
+    preserving sign. It deliberately does not call production embedding code.
+    """
+    reference = cover_coeffs.copy()
+    positions = eligible_positions_helper(cover_coeffs)
+    usable = positions[: int(len(positions) * fill_rate)]
+    bits = _payload_bits(payload)
+
+    if len(bits) > len(usable):
+        raise ValueError("payload too large for reference fixture")
+
+    for pos, bit in zip(usable, bits):
+        coef = int(reference[pos])
+        if coef > 0:
+            reference[pos] = (coef & ~1) | int(bit)
+        else:
+            reference[pos] = -((abs(coef) & ~1) | int(bit))
+
+    return reference, usable
+
+
 def test_jpeglib_uses_pinned_libjpeg_6b_backend() -> None:
     assert ensure_libjpeg_backend() == LIBJPEG_BACKEND == "6b"
+
+
+def test_reference_fixture_has_stable_eligible_position_order() -> None:
+    coeffs = luminance_coefficients(read_dct_jpeg(_make_textured_jpeg())).copy()
+    positions = eligible_positions_helper(coeffs)
+
+    expected_prefix = [
+        ((0, 0, 0, 1), -125),
+        ((0, 0, 0, 2), -33),
+        ((0, 0, 0, 3), -10),
+        ((0, 0, 0, 4), 5),
+        ((0, 0, 0, 5), -2),
+        ((0, 0, 0, 6), -2),
+        ((0, 0, 1, 0), -162),
+        ((0, 0, 1, 1), 10),
+        ((0, 0, 1, 2), 11),
+        ((0, 0, 1, 4), -7),
+        ((0, 0, 1, 5), 3),
+        ((0, 0, 1, 6), 2),
+        ((0, 0, 1, 7), -2),
+        ((0, 0, 2, 0), -28),
+        ((0, 0, 2, 3), -2),
+        ((0, 0, 2, 5), 2),
+    ]
+
+    assert len(positions) == 223
+    assert [(pos, int(coeffs[pos])) for pos in positions[:16]] == expected_prefix
 
 
 def test_jpeglib_read_write_preserves_quantized_dct_coefficients() -> None:
@@ -99,6 +155,39 @@ def test_dct_embedding_sets_payload_bits_only_in_expected_prefix() -> None:
         assert int(stego_coeffs[pos]) == int(cover_coeffs[pos])
 
     assert changed_positions
+
+
+def test_dct_embedding_matches_independent_jsteg_reference_coefficients() -> None:
+    cover = _make_textured_jpeg()
+    payload = b"\xa5\x3c"
+    fill_rate = 0.50
+
+    cover_coeffs = luminance_coefficients(read_dct_jpeg(cover)).copy()
+    expected_coeffs, _usable = _jsteg_reference_embed(cover_coeffs, payload, fill_rate)
+
+    stego = embed_dct_lsb_jpeg(cover, payload, fill_rate)
+    actual_coeffs = luminance_coefficients(read_dct_jpeg(stego)).copy()
+
+    expected_changed_prefix = [
+        ((0, 0, 0, 2), -33, -32),
+        ((0, 0, 0, 3), -10, -11),
+        ((0, 0, 0, 4), 5, 4),
+        ((0, 0, 0, 6), -2, -3),
+        ((0, 0, 1, 1), 10, 11),
+        ((0, 0, 1, 2), 11, 10),
+        ((0, 0, 1, 4), -7, -6),
+        ((0, 0, 1, 6), 2, 3),
+        ((0, 0, 1, 7), -2, -3),
+        ((0, 0, 2, 0), -28, -29),
+    ]
+    actual_changed_prefix = [
+        (pos, int(cover_coeffs[pos]), int(actual_coeffs[pos]))
+        for pos in eligible_positions_helper(cover_coeffs)[: len(_payload_bits(payload))]
+        if int(cover_coeffs[pos]) != int(actual_coeffs[pos])
+    ]
+
+    assert actual_changed_prefix == expected_changed_prefix
+    assert np.array_equal(actual_coeffs, expected_coeffs)
 
 
 def test_dct_embed_decode_roundtrip_is_deterministic() -> None:
