@@ -6,7 +6,7 @@ import os
 import tempfile
 import numpy as np
 import jpegio as jio
- 
+
 def embed_dct_lsb_jpeg(
     cover_jpeg_bytes: bytes,
     payload_bytes: bytes,
@@ -115,10 +115,10 @@ def decode_dct_lsb_jpeg(
         jpeg_struct = jio.read(tmp_in_path)
     finally:
         os.unlink(tmp_in_path)
-    coef_array = jpeg_struct.coef_arrays[0] 
+    coef_array = jpeg_struct.coef_arrays[0]
 
     eligible_positions = eligible_positions_helper(coef_array)
-    
+
     n_embed = int(len(eligible_positions) * fill_rate)
     embedding_positions = eligible_positions[:n_embed]
 
@@ -129,7 +129,7 @@ def decode_dct_lsb_jpeg(
                 f"Payload too large: {total_payload_bits} bits, "
                 f"Available: {len(embedding_positions)} bits (at {fill_rate:.0%} fill rate). "
             )
-    
+
     extracted_bits = []
     for pos in embedding_positions:
         if len(extracted_bits) == total_payload_bits:
@@ -145,8 +145,8 @@ def decode_dct_lsb_jpeg(
     payload_bytes = np.packbits(extracted_bits_array).tobytes()
 
     return payload_bytes
-    
-# Helper function 
+
+# Helper function
 def eligible_positions_helper(coef_array: np.ndarray) -> list[tuple[int, int, int, int]]:
     h, w = coef_array.shape
     blocks_vert = h // 8
@@ -159,7 +159,7 @@ def eligible_positions_helper(coef_array: np.ndarray) -> list[tuple[int, int, in
             for i in range(8):
                 for j in range(8):
                     if i == 0 and j == 0:
-                        continue  
+                        continue
                     if block[i, j] != 0 and abs(block[i, j]) != 1:
                         eligible_positions.append((block_row, block_col, i, j))
     return eligible_positions

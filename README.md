@@ -29,7 +29,7 @@ source venv/bin/activate        # macOS/Linux
 # .\venv\Scripts\Activate.ps1  # Windows PowerShell
 
 # 2. Install dependencies
-# If on Windows, first do: 
+# If on Windows, first do:
 #   - the wheel was built from https://github.com/dwgoon/jpegio at version 0.2.8, for Python version 3.11
 pip install wheels/jpegio-0.2.4-cp311-cp311-win_amd64.whl
 
