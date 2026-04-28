@@ -3,9 +3,10 @@ from __future__ import annotations
 """CLI entrypoint for the proposal-aligned pipeline stages."""
 
 import argparse
+from dataclasses import replace
 from pathlib import Path
 
-from src.pipeline.config import PipelineConfig
+from src.pipeline.config import PAYLOAD_MODE_HARDCODED, PAYLOAD_MODE_RANDOM, PAYLOAD_MODES, PipelineConfig
 from src.pipeline.profile import PROFILES
 from src.pipeline.runner import PipelineRunner
 
@@ -13,6 +14,52 @@ from src.pipeline.runner import PipelineRunner
 def _resolve_path(path: Path, project_root: Path) -> Path:
     """Resolve a possibly-relative CLI path against the project root."""
     return path if path.is_absolute() else (project_root / path)
+
+
+def _add_payload_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--payload-mode",
+        choices=list(PAYLOAD_MODES),
+        default=PAYLOAD_MODE_RANDOM,
+        help="Payload generation mode for manifest rows.",
+    )
+    parser.add_argument(
+        "--hardcoded-payload",
+        type=str,
+        default=None,
+        help="UTF-8 text payload used when --payload-mode=hardcoded.",
+    )
+    parser.add_argument(
+        "--hardcoded-payload-file",
+        type=Path,
+        default=None,
+        help="Text file payload used when --payload-mode=hardcoded.",
+    )
+
+
+def _apply_payload_args(
+    config: PipelineConfig,
+    args: argparse.Namespace,
+    project_root: Path,
+) -> PipelineConfig:
+    payload_mode = getattr(args, "payload_mode", PAYLOAD_MODE_RANDOM)
+    payload_text = getattr(args, "hardcoded_payload", None)
+    payload_file = getattr(args, "hardcoded_payload_file", None)
+    if payload_mode != PAYLOAD_MODE_HARDCODED:
+        if payload_text is not None or payload_file is not None:
+            raise ValueError("Hardcoded payload values require --payload-mode=hardcoded.")
+        return config
+    if (payload_text is None) == (payload_file is None):
+        raise ValueError(
+            "Use exactly one of --hardcoded-payload or --hardcoded-payload-file with --payload-mode=hardcoded."
+        )
+    if payload_file is not None:
+        payload_text = _resolve_path(payload_file, project_root).read_text(encoding="utf-8")
+    return replace(
+        config,
+        payload_mode=PAYLOAD_MODE_HARDCODED,
+        hardcoded_payload_text=payload_text,
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -54,6 +101,7 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Write payload binary files. Encrypted rows call the AES placeholder.",
     )
+    _add_payload_args(p_payload)
 
     p_stego = sub.add_parser("build-stego-manifest", help="Write stego manifest.")
     p_stego.add_argument("--covers-manifest", type=Path, required=True)
@@ -171,12 +219,14 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="Cover selection seed (recorded in config.json for reproducibility).",
     )
+    _add_payload_args(p_all)
     return parser
 
 
 def main() -> None:
     """Dispatch one CLI command to the corresponding ``PipelineRunner`` stage."""
-    args = _parser().parse_args()
+    parser = _parser()
+    args = parser.parse_args()
     project_root = args.project_root.resolve()
 
     # Build a profile-scoped config when --profile is given, else use full defaults.
@@ -185,6 +235,11 @@ def main() -> None:
         config = PipelineConfig.from_profile(project_root, profile_name)
     else:
         config = PipelineConfig.from_project_root(project_root)
+
+    try:
+        config = _apply_payload_args(config, args, project_root)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     runner = PipelineRunner(config)
 
@@ -255,6 +310,7 @@ def main() -> None:
                 run_dir = runner._next_run_dir(profile_name)
             print(f"Profile  : {profile_name}")
             print(f"Run dir  : {run_dir}")
+        print(f"Payload  : {config.payload_mode}")
 
         out = runner.run_full_pipeline(
             covers_manifest_path=_resolve_path(args.covers_manifest, project_root),

@@ -88,6 +88,14 @@ def embed_dct_lsb_jpeg(
 
     return write_dct_jpeg(jpeg_struct)
 
+
+def dct_payload_capacity_bytes(cover_jpeg_bytes: bytes, fill_rate: float) -> int:
+    """Return byte capacity for the JSteg-style DCT embedding rule."""
+    jpeg_struct = read_dct_jpeg(cover_jpeg_bytes)
+    coef_array = luminance_coefficients(jpeg_struct)
+    n_embed = int(len(eligible_positions_helper(coef_array)) * fill_rate)
+    return n_embed // 8
+
 def decode_dct_lsb_jpeg(
     stego_jpeg_bytes: bytes,
     payload_length_bytes: int,

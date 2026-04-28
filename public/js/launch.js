@@ -19,12 +19,27 @@ function renderLaunchDrawer() {
     const activeCount = getActiveJobs().length;
     const curEngine  = STATE.lastEngine  || 'stub';
     const curProfile = STATE.lastProfile || 'prototype';
+    const curPayloadMode = STATE.lastPayloadMode || 'random';
+    const curHardcodedPayload = STATE.lastHardcodedPayload || '';
+    const maxPayloadBytes = (PROFILE_META[curProfile] || PROFILE_META.prototype).hardcoded_payload_max_bytes;
 
     function engineOpt(value, label, sub) {
         const checked = curEngine === value;
         return `<label class="lp-engine-opt${checked ? ' lp-engine-opt--checked' : ''}">
             <div class="lp-engine-opt-left">
                 <input type="radio" class="lp-engine-radio" name="launch-engine" value="${escapeAttr(value)}"${checked ? ' checked' : ''}>
+                <span class="lp-engine-name">${escapeHtml(label)}</span>
+            </div>
+            <span class="lp-engine-sub">${escapeHtml(sub)}</span>
+        </label>`;
+    }
+
+    function payloadOpt(value, label, sub, iconName) {
+        const checked = curPayloadMode === value;
+        return `<label class="lp-engine-opt${checked ? ' lp-engine-opt--checked' : ''}">
+            <div class="lp-engine-opt-left">
+                <input type="radio" class="lp-engine-radio" name="launch-payload-mode" value="${escapeAttr(value)}"${checked ? ' checked' : ''}>
+                <span class="material-symbols-outlined lp-payload-icon">${escapeHtml(iconName)}</span>
                 <span class="lp-engine-name">${escapeHtml(label)}</span>
             </div>
             <span class="lp-engine-sub">${escapeHtml(sub)}</span>
@@ -67,6 +82,20 @@ function renderLaunchDrawer() {
                 ${engineOpt('inference_api', 'Cloud API',  'High Capacity')}
                 ${engineOpt('diffusers',     'Local GPU',  'Private / Secure')}
             </div>
+        </div>
+        <div class="drawer-section">
+            <div class="lp-field-label">Payload Source</div>
+            <div class="lp-engine-group">
+                ${payloadOpt('random', 'Random Payload', 'Seeded Bytes', 'casino')}
+                ${payloadOpt('hardcoded', 'Hardcoded Payload', 'Text Fixture', 'text_fields')}
+            </div>
+            <div class="lp-payload-text-wrap${curPayloadMode === 'hardcoded' ? ' open' : ''}" id="hardcoded-payload-wrap">
+                <textarea id="hardcoded-payload" class="lp-payload-text" maxlength="${maxPayloadBytes}" placeholder="Payload text">${escapeHtml(curHardcodedPayload)}</textarea>
+                <div class="lp-payload-meta">
+                    <span id="hardcoded-payload-count">0 / ${maxPayloadBytes} bytes</span>
+                    <span>UTF-8 text only</span>
+                </div>
+            </div>
         </div>` +
         (activeCount > 0
             ? `<div class="drawer-section"><div class="sc-running-note">
@@ -89,7 +118,46 @@ function renderLaunchDrawer() {
             });
         });
     });
+    const payloadRadios = el.querySelectorAll('input[name="launch-payload-mode"]');
+    payloadRadios.forEach(r => {
+        r.addEventListener('change', function() {
+            STATE.lastPayloadMode = this.value;
+            el.querySelectorAll('input[name="launch-payload-mode"]').forEach(input => {
+                input.closest('.lp-engine-opt').classList.toggle('lp-engine-opt--checked', input.value === this.value);
+            });
+            const wrap = document.getElementById('hardcoded-payload-wrap');
+            if (wrap) wrap.classList.toggle('open', this.value === 'hardcoded');
+            updateHardcodedPayloadCount();
+        });
+    });
+    const payloadText = document.getElementById('hardcoded-payload');
+    if (payloadText) {
+        payloadText.addEventListener('input', function() {
+            STATE.lastHardcodedPayload = this.value;
+            updateHardcodedPayloadCount();
+        });
+        updateHardcodedPayloadCount();
+    }
     loadSystemCheck();
+}
+
+function hardcodedPayloadMaxBytes() {
+    const profile = document.getElementById('launch-profile') ? document.getElementById('launch-profile').value : (STATE.lastProfile || 'prototype');
+    return (PROFILE_META[profile] || PROFILE_META.prototype).hardcoded_payload_max_bytes;
+}
+
+function hardcodedPayloadBytes(text) {
+    return new TextEncoder().encode(text || '').length;
+}
+
+function updateHardcodedPayloadCount() {
+    const textEl = document.getElementById('hardcoded-payload');
+    const countEl = document.getElementById('hardcoded-payload-count');
+    if (!textEl || !countEl) return;
+    const count = hardcodedPayloadBytes(textEl.value);
+    const max = hardcodedPayloadMaxBytes();
+    countEl.textContent = count + ' / ' + max + ' bytes';
+    countEl.classList.toggle('lp-payload-count--bad', count > max);
 }
 
 function loadSystemCheck() {
@@ -162,14 +230,41 @@ function selectLpProfile(value, label, optEl) {
         opt.classList.toggle('lp-dropdown-opt--selected', opt === optEl);
     });
     STATE.lastProfile = value;
+    updateHardcodedPayloadCount();
 }
 
 function launchRun() {
     const profile = document.getElementById('launch-profile').value;
     const engineEl = document.querySelector('input[name="launch-engine"]:checked');
     const engine = engineEl ? engineEl.value : 'stub';
+    const payloadModeEl = document.querySelector('input[name="launch-payload-mode"]:checked');
+    const payloadMode = payloadModeEl ? payloadModeEl.value : 'random';
+    const payloadTextEl = document.getElementById('hardcoded-payload');
+    const hardcodedPayload = payloadTextEl ? payloadTextEl.value : '';
     STATE.lastProfile = profile;
     STATE.lastEngine = engine;
+    STATE.lastPayloadMode = payloadMode;
+    STATE.lastHardcodedPayload = hardcodedPayload;
+
+    if (payloadMode === 'hardcoded') {
+        const byteCount = hardcodedPayloadBytes(hardcodedPayload);
+        const maxBytes = hardcodedPayloadMaxBytes();
+        if (!hardcodedPayload.trim()) {
+            const panel = document.getElementById('sc-panel');
+            if (panel) panel.innerHTML = '<div class="sc-error">Hardcoded payload must not be empty.</div>';
+            return;
+        }
+        if (/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(hardcodedPayload)) {
+            const panel = document.getElementById('sc-panel');
+            if (panel) panel.innerHTML = '<div class="sc-error">Hardcoded payload cannot contain control characters.</div>';
+            return;
+        }
+        if (byteCount > maxBytes) {
+            const panel = document.getElementById('sc-panel');
+            if (panel) panel.innerHTML = `<div class="sc-error">Hardcoded payload is ${byteCount} bytes; this profile allows ${maxBytes} bytes.</div>`;
+            return;
+        }
+    }
 
     const btn = document.getElementById('launch-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loader lp-loader"></span> Starting…'; }
@@ -177,10 +272,15 @@ function launchRun() {
     api('/api/pipeline/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile: profile, engine: engine })
+        body: JSON.stringify({
+            profile: profile,
+            engine: engine,
+            payload_mode: payloadMode,
+            hardcoded_payload: payloadMode === 'hardcoded' ? hardcodedPayload : null
+        })
     }).then(res => {
         if (!res.job_id) throw new Error('No job id returned by backend');
-        const job = createJob(res.job_id, profile, engine);
+        const job = createJob(res.job_id, profile, engine, payloadMode);
         if (res.run_id) job.runId = res.run_id;
         closeLaunchPanel();
         attachStream(res.job_id);

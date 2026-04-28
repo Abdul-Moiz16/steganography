@@ -1,7 +1,7 @@
 // mirrors src/pipeline/profile.py
 const PROFILE_META = {
-    prototype:   { n_groups: 20,  active_methods: ['lsb'],        active_payload_levels: ['low'],                    n_detectors: 3 },
-    full_design: { n_groups: 500, active_methods: ['lsb', 'dct'], active_payload_levels: ['low', 'medium', 'high'],  n_detectors: 5 },
+    prototype:   { n_groups: 20,  active_methods: ['lsb'],        active_payload_levels: ['low'],                    n_detectors: 3, hardcoded_payload_max_bytes: 8176 },
+    full_design: { n_groups: 500, active_methods: ['lsb', 'dct'], active_payload_levels: ['low', 'medium', 'high'],  n_detectors: 5, hardcoded_payload_max_bytes: 8176 },
 };
 
 const STATE = {
@@ -12,11 +12,13 @@ const STATE = {
     terminalOpen: true,
     lastEngine: 'stub',
     lastProfile: 'prototype',
+    lastPayloadMode: 'random',
+    lastHardcodedPayload: '',
     jobs: {}
 };
 
-function createJob(jobId, profile, engine) {
-    STATE.jobs[jobId] = { jobId: jobId, runId: null, logLines: ['Starting…'], streamSource: null, streamErrors: 0, failed: false, error: null, killed: false, profile: profile || null, engine: engine || null };
+function createJob(jobId, profile, engine, payloadMode) {
+    STATE.jobs[jobId] = { jobId: jobId, runId: null, logLines: ['Starting…'], streamSource: null, streamErrors: 0, failed: false, error: null, killed: false, profile: profile || null, engine: engine || null, payloadMode: payloadMode || 'random' };
     return STATE.jobs[jobId];
 }
 function getJob(jobId) { return STATE.jobs[jobId]; }

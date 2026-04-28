@@ -21,6 +21,12 @@ from pathlib import Path
 from src.common.contracts import PipelinePaths
 
 
+PAYLOAD_MODE_RANDOM = "random"
+PAYLOAD_MODE_HARDCODED = "hardcoded"
+PAYLOAD_MODES = (PAYLOAD_MODE_RANDOM, PAYLOAD_MODE_HARDCODED)
+AES_CBC_BLOCK_BYTES = 16
+
+
 @dataclass(frozen=True)
 class PipelineConfig:
     """Immutable configuration for the proposal-locked experiment pipeline."""
@@ -30,6 +36,8 @@ class PipelineConfig:
     n_groups: int = 500
     split_seed: int = 42
     payload_seed: int = 42
+    payload_mode: str = PAYLOAD_MODE_RANDOM
+    hardcoded_payload_text: str | None = None
     embed_seed: int = 42
     aes_key_id: str = "aes256cbc-v1"
     jpeg_quality: int = 95
@@ -47,6 +55,17 @@ class PipelineConfig:
     active_payload_levels: tuple[str, ...] = field(
         default_factory=lambda: ("low", "medium", "high")
     )
+
+    def __post_init__(self) -> None:
+        if self.payload_mode not in PAYLOAD_MODES:
+            raise ValueError(
+                f"Unknown payload mode '{self.payload_mode}'. Available: {list(PAYLOAD_MODES)}"
+            )
+        if self.payload_mode == PAYLOAD_MODE_RANDOM:
+            if self.hardcoded_payload_text not in (None, ""):
+                raise ValueError("hardcoded_payload_text is only valid with payload_mode='hardcoded'.")
+            return
+        self.validate_hardcoded_payload_text(self.hardcoded_payload_text)
 
     @property
     def paths(self) -> PipelinePaths:
@@ -73,6 +92,35 @@ class PipelineConfig:
         fill_rate = self.payload_fill_rates[payload_level]
         resolved_bit_depth = bit_depth or self.primary_lsb_bit_depth
         return int(self.pixels_per_image * fill_rate * resolved_bit_depth)
+
+    @property
+    def min_plaintext_payload_bytes(self) -> int:
+        """Smallest plaintext payload byte budget across active levels/encryption states."""
+        if not self.active_payload_levels:
+            return 0
+        smallest_stream_bytes = min(
+            self.spatial_payload_bits(level) // 8 for level in self.active_payload_levels
+        )
+        return max(0, smallest_stream_bytes - AES_CBC_BLOCK_BYTES)
+
+    def validate_hardcoded_payload_text(self, payload_text: str | None) -> bytes:
+        """Validate and return UTF-8 bytes for a user-supplied deterministic payload."""
+        if not isinstance(payload_text, str) or not payload_text:
+            raise ValueError("Hardcoded payload must be non-empty UTF-8 text.")
+        invalid = [
+            ch for ch in payload_text
+            if ord(ch) < 32 and ch not in ("\n", "\r", "\t")
+        ]
+        if invalid:
+            raise ValueError("Hardcoded payload may not contain control characters.")
+        payload_bytes = payload_text.encode("utf-8")
+        max_bytes = self.min_plaintext_payload_bytes
+        if len(payload_bytes) > max_bytes:
+            raise ValueError(
+                "Hardcoded payload is too large for the active run parameters: "
+                f"{len(payload_bytes)} bytes > {max_bytes} bytes."
+            )
+        return payload_bytes
 
     @classmethod
     def from_project_root(cls, project_root: Path) -> "PipelineConfig":

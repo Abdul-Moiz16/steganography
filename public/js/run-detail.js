@@ -115,12 +115,14 @@ function buildRunHeader(cfg, detailStats, runId) {
     const meta = PROFILE_META[profile] || null;
     const methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta ? meta.active_methods : []);
     const payloads = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta ? meta.active_payload_levels : []);
+    const payloadMode = cfg.payload_mode || 'random';
     const nGroups = cfg.n_groups != null ? cfg.n_groups : (meta ? meta.n_groups : null);
     const groups = nGroups != null ? nGroups + ' groups' : 'group count unavailable';
     return [
         profile, groups,
         methods.length ? methods.join(', ') : 'no methods listed',
         payloads.length ? 'payloads ' + payloads.join(', ') : 'no payload levels listed',
+        'payload mode ' + payloadMode,
         detailStats.hasResults ? 'metrics ready' : 'metrics pending'
     ].join(' · ');
 }
@@ -169,6 +171,7 @@ function buildOverviewTab(cfg, detailStats, runId) {
     const groups = cfg.n_groups != null ? Number(cfg.n_groups) : (meta ? meta.n_groups : 0);
     const methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta ? meta.active_methods : []);
     const payloads = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta ? meta.active_payload_levels : []);
+    const payloadMode = cfg.payload_mode || 'random';
     const conditionCount = methods.length * payloads.length * 2;
     const fillRates = Object.keys(cfg.payload_fill_rates || {}).length
         ? Object.keys(cfg.payload_fill_rates).map(key => key + '=' + cfg.payload_fill_rates[key]).join(', ')
@@ -179,6 +182,8 @@ function buildOverviewTab(cfg, detailStats, runId) {
         ['Groups', groups || '\u2014'],
         ['Methods', methods.length ? methods.join(', ') : '\u2014'],
         ['Payload levels', payloads.length ? payloads.join(', ') : '\u2014'],
+        ['Payload mode', payloadMode],
+        ['Hardcoded payload bytes', cfg.hardcoded_payload_bytes != null ? cfg.hardcoded_payload_bytes : '\u2014'],
         ['Fill rates', fillRates],
         ['Image size', toArray(cfg.image_size).length ? cfg.image_size.join('x') : '\u2014'],
         ['JPEG quality', cfg.jpeg_quality != null ? cfg.jpeg_quality : '\u2014'],
