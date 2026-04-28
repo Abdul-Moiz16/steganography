@@ -12,6 +12,8 @@ from src.embedding.dct import (
     embed_dct_lsb_jpeg,
 )
 from src.embedding.jpeg_dct import (
+    LIBJPEG_BACKEND,
+    ensure_libjpeg_backend,
     luminance_coefficients,
     read_dct_jpeg,
     write_dct_jpeg,
@@ -33,6 +35,10 @@ def _make_textured_jpeg(size: tuple[int, int] = (96, 96), *, quality: int = 95) 
 
 def _payload_bits(payload: bytes) -> np.ndarray:
     return np.unpackbits(np.frombuffer(payload, dtype=np.uint8))
+
+
+def test_jpeglib_uses_pinned_libjpeg_6b_backend() -> None:
+    assert ensure_libjpeg_backend() == LIBJPEG_BACKEND == "6b"
 
 
 def test_jpeglib_read_write_preserves_quantized_dct_coefficients() -> None:

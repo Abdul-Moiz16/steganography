@@ -14,9 +14,19 @@ from typing import Any
 import jpeglib
 import numpy as np
 
+LIBJPEG_BACKEND = "6b"
+
+
+def ensure_libjpeg_backend() -> str:
+    """Force and verify the libjpeg backend used for DCT operations."""
+    if jpeglib.version.get() != LIBJPEG_BACKEND:
+        jpeglib.version.set(LIBJPEG_BACKEND)
+    return jpeglib.version.get()
+
 
 def read_dct_jpeg(jpeg_bytes: bytes) -> Any:
     """Read JPEG bytes into a jpeglib DCT-domain object."""
+    ensure_libjpeg_backend()
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_in:
         tmp_in.write(jpeg_bytes)
         tmp_in_path = tmp_in.name
@@ -28,6 +38,7 @@ def read_dct_jpeg(jpeg_bytes: bytes) -> Any:
 
 def write_dct_jpeg(jpeg_struct: Any) -> bytes:
     """Write a jpeglib DCT-domain object back to JPEG bytes."""
+    ensure_libjpeg_backend()
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_out:
         tmp_out_path = tmp_out.name
     try:

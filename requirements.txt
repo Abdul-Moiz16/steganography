@@ -4,7 +4,7 @@ Pillow>=10.0
 scipy>=1.10
 scikit-image>=0.22
 scikit-learn>=1.4
-jpeglib>=1.0.2
+jpeglib==1.0.2
 
 # ML image generation (ml_a/ml_b)
 # Note: for CUDA-specific wheels, install torch per https://pytorch.org/get-started/locally/
