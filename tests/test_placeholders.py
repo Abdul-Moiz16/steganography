@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from io import BytesIO
 
-import pytest
 from PIL import Image
 
 from src.detection.statistical import (
@@ -25,17 +24,6 @@ def _make_jpeg_bytes(size: tuple[int, int] = (64, 64)) -> bytes:
     return buf.getvalue()
 
 
-@pytest.mark.parametrize(
-    ("fn", "args", "match"),
-    [
-        (chi_square_dct_score, (b"jpeg-bytes",), "DCT chi-square"),
-    ],
-)
-def test_deferred_functions_raise_not_implemented(fn, args, match: str) -> None:
-    with pytest.raises(NotImplementedError, match=match):
-        fn(*args)
-
-
 # --- Tests for now-implemented functions ---
 
 def test_encrypt_decrypt_roundtrip() -> None:
@@ -56,6 +44,12 @@ def test_embed_lsb_returns_image() -> None:
 def test_chi_square_spatial_returns_float() -> None:
     img = Image.new("L", (64, 64), color=128)
     score = chi_square_spatial_score(img)
+    assert isinstance(score, float)
+    assert 0.0 <= score <= 1.0
+
+
+def test_chi_square_dct_returns_float() -> None:
+    score = chi_square_dct_score(_make_jpeg_bytes())
     assert isinstance(score, float)
     assert 0.0 <= score <= 1.0
 
