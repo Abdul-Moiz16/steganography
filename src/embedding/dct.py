@@ -2,20 +2,14 @@
 # Contributor: David (Template)
 
 from __future__ import annotations
-import os
-import tempfile
+
 import numpy as np
 
-
-def _load_jpegio():
-    try:
-        import jpegio as jio
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError(
-            "DCT embedding requires the optional 'jpegio' dependency. "
-            "Install it before running DCT embedding or decoding."
-        ) from exc
-    return jio
+from src.embedding.jpeg_dct import (
+    luminance_coefficients,
+    read_dct_jpeg,
+    write_dct_jpeg,
+)
 
 def embed_dct_lsb_jpeg(
     cover_jpeg_bytes: bytes,
@@ -38,8 +32,7 @@ def embed_dct_lsb_jpeg(
 
     Intended implementation:
     - Parse `cover_jpeg_bytes` as a JPEG encoded at Q=95.
-    - Access the quantized integer DCT coefficients directly, for example via
-      `jpegio` as stated in the proposal.
+    - Access the quantized integer DCT coefficients directly via `jpeglib`.
     - Traverse 8x8 blocks in row-major order.
     - Within each block, skip the DC coefficient and any zero-valued AC
       coefficients.
@@ -61,73 +54,47 @@ def embed_dct_lsb_jpeg(
     Output:
     - Encoded JPEG bytes for the stego image.
     """
-    jio = _load_jpegio()
-    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_in:
-        tmp_in.write(cover_jpeg_bytes)
-        tmp_in_path = tmp_in.name
-    try:
-        jpeg_struct = jio.read(tmp_in_path)
-    finally:
-        os.unlink(tmp_in_path)
+    jpeg_struct = read_dct_jpeg(cover_jpeg_bytes)
     payload_bits = np.unpackbits(np.frombuffer(payload_bytes, dtype=np.uint8))
     payload_bit_index = 0
     total_payload_bits = len(payload_bits)
 
-    for channel_idx, coef_array in enumerate(jpeg_struct.coef_arrays):
-        if channel_idx != 0:
-            continue
+    coef_array = luminance_coefficients(jpeg_struct)
+    eligible_positions = eligible_positions_helper(coef_array)
 
-        eligible_positions = eligible_positions_helper(coef_array)
+    n_embed = int(len(eligible_positions) * fill_rate)
+    embedding_positions = eligible_positions[:n_embed]
 
-        n_embed = int(len(eligible_positions) * fill_rate)
-        embedding_positions = eligible_positions[:n_embed]
+    if len(embedding_positions) < total_payload_bits:
+        raise ValueError(
+            f"Payload too large for the requested fill_rate. "
+            f"Payload too large: {total_payload_bits} bits, "
+            f"Available: {len(embedding_positions)} bits (at {fill_rate:.0%} fill rate). "
+        )
 
-        if len(embedding_positions) < total_payload_bits:
-            raise ValueError(
-                f"Payload too large for the requested fill_rate. "
-                f"Payload too large: {total_payload_bits} bits, "
-                f"Available: {len(embedding_positions)} bits (at {fill_rate:.0%} fill rate). "
-            )
+    for pos in embedding_positions:
+        if payload_bit_index >= total_payload_bits:
+            break
 
-        for pos in embedding_positions:
-            if payload_bit_index >= total_payload_bits:
-                break
+        coef = coef_array[pos]
+        payload_bit = int(payload_bits[payload_bit_index])
 
-            (block_row, block_col, i, j) = pos
-            row = block_row * 8 + i
-            col = block_col * 8 + j
-            coef = coef_array[row, col]
+        if coef > 0:
+            new_coef = (int(coef) & ~1) | payload_bit
+        else:
+            new_coef = -((abs(int(coef)) & ~1) | payload_bit)
+        coef_array[pos] = new_coef
+        payload_bit_index += 1
 
-            if coef > 0:
-                new_coef = (coef & ~1) | payload_bits[payload_bit_index]
-            else:
-                new_coef = -((abs(coef) & ~1) | payload_bits[payload_bit_index])
-            coef_array[row, col] = new_coef
-            payload_bit_index += 1
-
-    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_out:
-        tmp_out_path = tmp_out.name
-    try:
-        jio.write(jpeg_struct, tmp_out_path)
-        with open(tmp_out_path, 'rb') as f:
-            return f.read()
-    finally:
-        os.unlink(tmp_out_path)
+    return write_dct_jpeg(jpeg_struct)
 
 def decode_dct_lsb_jpeg(
     stego_jpeg_bytes: bytes,
     payload_length_bytes: int,
     fill_rate: float,
 ) -> bytes:
-    jio = _load_jpegio()
-    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_in:
-        tmp_in.write(stego_jpeg_bytes)
-        tmp_in_path = tmp_in.name
-    try:
-        jpeg_struct = jio.read(tmp_in_path)
-    finally:
-        os.unlink(tmp_in_path)
-    coef_array = jpeg_struct.coef_arrays[0]
+    jpeg_struct = read_dct_jpeg(stego_jpeg_bytes)
+    coef_array = luminance_coefficients(jpeg_struct)
 
     eligible_positions = eligible_positions_helper(coef_array)
 
@@ -136,21 +103,18 @@ def decode_dct_lsb_jpeg(
 
     total_payload_bits = payload_length_bytes * 8
     if len(embedding_positions) < total_payload_bits:
-            raise ValueError(
-                f"Payload too large for the requested fill_rate. "
-                f"Payload too large: {total_payload_bits} bits, "
-                f"Available: {len(embedding_positions)} bits (at {fill_rate:.0%} fill rate). "
-            )
+        raise ValueError(
+            f"Payload too large for the requested fill_rate. "
+            f"Payload too large: {total_payload_bits} bits, "
+            f"Available: {len(embedding_positions)} bits (at {fill_rate:.0%} fill rate). "
+        )
 
     extracted_bits = []
     for pos in embedding_positions:
         if len(extracted_bits) == total_payload_bits:
             break
 
-        (block_row, block_col, i, j) = pos
-        row = block_row * 8 + i
-        col = block_col * 8 + j
-        coef = coef_array[row, col]
+        coef = coef_array[pos]
         extracted_bits.append(abs(coef) & 1)
 
     extracted_bits_array = np.array(extracted_bits, dtype=np.uint8)
@@ -160,14 +124,12 @@ def decode_dct_lsb_jpeg(
 
 # Helper function
 def eligible_positions_helper(coef_array: np.ndarray) -> list[tuple[int, int, int, int]]:
-    h, w = coef_array.shape
-    blocks_vert = h // 8
-    blocks_horiz = w // 8
+    blocks_vert, blocks_horiz = coef_array.shape[:2]
 
     eligible_positions = []
     for block_row in range(blocks_vert):
         for block_col in range(blocks_horiz):
-            block = coef_array[block_row*8:(block_row+1)*8, block_col*8:(block_col+1)*8]
+            block = coef_array[block_row, block_col]
             for i in range(8):
                 for j in range(8):
                     if i == 0 and j == 0:

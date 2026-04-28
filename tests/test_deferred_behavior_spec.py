@@ -14,7 +14,7 @@ from src.detection.statistical import (
     rs_analysis_score,
     sample_pairs_score,
 )
-from src.embedding.dct import embed_dct_lsb_jpeg
+from src.embedding.dct import decode_dct_lsb_jpeg, embed_dct_lsb_jpeg
 from src.embedding.encryption import (
     decrypt_payload_aes_256_cbc,
     encrypt_payload_aes_256_cbc,
@@ -27,8 +27,6 @@ def _call_or_xfail(fn: Callable, *args, **kwargs):
         return fn(*args, **kwargs)
     except NotImplementedError as exc:
         pytest.xfail(f"Deferred implementation pending: {exc}")
-    except ModuleNotFoundError as exc:
-        pytest.xfail(f"Optional dependency missing: {exc}")
 
 
 def _sample_payload(n: int = 128, seed: int = 7) -> bytes:
@@ -95,16 +93,17 @@ def test_embed_lsb_contract_and_determinism_spec() -> None:
 
 
 def test_embed_dct_contract_and_determinism_spec() -> None:
-    payload = _sample_payload(64)
+    payload = _sample_payload(16)
     cover_jpeg = _make_jpeg_bytes()
 
     s1 = _call_or_xfail(embed_dct_lsb_jpeg, cover_jpeg, payload, 0.25)
     s2 = _call_or_xfail(embed_dct_lsb_jpeg, cover_jpeg, payload, 0.25)
-    s3 = _call_or_xfail(embed_dct_lsb_jpeg, cover_jpeg, payload, 0.75)
+    s_alt = _call_or_xfail(embed_dct_lsb_jpeg, cover_jpeg, _sample_payload(16, seed=99), 0.25)
 
     assert isinstance(s1, bytes)
     assert s1 == s2
-    assert s1 != s3
+    assert s1 != s_alt
+    assert decode_dct_lsb_jpeg(s1, len(payload), 0.25) == payload
 
 
 def test_statistical_detectors_return_finite_deterministic_scores_spec() -> None:

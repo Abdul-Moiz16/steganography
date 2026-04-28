@@ -12,5 +12,5 @@
 ## Methodology
 
 - **Spatial branch**: grayscale sequential row-major LSB replacement (`bit_depth=1`)
-- **Frequency branch**: JSteg-style DCT-LSB on non-zero quantized AC coefficients, JPEG quality locked to 95, no re-quantization after coefficient edits
+- **Frequency branch**: JSteg-style DCT-LSB on non-zero quantized AC coefficients using `jpeglib`, JPEG quality locked to 95, no re-quantization after coefficient edits
 - **Encryption**: AES-256-CBC with PKCS7 padding applied before embedding
