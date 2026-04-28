@@ -12,10 +12,10 @@ Reference
 """
 
 from __future__ import annotations
-from scipy.fft import dctn, idctn   
+
+from scipy.fft import dctn
 import numpy as np
 from PIL import Image
-from scipy.stats import chi2         
 import io
 
 
@@ -66,10 +66,10 @@ def calibration_chi_square_score(jpeg_bytes: bytes, *, jpeg_quality: int = 95) -
     # these 8 coefficient slots in each block actually carry signal and are most likely to contain embedded bits
     ac_positions = [(0, 1), (1, 0), (1, 1), (0, 2),
                     (2, 0), (1, 2), (2, 1), (2, 2)]
-    
+
     candidate_coeffs = []
     calibration_coeffs = []
-    
+
     for (r, c) in ac_positions:
         candidate_coeffs.append(candidate_dct[:, :, r, c].ravel())
         calibration_coeffs.append(calibration_dct[:, :, r, c].ravel())
