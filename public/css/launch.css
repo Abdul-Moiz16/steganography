@@ -476,6 +476,59 @@
 	color: var(--primary);
 }
 
+.lp-payload-icon {
+	font-size: 18px;
+	color: var(--secondary);
+}
+
+.lp-payload-text-wrap {
+	display: none;
+	margin-top: 10px;
+	margin-bottom: 14px;
+	padding: 0 2px;
+}
+
+.lp-payload-text-wrap.open {
+	display: block;
+}
+
+.lp-payload-text {
+	display: block;
+	width: 100%;
+	min-height: 92px;
+	resize: vertical;
+	border: 1px solid var(--outline-var);
+	border-radius: 8px;
+	background: var(--surface-cont-hi);
+	color: var(--on-surface);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.45;
+	padding: 10px 12px;
+	box-sizing: border-box;
+}
+
+.lp-payload-text:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.lp-payload-meta {
+	display: flex;
+	justify-content: space-between;
+	gap: 10px;
+	margin-top: 8px;
+	padding: 0 2px;
+	color: var(--secondary-dim);
+	font-size: 10px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.lp-payload-count--bad {
+	color: var(--error);
+}
+
 /* launch card (right side) */
 .lp-launch-card {
 	display: flex;

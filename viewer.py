@@ -126,6 +126,10 @@ def _list_runs() -> list[dict]:
         meta = _read_json(d / ".meta.json")
         if meta and not config.get("profile"):
             config.setdefault("profile", meta.get("profile"))
+        if meta:
+            for key in ("payload_mode", "hardcoded_payload_bytes", "hardcoded_payload_max_bytes"):
+                if key in meta:
+                    config.setdefault(key, meta.get(key))
         # Last resort: parse profile from run ID (format: {profile}_{timestamp}_p{port})
         if not config.get("profile"):
             for known in ("prototype", "full_design"):
@@ -180,6 +184,10 @@ def _get_run_detail(run_id: str) -> dict:
     meta = _read_json(run_dir / ".meta.json")
     if meta and not config.get("profile"):
         config.setdefault("profile", meta.get("profile"))
+    if meta:
+        for key in ("payload_mode", "hardcoded_payload_bytes", "hardcoded_payload_max_bytes"):
+            if key in meta:
+                config.setdefault(key, meta.get(key))
     # Last resort: parse profile from run ID (format: {profile}_{timestamp}_p{port})
     if not config.get("profile"):
         for known in ("prototype", "full_design"):
@@ -209,6 +217,30 @@ def _get_run_detail(run_id: str) -> dict:
         "is_killed": (run_dir / ".killed").exists(),
         "is_active": (run_dir / ".running").exists(),
     }
+
+
+def _payload_launch_config(body: dict, profile: str) -> tuple[dict, list[str], str | None]:
+    from src.pipeline.config import PAYLOAD_MODE_HARDCODED, PAYLOAD_MODE_RANDOM, PipelineConfig
+
+    payload_mode = body.get("payload_mode", body.get("payloadMode", PAYLOAD_MODE_RANDOM))
+    if payload_mode not in (PAYLOAD_MODE_RANDOM, PAYLOAD_MODE_HARDCODED):
+        raise ValueError("invalid payload mode")
+
+    meta = {"payload_mode": payload_mode}
+    args = ["--payload-mode", payload_mode]
+    if payload_mode == PAYLOAD_MODE_RANDOM:
+        return meta, args, None
+
+    payload_text = body.get("hardcoded_payload", body.get("hardcodedPayload", ""))
+    config = PipelineConfig.from_profile(PROJECT_ROOT, profile)
+    payload_bytes = config.validate_hardcoded_payload_text(payload_text)
+    meta.update(
+        {
+            "hardcoded_payload_bytes": len(payload_bytes),
+            "hardcoded_payload_max_bytes": config.min_plaintext_payload_bytes,
+        }
+    )
+    return meta, args, payload_text
 
 
 # ── HTTP handler ──────────────────────────────────────────────────────────────
@@ -350,6 +382,10 @@ class Handler(BaseHTTPRequestHandler):
         import datetime
         profile = body.get("profile", "prototype")
         engine = body.get("engine", "stub")
+        try:
+            payload_meta, payload_args, payload_text = _payload_launch_config(body, profile)
+        except ValueError as exc:
+            return self._err(400, str(exc))
         job_id = uuid.uuid4().hex[:8]
         # Embed port in run ID so two viewer instances never collide on the filesystem
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -359,11 +395,19 @@ class Handler(BaseHTTPRequestHandler):
         run_dir = RUNS_DIR / run_id
         run_dir.mkdir(parents=True, exist_ok=True)
         (run_dir / ".running").write_text(str(_SERVER_PORT))
+        if payload_text is not None:
+            payload_file = run_dir / ".hardcoded_payload.txt"
+            payload_file.write_text(payload_text, encoding="utf-8")
+            payload_args.extend(["--hardcoded-payload-file", str(payload_file)])
         import json as _json
-        (run_dir / ".meta.json").write_text(_json.dumps({"profile": profile, "engine": engine}))
+        (run_dir / ".meta.json").write_text(_json.dumps({"profile": profile, "engine": engine, **payload_meta}))
+        cmd = [
+            sys.executable, str(PROJECT_ROOT / "run.py"), profile,
+            "--ml-engine", engine, "--run-id", run_id,
+            *payload_args,
+        ]
         proc = subprocess.Popen(
-            [sys.executable, str(PROJECT_ROOT / "run.py"), profile,
-             "--ml-engine", engine, "--run-id", run_id],
+            cmd,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=str(PROJECT_ROOT),
         )
         with _JOBS_LOCK:

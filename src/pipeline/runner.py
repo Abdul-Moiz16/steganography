@@ -43,7 +43,7 @@ from src.detection.statistical import (
     rs_analysis_score,
     sample_pairs_score,
 )
-from src.embedding.dct import embed_dct_lsb_jpeg
+from src.embedding.dct import dct_payload_capacity_bytes, embed_dct_lsb_jpeg
 from src.embedding.encryption import encrypt_payload_aes_256_cbc
 from src.embedding.lsb import embed_lsb
 from src.evaluation.metrics import (
@@ -53,7 +53,7 @@ from src.evaluation.metrics import (
 from src.evaluation.plots import generate_metrics_figures
 from src.metrics.psnr import psnr as _compute_psnr
 from src.metrics.ssim import ssim as _compute_ssim
-from src.pipeline.config import PipelineConfig
+from src.pipeline.config import AES_CBC_BLOCK_BYTES, PAYLOAD_MODE_HARDCODED, PipelineConfig
 
 
 def _stable_iv(group_id: int, payload_level: str) -> bytes:
@@ -162,8 +162,6 @@ class PipelineRunner:
         # ciphertext.  To keep the encrypted payload exactly at capacity we
         # generate 16 bytes less plaintext; PKCS7 then pads back to the
         # original size so the ciphertext == capacity bytes exactly.
-        _AES_BLOCK_BYTES = 16
-
         rng = random.Random(self.config.payload_seed)
         records: list[PayloadRecord] = []
         for group_id in groups:
@@ -175,7 +173,7 @@ class PipelineRunner:
                     # is generated 16 bytes shorter so its ciphertext (after
                     # PKCS7 padding) matches capacity.
                     plaintext_bits = (
-                        payload_stream_bits - _AES_BLOCK_BYTES * 8
+                        payload_stream_bits - AES_CBC_BLOCK_BYTES * 8
                         if encryption == "encrypted"
                         else payload_stream_bits
                     )
@@ -347,6 +345,11 @@ class PipelineRunner:
                     })
             elif method == "dct":
                 cover_jpeg_bytes = load_bytes(self._resolve_manifest_path(row["cover_path"]))
+                payload_bytes = self._payload_bytes_for_dct_row(
+                    cover_jpeg_bytes,
+                    payload_bytes,
+                    fill_rate=float(params["fill_rate"]),
+                )
                 stego_bytes = embed_dct_lsb_jpeg(
                     cover_jpeg_bytes=cover_jpeg_bytes,
                     payload_bytes=payload_bytes,
@@ -625,6 +628,7 @@ class PipelineRunner:
 
         # Covers are already placed in run_dir by run.py before pipeline starts
         active_covers = resolved_covers
+        self._validate_hardcoded_payload_against_dct_covers(active_covers)
 
         payload_manifest = self.build_payload_manifest(
             covers_manifest_path=active_covers,
@@ -703,6 +707,19 @@ class PipelineRunner:
             "image_size": list(self.config.image_size),
             "split_seed": self.config.split_seed,
             "payload_seed": self.config.payload_seed,
+            "payload_mode": self.config.payload_mode,
+            "hardcoded_payload_bytes": (
+                len(self.config.validate_hardcoded_payload_text(self.config.hardcoded_payload_text))
+                if self.config.payload_mode == PAYLOAD_MODE_HARDCODED
+                else None
+            ),
+            "hardcoded_payload_sha256": (
+                hashlib.sha256(
+                    self.config.validate_hardcoded_payload_text(self.config.hardcoded_payload_text)
+                ).hexdigest()
+                if self.config.payload_mode == PAYLOAD_MODE_HARDCODED
+                else None
+            ),
             "embed_seed": self.config.embed_seed,
             "jpeg_quality": self.config.jpeg_quality,
             "primary_lsb_bit_depth": self.config.primary_lsb_bit_depth,
@@ -713,9 +730,57 @@ class PipelineRunner:
         write_json(run_dir / "config.json", snapshot)
 
     def _generate_payload_bytes(self, payload_bits: int, rng: random.Random) -> bytes:
-        """Generate deterministic pseudo-random payload bytes for one condition row."""
+        """Generate deterministic payload bytes for one condition row."""
         n_bytes = payload_bits // 8
+        if self.config.payload_mode == PAYLOAD_MODE_HARDCODED:
+            return self._generate_hardcoded_payload_bytes(n_bytes)
         return bytes(rng.getrandbits(8) for _ in range(n_bytes))
+
+    def _generate_hardcoded_payload_bytes(self, n_bytes: int) -> bytes:
+        payload = self.config.validate_hardcoded_payload_text(
+            self.config.hardcoded_payload_text
+        )
+        if len(payload) > n_bytes:
+            raise ValueError(
+                f"Hardcoded payload is too large for this condition: {len(payload)} bytes > {n_bytes} bytes."
+            )
+        repeats = (n_bytes + len(payload) - 1) // len(payload)
+        return (payload * repeats)[:n_bytes]
+
+    def _payload_bytes_for_dct_row(
+        self,
+        cover_jpeg_bytes: bytes,
+        payload_bytes: bytes,
+        *,
+        fill_rate: float,
+    ) -> bytes:
+        capacity_bytes = dct_payload_capacity_bytes(cover_jpeg_bytes, fill_rate)
+        if self.config.payload_mode == PAYLOAD_MODE_HARDCODED:
+            return self._generate_hardcoded_payload_bytes(capacity_bytes)
+        return payload_bytes[:capacity_bytes]
+
+    def _validate_hardcoded_payload_against_dct_covers(self, covers_manifest_path: Path) -> None:
+        if self.config.payload_mode != PAYLOAD_MODE_HARDCODED or "dct" not in self.config.active_methods:
+            return
+        payload = self.config.validate_hardcoded_payload_text(self.config.hardcoded_payload_text)
+        if not self.config.active_payload_levels:
+            return
+        min_fill_rate = min(
+            self.config.payload_fill_rates[level] for level in self.config.active_payload_levels
+        )
+        min_capacity: int | None = None
+        min_path = ""
+        for row in read_rows_csv(covers_manifest_path):
+            cover_path = self._resolve_manifest_path(row["frequency_path"])
+            capacity = dct_payload_capacity_bytes(load_bytes(cover_path), min_fill_rate)
+            if min_capacity is None or capacity < min_capacity:
+                min_capacity = capacity
+                min_path = row["frequency_path"]
+        if min_capacity is not None and len(payload) > min_capacity:
+            raise ValueError(
+                "Hardcoded payload is too large for the DCT covers in this run: "
+                f"{len(payload)} bytes > {min_capacity} bytes on {min_path}."
+            )
 
     def _embed_params_json(self, method: str, payload_level: str) -> str:
         """Return serialized embedding parameters stored in the stego manifest."""

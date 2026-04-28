@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from src.data.manifests import write_rows_csv
@@ -276,3 +277,37 @@ def test_cli_run_all_dry_run(monkeypatch, capsys, tmp_path: Path) -> None:
     assert (tmp_path / "data" / "manifests" / "stego_manifest.csv").exists()
     assert (tmp_path / "results" / "predictions" / "predictions.csv").exists()
     assert (tmp_path / "results" / "metrics" / "detector_metrics.csv").exists()
+
+
+def test_cli_run_all_records_hardcoded_payload_mode(monkeypatch, capsys, tmp_path: Path) -> None:
+    covers_manifest = write_cover_manifest(
+        tmp_path / "data" / "manifests" / "covers_master.csv",
+        group_ids=range(1, 21),
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "prog",
+            "--project-root",
+            str(tmp_path),
+            "run-all",
+            "--profile",
+            "prototype",
+            "--run-id",
+            "prototype_payload_test",
+            "--covers-manifest",
+            str(covers_manifest),
+            "--payload-mode",
+            "hardcoded",
+            "--hardcoded-payload",
+            "Bastian the goat",
+        ],
+    )
+
+    main()
+    out = capsys.readouterr().out
+    cfg = json.loads((tmp_path / "runs" / "prototype_payload_test" / "config.json").read_text())
+
+    assert "Payload  : hardcoded" in out
+    assert cfg["payload_mode"] == "hardcoded"
+    assert cfg["hardcoded_payload_bytes"] == len("Bastian the goat")
