@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 from collections import defaultdict
+import math
 from pathlib import Path
 from statistics import mean
 
@@ -22,9 +23,10 @@ def _read_csv_rows(path: Path) -> list[dict[str, str]]:
 
 
 def _write_csv(path: Path, rows: list[dict]) -> None:
-    if not rows:
-        return
     path.parent.mkdir(parents=True, exist_ok=True)
+    if not rows:
+        path.write_text("", encoding="utf-8")
+        return
     fieldnames = list(rows[0].keys())
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -140,6 +142,82 @@ def _delong_compare(
         p_val = 1.0  # no difference is detected
 
     return dict(auc_a=auc_a, auc_b=auc_b, diff=diff, se=se, ci_lo=ci_lo, ci_hi=ci_hi, z=z_val, p=p_val)
+
+
+def _holm_adjust(results: list[dict]) -> list[dict]:
+    """Add Bonferroni-Holm adjusted p-values to confirmatory result rows."""
+    indexed = [
+        (idx, r["p"])
+        for idx, r in enumerate(results)
+        if r.get("p") is not None and not math.isnan(float(r["p"]))
+    ]
+    indexed.sort(key=lambda item: item[1])
+    m = len(indexed)
+    adjusted_by_idx: dict[int, float] = {}
+    running = 0.0
+    for rank, (idx, p_value) in enumerate(indexed, start=1):
+        adjusted = min(1.0, (m - rank + 1) * float(p_value))
+        running = max(running, adjusted)
+        adjusted_by_idx[idx] = running
+    for idx, row in enumerate(results):
+        p_adj = adjusted_by_idx.get(idx)
+        row["p_holm"] = p_adj
+        row["significant_holm_0_05"] = bool(p_adj is not None and p_adj <= 0.05)
+    return results
+
+
+def _auc_var_for_rows(rows: list[dict]) -> tuple[float | None, float | None]:
+    auc, V10, V01 = _delong_components(*_pos_neg(rows))
+    if auc is None:
+        return None, None
+    return auc, _delong_var(V10, V01)
+
+
+def _source_gap_stats(
+    predictions: list[dict],
+    *,
+    detector: str,
+    method: str,
+    payload_level: str,
+    encryption: str | None = None,
+) -> dict:
+    real_rows = _filter_preds(
+        predictions,
+        detector=detector,
+        source="real",
+        method=method,
+        payload_level=payload_level,
+        encryption=encryption,
+    )
+    ml_rows = (
+        _filter_preds(
+            predictions,
+            detector=detector,
+            source="ml_a",
+            method=method,
+            payload_level=payload_level,
+            encryption=encryption,
+        )
+        + _filter_preds(
+            predictions,
+            detector=detector,
+            source="ml_b",
+            method=method,
+            payload_level=payload_level,
+            encryption=encryption,
+        )
+    )
+    auc_real, var_real = _auc_var_for_rows(real_rows)
+    auc_ml, var_ml = _auc_var_for_rows(ml_rows)
+    if auc_real is None or auc_ml is None:
+        return dict(auc_a=auc_real, auc_b=auc_ml, diff=None, se=None, ci_lo=None, ci_hi=None, z=None, p=None)
+    diff = auc_real - auc_ml
+    se = math.sqrt(max((var_real or 0.0) + (var_ml or 0.0), 0.0))
+    ci_lo = diff - 1.96 * se
+    ci_hi = diff + 1.96 * se
+    z_val = diff / se if se > 1e-12 else 0.0
+    p_value = 2.0 * (1.0 - stats.norm.cdf(abs(z_val))) if se > 1e-12 else 1.0
+    return dict(auc_a=auc_real, auc_b=auc_ml, diff=diff, se=se, ci_lo=ci_lo, ci_hi=ci_hi, z=z_val, p=p_value)
 
 
 def _load_predictions(predictions_path: Path) -> list[dict]:
@@ -304,6 +382,7 @@ def _plot_exp1(predictions: list[dict], figures_dir: Path) -> Path:
                 "label": f"{detector}  ({method}, {payload_level})",
                 **stat,
             })
+    _holm_adjust(results)
 
     if not results:
         _write_placeholder_plot(out_path, "Exp 1: Real vs. Pooled ML",
@@ -349,6 +428,7 @@ def _plot_exp2(predictions: list[dict], figures_dir: Path) -> Path:
                 "label": f"{detector}  ({method}, {payload_level})",
                 **stat,
             })
+    _holm_adjust(results)
 
     if not results:
         _write_placeholder_plot(out_path, "Exp 2: ML-A vs. ML-B",
@@ -382,7 +462,7 @@ def _plot_exp3a(predictions: list[dict], figures_dir: Path) -> Path:
         {r["payload_level"] for r in predictions},
         key=lambda x: PAYLOAD_ORDER.index(x) if x in PAYLOAD_ORDER else 99,
     )
-    detectors = sorted({r["detector"] for r in predictions})
+    panels = sorted({(r["detector"], r["method"]) for r in predictions})
     sources = sorted({r["source"] for r in predictions})
 
     if not available:
@@ -391,16 +471,16 @@ def _plot_exp3a(predictions: list[dict], figures_dir: Path) -> Path:
 
     auc_data: dict[tuple, float] = {}
     se_data: dict[tuple, float] = {}
-    for detector in detectors:
+    for detector, method in panels:
         for source in sources:
             for pl in available:
                 rows = _filter_preds(predictions, detector=detector,
-                                     source=source, payload_level=pl)
+                                     source=source, method=method, payload_level=pl)
                 pos, neg = _pos_neg(rows)
                 auc, V10, V01 = _delong_components(pos, neg)
                 if auc is not None:
-                    auc_data[(detector, source, pl)] = auc
-                    se_data[(detector, source, pl)] = float(
+                    auc_data[(detector, method, source, pl)] = auc
+                    se_data[(detector, method, source, pl)] = float(
                         np.sqrt(max(_delong_var(V10, V01), 0.0))
                     )
 
@@ -410,7 +490,7 @@ def _plot_exp3a(predictions: list[dict], figures_dir: Path) -> Path:
 
     SOURCE_COLORS = {"real": "#1f77b4", "ml_a": "#ff7f0e", "ml_b": "#2ca02c"}
     SOURCE_MARKERS = {"real": "o", "ml_a": "s", "ml_b": "^"}
-    n_det = len(detectors)
+    n_det = len(panels)
     x_ticks = list(range(len(available)))
 
     fig, axes = plt.subplots(
@@ -424,11 +504,11 @@ def _plot_exp3a(predictions: list[dict], figures_dir: Path) -> Path:
         axes = axes.reshape(2, 1)
 
     # top row: AUC per source 
-    for col, detector in enumerate(detectors):
+    for col, (detector, method) in enumerate(panels):
         ax = axes[0, col]
         for source in sources:
-            aucs = [auc_data.get((detector, source, pl)) for pl in available]
-            ses = [se_data.get((detector, source, pl), 0.0) for pl in available]
+            aucs = [auc_data.get((detector, method, source, pl)) for pl in available]
+            ses = [se_data.get((detector, method, source, pl), 0.0) for pl in available]
             valid = [(xi, a, s) for xi, a, s in zip(x_ticks, aucs, ses) if a is not None]
             if valid:
                 xv, av, sv = zip(*valid)
@@ -440,22 +520,22 @@ def _plot_exp3a(predictions: list[dict], figures_dir: Path) -> Path:
                     label=source, linewidth=2, markersize=8, capsize=4,
                 )
         ax.set_ylim(0, 1.08)
-        ax.set_title(detector, fontsize=10, fontweight="bold")
+        ax.set_title(f"{detector} / {method}", fontsize=10, fontweight="bold")
         ax.grid(alpha=0.3)
         if col == 0:
             ax.set_ylabel("ROC-AUC  (±95% CI)", fontsize=9)
         ax.legend(title="Source", fontsize=7, title_fontsize=8)
 
     # bottom row: source-contrast gap 
-    for col, detector in enumerate(detectors):
+    for col, (detector, method) in enumerate(panels):
         ax = axes[1, col]
         gaps, gap_labels = [], []
         for pl in available:
-            real_auc = auc_data.get((detector, "real", pl))
+            real_auc = auc_data.get((detector, method, "real", pl))
             ml_aucs = [
-                auc_data.get((detector, src, pl))
+                auc_data.get((detector, method, src, pl))
                 for src in ("ml_a", "ml_b")
-                if auc_data.get((detector, src, pl)) is not None
+                if auc_data.get((detector, method, src, pl)) is not None
             ]
             if real_auc is None or not ml_aucs:
                 gaps.append(None)
@@ -504,6 +584,33 @@ def _plot_exp3b(predictions: list[dict], figures_dir: Path) -> Path:
             "No BD-Sens data in prototype run.\n"
             "Requires full design with k=2 bit-plane embedding (primary_lsb_bit_depth=2).",
         )
+        return out_path
+
+    detectors = sorted({r["detector"] for r in bd_rows})
+    results = []
+    for detector in detectors:
+        stat = _source_gap_stats(
+            bd_rows,
+            detector=detector,
+            method="lsb",
+            payload_level="bd_sens",
+        )
+        results.append({"label": detector, **stat})
+
+    if not results or all(r.get("diff") is None for r in results):
+        _write_placeholder_plot(out_path, "Exp 3b — BD-Sens Analysis", "Insufficient BD-Sens data.")
+        return out_path
+
+    fig, ax = plt.subplots(figsize=(11, max(3.5, len(results) * 0.9 + 1.5)))
+    _forest_plot(ax, results, "AUC Gap  (Real − Pooled ML)", color="teal")
+    ax.set_title(
+        "Exp 3b — Bit-Depth Sensitivity Source Gap  (k=2, 1.50 bpp)",
+        fontsize=11,
+        fontweight="bold",
+    )
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
     return out_path
 
 
@@ -532,32 +639,100 @@ def _plot_exp4(predictions: list[dict], figures_dir: Path) -> Path:
         )
         return out_path
 
-    # Full-design execution path (active once DCT data is available).
-    detectors = sorted({r["detector"] for r in predictions})
-    sources = sorted({r["source"] for r in predictions})
+    # Full-design execution path: compare branch-level source gaps. Spatial and
+    # DCT branches use different detector families, so this aggregates the
+    # available detector-specific carrier-source gaps within each branch.
+    payload_levels = sorted({r["payload_level"] for r in predictions})
     sp_method = next(iter(sorted(spatial)))
     fr_method = next(iter(sorted(frequency)))
 
     results = []
-    for detector in detectors:
-        for source in sources:
-            sp_rows = _filter_preds(predictions, detector=detector,
-                                    source=source, method=sp_method)
-            fr_rows = _filter_preds(predictions, detector=detector,
-                                    source=source, method=fr_method)
-            if not sp_rows or not fr_rows:
-                continue
-            stat = _delong_compare(*_pos_neg(sp_rows), *_pos_neg(fr_rows), paired=False)
-            results.append({"label": f"{detector}  /  {source}", **stat})
+    for payload_level in payload_levels:
+        branch_gaps: dict[str, list[float]] = {sp_method: [], fr_method: []}
+        for method in (sp_method, fr_method):
+            for detector in sorted({r["detector"] for r in predictions if r["method"] == method}):
+                gap = _source_gap_stats(
+                    predictions,
+                    detector=detector,
+                    method=method,
+                    payload_level=payload_level,
+                )
+                if gap.get("diff") is not None:
+                    branch_gaps[method].append(gap["diff"])
+        if not branch_gaps[sp_method] or not branch_gaps[fr_method]:
+            continue
+
+        spatial_mean = mean(branch_gaps[sp_method])
+        frequency_mean = mean(branch_gaps[fr_method])
+        diff = spatial_mean - frequency_mean
+        se_parts = []
+        for vals in branch_gaps.values():
+            if len(vals) > 1:
+                se_parts.append(float(np.std(vals, ddof=1) / math.sqrt(len(vals))))
+            else:
+                se_parts.append(0.0)
+        se = math.sqrt(sum(part * part for part in se_parts))
+        ci_lo = diff - 1.96 * se
+        ci_hi = diff + 1.96 * se
+        z_val = diff / se if se > 1e-12 else 0.0
+        p_value = 2.0 * (1.0 - stats.norm.cdf(abs(z_val))) if se > 1e-12 else 1.0
+        results.append({
+            "label": payload_level,
+            "auc_a": spatial_mean,
+            "auc_b": frequency_mean,
+            "diff": diff,
+            "se": se,
+            "ci_lo": ci_lo,
+            "ci_hi": ci_hi,
+            "z": z_val,
+            "p": p_value,
+        })
+
+    if not results:
+        for detector in sorted({r["detector"] for r in predictions}):
+            for payload_level in payload_levels:
+                # Fallback for future configurations that reuse detector names
+                # across branches.
+                sp_gap = _source_gap_stats(
+                    predictions,
+                    detector=detector,
+                    method=sp_method,
+                    payload_level=payload_level,
+                )
+                fr_gap = _source_gap_stats(
+                    predictions,
+                    detector=detector,
+                    method=fr_method,
+                    payload_level=payload_level,
+                )
+                if sp_gap.get("diff") is None or fr_gap.get("diff") is None:
+                    continue
+                diff = sp_gap["diff"] - fr_gap["diff"]
+                se = math.sqrt(max((sp_gap.get("se") or 0.0) ** 2 + (fr_gap.get("se") or 0.0) ** 2, 0.0))
+                ci_lo = diff - 1.96 * se
+                ci_hi = diff + 1.96 * se
+                z_val = diff / se if se > 1e-12 else 0.0
+                p_value = 2.0 * (1.0 - stats.norm.cdf(abs(z_val))) if se > 1e-12 else 1.0
+                results.append({
+                    "label": f"{detector}  /  {payload_level}",
+                    "auc_a": sp_gap["diff"],
+                    "auc_b": fr_gap["diff"],
+                    "diff": diff,
+                    "se": se,
+                    "ci_lo": ci_lo,
+                    "ci_hi": ci_hi,
+                    "z": z_val,
+                    "p": p_value,
+                })
 
     if not results:
         _write_placeholder_plot(out_path, "Exp 4: Spatial vs. Frequency", "No data.")
         return out_path
 
     fig, ax = plt.subplots(figsize=(11, max(3.5, len(results) * 1.1 + 1.5)))
-    _forest_plot(ax, results, "AUC Difference  (Spatial - Frequency)", color="mediumpurple")
+    _forest_plot(ax, results, "Difference in Source Gap  (Spatial − Frequency)", color="mediumpurple")
     ax.set_title(
-        "Exp 4 — Spatial (LSB+PNG) vs. Frequency (DCT-LSB+JPEG) Branch AUC  (DeLong, 95% CI)",
+        "Exp 4 — Carrier-Source Gap by Embedding Branch  (Exploratory, 95% CI)",
         fontsize=11, fontweight="bold",
     )
     fig.tight_layout()
@@ -588,22 +763,37 @@ def _plot_exp5(predictions: list[dict], figures_dir: Path) -> Path:
     results = []
     for detector in detectors:
         for source in sources:
-            plain_rows = _filter_preds(predictions, detector=detector,
-                                       source=source, encryption="plain")
-            enc_rows = _filter_preds(predictions, detector=detector,
-                                     source=source, encryption="encrypted")
-            if not plain_rows or not enc_rows:
-                continue
-            # Paired: both conditions share the same cover images (same negatives).
-            stat = _delong_compare(
-                *_pos_neg(plain_rows), *_pos_neg(enc_rows), paired=True
-            )
-            results.append({
-                "label": f"{detector}  /  {source}",
-                "detector": detector,
-                "source": source,
-                **stat,
-            })
+            for method in sorted({r["method"] for r in predictions}):
+                for payload_level in sorted({r["payload_level"] for r in predictions}):
+                    plain_rows = _filter_preds(
+                        predictions,
+                        detector=detector,
+                        source=source,
+                        method=method,
+                        payload_level=payload_level,
+                        encryption="plain",
+                    )
+                    enc_rows = _filter_preds(
+                        predictions,
+                        detector=detector,
+                        source=source,
+                        method=method,
+                        payload_level=payload_level,
+                        encryption="encrypted",
+                    )
+                    if not plain_rows or not enc_rows:
+                        continue
+                    stat = _delong_compare(
+                        *_pos_neg(plain_rows), *_pos_neg(enc_rows), paired=True
+                    )
+                    results.append({
+                        "label": f"{detector} / {source} / {method} / {payload_level}",
+                        "detector": detector,
+                        "source": source,
+                        "method": method,
+                        "payload_level": payload_level,
+                        **stat,
+                    })
 
     if not results:
         _write_placeholder_plot(out_path, "Exp 5 — Encryption Effect", "No data.")
@@ -753,6 +943,149 @@ def _plot_auc_by_method_detector(condition_rows: list[dict], fig_path: Path) -> 
     return fig_path
 
 
+def _roc_curve_points(rows: list[dict]) -> tuple[list[float], list[float]]:
+    labels = [r["label"] for r in rows]
+    scores = [r["score"] for r in rows]
+    if len(set(labels)) < 2:
+        return [], []
+    thresholds = sorted(set(scores), reverse=True)
+    thresholds = [thresholds[0] + 1.0] + thresholds + [thresholds[-1] - 1.0]
+    n_pos = sum(1 for y in labels if y == 1)
+    n_neg = sum(1 for y in labels if y == 0)
+    fprs: list[float] = []
+    tprs: list[float] = []
+    for threshold in thresholds:
+        tp = fp = 0
+        for label, score in zip(labels, scores):
+            pred_pos = score >= threshold
+            tp += int(label == 1 and pred_pos)
+            fp += int(label == 0 and pred_pos)
+        tprs.append(tp / n_pos if n_pos else 0.0)
+        fprs.append(fp / n_neg if n_neg else 0.0)
+    return fprs, tprs
+
+
+def _plot_roc_condition_panels(predictions: list[dict], figures_dir: Path) -> Path:
+    out_path = figures_dir / "roc_condition_panels.png"
+    strata = sorted({
+        (r["detector"], r["method"], r["payload_level"], r["encryption"])
+        for r in predictions
+    })
+    if not strata:
+        _write_placeholder_plot(out_path, "Condition ROC Panels", "No prediction data available.")
+        return out_path
+
+    n_cols = min(3, max(1, len(strata)))
+    n_rows = math.ceil(len(strata) / n_cols)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5.2 * n_cols, 4.2 * n_rows), squeeze=False)
+    source_colors = {"real": "#1f77b4", "ml_a": "#ff7f0e", "ml_b": "#2ca02c"}
+
+    for ax, (detector, method, payload_level, encryption) in zip(axes.ravel(), strata):
+        for source in ("real", "ml_a", "ml_b"):
+            rows = _filter_preds(
+                predictions,
+                detector=detector,
+                method=method,
+                payload_level=payload_level,
+                encryption=encryption,
+                source=source,
+            )
+            fprs, tprs = _roc_curve_points(rows)
+            if fprs:
+                auc, _var = _auc_var_for_rows(rows)
+                label = f"{source} (AUC={auc:.3f})" if auc is not None else source
+                ax.plot(fprs, tprs, label=label, color=source_colors.get(source))
+        ax.plot([0, 1], [0, 1], color="gray", linestyle="--", linewidth=0.8)
+        ax.set_title(f"{detector}\n{method} / {payload_level} / {encryption}", fontsize=9)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.grid(alpha=0.25)
+        ax.set_xlabel("FPR")
+        ax.set_ylabel("TPR")
+        ax.legend(fontsize=7)
+
+    for ax in axes.ravel()[len(strata):]:
+        ax.axis("off")
+
+    fig.suptitle("Per-Condition ROC Curves by Carrier Source", fontsize=12, fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return out_path
+
+
+def _plot_quality_summary(metrics_dir: Path, figures_dir: Path) -> Path:
+    out_path = figures_dir / "quality_summary.png"
+    rows = _read_csv_rows(metrics_dir / "quality_metrics.csv")
+    values: dict[tuple[str, str], list[float]] = defaultdict(list)
+    for row in rows:
+        method = row.get("method", "")
+        payload_level = row.get("payload_level", "")
+        psnr = _maybe_float(row.get("psnr"))
+        if method and payload_level and psnr is not None:
+            values[(method, payload_level)].append(psnr)
+
+    if not values:
+        _write_placeholder_plot(out_path, "Quality Summary", "No quality_metrics.csv PSNR data available.")
+        return out_path
+
+    keys = sorted(values)
+    labels = [f"{method}\n{payload}" for method, payload in keys]
+    means = [mean(values[key]) for key in keys]
+
+    fig, ax = plt.subplots(figsize=(max(7, len(keys) * 1.1), 4.5))
+    ax.bar(range(len(keys)), means, color="#607d8b", alpha=0.85)
+    ax.set_xticks(range(len(keys)))
+    ax.set_xticklabels(labels)
+    ax.set_ylabel("Mean PSNR (dB)")
+    ax.set_title("Embedding Quality Summary by Method and Payload")
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return out_path
+
+
+def _write_experiment_contrast_tables(metrics_dir: Path, predictions: list[dict]) -> dict[str, Path]:
+    outputs: dict[str, Path] = {}
+    if not predictions:
+        return outputs
+
+    strata = sorted({(r["detector"], r["method"], r["payload_level"]) for r in predictions})
+
+    exp1_rows: list[dict] = []
+    for detector, method, payload_level in strata:
+        real_rows = _filter_preds(predictions, detector=detector, source="real", method=method, payload_level=payload_level)
+        ml_rows = _filter_preds(predictions, detector=detector, source="ml_a", method=method, payload_level=payload_level) + _filter_preds(predictions, detector=detector, source="ml_b", method=method, payload_level=payload_level)
+        stat = _delong_compare(*_pos_neg(real_rows), *_pos_neg(ml_rows), paired=False)
+        exp1_rows.append({"experiment": "exp1_rq1_real_vs_pooled_ml", "detector": detector, "method": method, "payload_level": payload_level, **stat})
+    _holm_adjust(exp1_rows)
+    outputs["exp1_contrasts"] = metrics_dir / "exp1_rq1_real_vs_pooled_ml_contrasts.csv"
+    _write_csv(outputs["exp1_contrasts"], exp1_rows)
+
+    exp2_rows: list[dict] = []
+    for detector, method, payload_level in strata:
+        ml_a_rows = _filter_preds(predictions, detector=detector, source="ml_a", method=method, payload_level=payload_level)
+        ml_b_rows = _filter_preds(predictions, detector=detector, source="ml_b", method=method, payload_level=payload_level)
+        stat = _delong_compare(*_pos_neg(ml_a_rows), *_pos_neg(ml_b_rows), paired=False)
+        exp2_rows.append({"experiment": "exp2_rq2_mla_vs_mlb", "detector": detector, "method": method, "payload_level": payload_level, **stat})
+    _holm_adjust(exp2_rows)
+    outputs["exp2_contrasts"] = metrics_dir / "exp2_rq2_mla_vs_mlb_contrasts.csv"
+    _write_csv(outputs["exp2_contrasts"], exp2_rows)
+
+    exp5_rows: list[dict] = []
+    for detector, method, payload_level in strata:
+        for source in sorted({r["source"] for r in predictions}):
+            plain_rows = _filter_preds(predictions, detector=detector, source=source, method=method, payload_level=payload_level, encryption="plain")
+            enc_rows = _filter_preds(predictions, detector=detector, source=source, method=method, payload_level=payload_level, encryption="encrypted")
+            stat = _delong_compare(*_pos_neg(plain_rows), *_pos_neg(enc_rows), paired=True)
+            exp5_rows.append({"experiment": "exp5_rq5_plain_vs_encrypted", "detector": detector, "source": source, "method": method, "payload_level": payload_level, **stat})
+    outputs["exp5_contrasts"] = metrics_dir / "exp5_rq5_encryption_contrasts.csv"
+    _write_csv(outputs["exp5_contrasts"], exp5_rows)
+
+    return outputs
+
+
 def generate_metrics_figures(metrics_dir: Path, figures_dir: Path) -> dict[str, Path]:
     """Generate all AUC figures for Experiments 1–5 plus overview bar charts.
 
@@ -799,5 +1132,10 @@ def generate_metrics_figures(metrics_dir: Path, figures_dir: Path) -> dict[str, 
     figures["exp3b_bd_sens"] = _plot_exp3b(predictions, figures_dir)
     figures["exp4_branch_comparison"] = _plot_exp4(predictions, figures_dir)
     figures["exp5_encryption"] = _plot_exp5(predictions, figures_dir)
+    figures["roc_condition_panels"] = _plot_roc_condition_panels(predictions, figures_dir)
+    figures["quality_summary"] = _plot_quality_summary(metrics_dir, figures_dir)
+
+    for key, path in _write_experiment_contrast_tables(metrics_dir, predictions).items():
+        figures[key] = path
 
     return figures
