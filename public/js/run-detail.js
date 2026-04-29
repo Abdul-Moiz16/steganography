@@ -110,7 +110,7 @@ function summarizeRunDetail(data) {
 }
 
 function buildRunHeader(cfg, detailStats, runId) {
-    const profileFromId = runId ? (Object.keys(PROFILE_META).find(k => runId.startsWith(k)) || null) : null;
+    const profileFromId = profileFromRunId(runId);
     const profile = cfg.profile || profileFromId || 'unconfigured profile';
     const meta = PROFILE_META[profile] || null;
     const methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta ? meta.active_methods : []);
@@ -134,9 +134,12 @@ function buildSummaryStrip(cfg, detailStats, data) {
     const payloads = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta.active_payload_levels || []);
     const groups = cfg.n_groups != null ? Number(cfg.n_groups) : (meta.n_groups || 0);
     const isProto = profile === 'prototype';
+    const isProtoFull = profile === 'prototype_full';
 
-    const profileLabel = isProto ? 'Horizontal Prototype' : 'Full Factorial Design';
-    const profileIcon = isProto ? 'science' : 'experiment';
+    const profileLabel = isProto
+        ? 'Horizontal Prototype'
+        : (isProtoFull ? 'Prototype Full Design' : 'Full Factorial Design');
+    const profileIcon = isProto ? 'science' : (isProtoFull ? 'experiment' : 'experiment');
     const designDesc = methods.join(' + ').toUpperCase() + ' \u00b7 ' + payloads.length + ' payload level' + (payloads.length !== 1 ? 's' : '') + ' \u00b7 ' + groups + ' groups';
 
     const nSources = detailStats.coverGroups ? 3 : 0;
@@ -165,7 +168,7 @@ function buildSummaryStrip(cfg, detailStats, data) {
 }
 
 function buildOverviewTab(cfg, detailStats, runId) {
-    const profileFromId = runId ? (Object.keys(PROFILE_META).find(k => runId.startsWith(k)) || null) : null;
+    const profileFromId = profileFromRunId(runId);
     const profile = cfg.profile || profileFromId || null;
     const meta = PROFILE_META[profile] || null;
     const groups = cfg.n_groups != null ? Number(cfg.n_groups) : (meta ? meta.n_groups : 0);

@@ -131,10 +131,11 @@ class PipelineConfig:
     def from_profile(cls, project_root: Path, profile_name: str) -> "PipelineConfig":
         """Build a profile-scoped config from a named experiment profile.
 
-        Recognised profile names: ``"prototype"``, ``"full_design"``.
-        All locked constants (image size, seeds, JPEG quality, etc.) remain
-        at their proposal values; only ``n_groups``, ``active_methods``, and
-        ``active_payload_levels`` are narrowed by the profile.
+        Recognised profile names: ``"prototype"``, ``"prototype_full"``,
+        ``"full_design"``. All locked constants (image size, seeds, JPEG
+        quality, etc.) remain at their proposal values; only ``n_groups``,
+        ``active_methods``, and ``active_payload_levels`` are narrowed by the
+        profile.
         """
         from src.pipeline.profile import PROFILES
 

@@ -53,6 +53,25 @@ from src.evaluation.metrics import (
 from src.evaluation.plots import generate_metrics_figures
 from src.metrics.psnr import psnr as _compute_psnr
 from src.metrics.ssim import ssim as _compute_ssim
+
+
+def _compute_fsim_safe(cover: "Image.Image", stego: "Image.Image") -> "float | None":
+    """Compute FSIM only if optional deps (piq, torch) are present.
+
+    FSIM is part of the proposal quality-control trio (PSNR/SSIM/FSIM). The
+    runtime cost and the torch+piq dependency are heavier than PSNR/SSIM, so
+    we import lazily and return ``None`` whenever the deps or computation
+    fail. The quality_metrics column is still emitted, just left blank for
+    that row, which the report figures handle gracefully.
+    """
+    try:
+        from src.metrics.fsim import fsim as _fsim_impl
+    except Exception:
+        return None
+    try:
+        return float(_fsim_impl(cover, stego))
+    except Exception:
+        return None
 from src.pipeline.config import AES_CBC_BLOCK_BYTES, PAYLOAD_MODE_HARDCODED, PipelineConfig
 
 
@@ -332,7 +351,9 @@ class PipelineRunner:
                 )
                 save_png(stego, stego_path)
                 if quality_metrics_path is not None:
-                    psnr_val, ssim_val = self._compute_quality_pair(cover_image, stego)
+                    psnr_val, ssim_val, fsim_val = self._compute_quality_pair(
+                        cover_image, stego
+                    )
                     quality_rows.append({
                         "group_id": row["group_id"],
                         "source": row["source"],
@@ -341,7 +362,7 @@ class PipelineRunner:
                         "encryption": row["encryption"],
                         "psnr": "" if psnr_val is None else psnr_val,
                         "ssim": "" if ssim_val is None else ssim_val,
-                        "fsim": "",
+                        "fsim": "" if fsim_val is None else fsim_val,
                     })
             elif method == "dct":
                 cover_jpeg_bytes = load_bytes(self._resolve_manifest_path(row["cover_path"]))
@@ -357,6 +378,31 @@ class PipelineRunner:
                     jpeg_quality=int(params["jpeg_quality"]),
                 )
                 save_bytes(stego_bytes, stego_path)
+                if quality_metrics_path is not None:
+                    # Decode both JPEG byte streams to grayscale images for the
+                    # standard PSNR / SSIM / FSIM trio. The proposal asks for
+                    # the same quality trio across both branches so Exp 4 can
+                    # compare embedding fidelity, not just AUC.
+                    try:
+                        from io import BytesIO
+                        from PIL import Image as _PIL_Image
+                        cover_img = _PIL_Image.open(BytesIO(cover_jpeg_bytes)).convert("L")
+                        stego_img = _PIL_Image.open(BytesIO(stego_bytes)).convert("L")
+                        psnr_val, ssim_val, fsim_val = self._compute_quality_pair(
+                            cover_img, stego_img
+                        )
+                    except Exception:
+                        psnr_val = ssim_val = fsim_val = None
+                    quality_rows.append({
+                        "group_id": row["group_id"],
+                        "source": row["source"],
+                        "method": method,
+                        "payload_level": row["payload_level"],
+                        "encryption": row["encryption"],
+                        "psnr": "" if psnr_val is None else psnr_val,
+                        "ssim": "" if ssim_val is None else ssim_val,
+                        "fsim": "" if fsim_val is None else fsim_val,
+                    })
             else:
                 raise ValueError(f"Unknown method: {method}")
 
@@ -368,8 +414,12 @@ class PipelineRunner:
 
     def _compute_quality_pair(
         self, cover: "Image.Image", stego: "Image.Image"
-    ) -> "tuple[float | None, float | None]":
-        """Return (psnr, ssim) for a cover/stego pair; None on any error."""
+    ) -> "tuple[float | None, float | None, float | None]":
+        """Return (psnr, ssim, fsim) for a cover/stego pair; None per metric on error.
+
+        FSIM uses optional deps (piq + torch) and is skipped silently when
+        unavailable so a missing piq install does not break the run.
+        """
         try:
             p = _compute_psnr(cover, stego)
         except Exception:
@@ -378,7 +428,8 @@ class PipelineRunner:
             s = _compute_ssim(cover, stego)
         except Exception:
             s = None
-        return p, s
+        f = _compute_fsim_safe(cover, stego)
+        return p, s, f
 
     def run_detector_stage(
         self,

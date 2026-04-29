@@ -4,7 +4,7 @@
 
 ## Files
 
-- `profile.py` — named experiment profiles (`prototype`, `full_design`)
+- `profile.py` — named experiment profiles (`prototype`, `prototype_full`, `full_design`)
 - `config.py` — image size, JPEG quality, fill rates, seeds, profile-based scoping
 - `runner.py` — main execution: cover prep, manifest building, embedding, detection, metrics
 - `cli.py` — command-line interface wrapping the runner
@@ -14,6 +14,7 @@
 | Profile | Groups | Methods | Payloads | Detectors |
 |---------|--------|---------|----------|-----------|
 | `prototype` | 20 | LSB | Low | 3 (spatial) |
+| `prototype_full` | 100 | LSB + DCT | Low + Medium + High | 5 (spatial + frequency) |
 | `full_design` | 500 | LSB + DCT | Low + Medium + High | 5 (spatial + frequency) |
 
 ## Usage

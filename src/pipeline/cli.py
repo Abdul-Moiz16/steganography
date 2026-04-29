@@ -194,9 +194,9 @@ def _parser() -> argparse.ArgumentParser:
         choices=list(PROFILES.keys()),
         default=None,
         help=(
-            "Named experiment profile ('prototype' or 'full_design'). "
-            "When set, config is scoped to that profile and results are "
-            "written to runs/{profile}_{NNN}/."
+            "Named experiment profile ('prototype', 'prototype_full', or "
+            "'full_design'). When set, config is scoped to that profile and "
+            "results are written to runs/{profile}_{NNN}/."
         ),
     )
     p_all.add_argument(

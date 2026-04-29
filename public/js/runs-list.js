@@ -87,7 +87,7 @@ function buildRunRow(run) {
     const isKilled = !isActive && (run.is_killed || (getJobForRun(run.id) || {}).killed);
     const activeJob = getJobForRun(run.id);
     // parse profile from run ID as last resort (format: {profile}_{timestamp}_p{port})
-    const profileFromId = Object.keys(PROFILE_META).find(k => run.id.startsWith(k)) || null;
+    const profileFromId = profileFromRunId(run.id);
     const profile = cfg.profile || (activeJob && activeJob.profile) || profileFromId || (isActive ? '\u2026' : 'unconfigured');
     // fallback to static profile metadata when config.json not yet written
     const meta = PROFILE_META[profile] || null;

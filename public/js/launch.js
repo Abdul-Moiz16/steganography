@@ -61,12 +61,15 @@ function renderLaunchDrawer() {
             <div class="lp-field-label">Research Profile</div>
             <div class="lp-dropdown" id="lp-profile-dropdown">
                 <button class="lp-dropdown-trigger" type="button" onclick="toggleLpDropdown()">
-                    <span class="lp-dropdown-value" id="lp-profile-label">${curProfile === 'prototype' ? 'Prototype Analysis' : 'Prototype Analysis'}</span>
+                    <span class="lp-dropdown-value" id="lp-profile-label">${profileLabel(curProfile)}</span>
                     <span class="material-symbols-outlined lp-dropdown-arrow">expand_more</span>
                 </button>
                 <div class="lp-dropdown-menu" id="lp-profile-menu">
-                    <div class="lp-dropdown-opt lp-dropdown-opt--selected" onclick="selectLpProfile('prototype', 'Prototype Analysis', this)">
+                    <div class="lp-dropdown-opt${curProfile === 'prototype' ? ' lp-dropdown-opt--selected' : ''}" onclick="selectLpProfile('prototype', 'Prototype Analysis', this)">
                         <span class="material-symbols-outlined lp-dropdown-check">check</span>Prototype Analysis
+                    </div>
+                    <div class="lp-dropdown-opt${curProfile === 'prototype_full' ? ' lp-dropdown-opt--selected' : ''}" onclick="selectLpProfile('prototype_full', 'Prototype Full Design', this)">
+                        <span class="material-symbols-outlined lp-dropdown-check">check</span>Prototype Full Design<span class="lp-dropdown-tag">All factors</span>
                     </div>
                     <div class="lp-dropdown-opt lp-dropdown-opt--disabled">
                         <span class="material-symbols-outlined lp-dropdown-check" style="opacity:0">check</span>Full Design Analysis<span class="lp-dropdown-tag">Soon</span>
@@ -139,6 +142,12 @@ function renderLaunchDrawer() {
         updateHardcodedPayloadCount();
     }
     loadSystemCheck();
+}
+
+function profileLabel(profile) {
+    if (profile === 'prototype_full') return 'Prototype Full Design';
+    if (profile === 'full_design')    return 'Full Design Analysis';
+    return 'Prototype Analysis';
 }
 
 function hardcodedPayloadMaxBytes() {

@@ -4,8 +4,9 @@ Run the steganography pipeline for a named experiment profile.
 
 Usage
 -----
-    python run.py prototype              # new prototype run  (auto-ID)
-    python run.py full_design            # new full-design run (auto-ID)
+    python run.py prototype              # new prototype run       (auto-ID, 60 images, LSB only)
+    python run.py prototype_full         # new prototype-full run  (auto-ID, 300 images, full design)
+    python run.py full_design            # new full-design run     (auto-ID, 1500 images, full design)
     python run.py prototype --run-id my_run_001   # explicit run ID
     python run.py prototype --ml-engine stub      # stub generator (no GPU/API needed)
 
@@ -27,13 +28,15 @@ the full steganography pipeline:
 
 Available profiles
 ------------------
-  prototype    20 groups × 3 sources =   60 images · LSB only  · medium fill · 6 conditions
-  full_design 500 groups × 3 sources = 1500 images · LSB + DCT · all fills   · 36 conditions
+  prototype       20 groups x 3 sources =   60 images . LSB only  . low fill   .  6 conditions
+  prototype_full 100 groups x 3 sources =  300 images . LSB + DCT . all fills  . 36 conditions
+  full_design    500 groups x 3 sources = 1500 images . LSB + DCT . all fills  . 36 conditions
 
 Cover image breakdown per profile
 ----------------------------------
-  prototype   →  12 COCO + 8 Flickr30k  (real)  +  20 SDXL + 20 FLUX  (ml)
-  full_design → 300 COCO + 200 Flickr30k (real)  + 500 SDXL + 500 FLUX (ml)
+  prototype       ->  12 COCO +  8 Flickr30k (real)  +  20 SDXL +  20 FLUX (ml)
+  prototype_full  ->  60 COCO + 40 Flickr30k (real)  + 100 SDXL + 100 FLUX (ml)
+  full_design     -> 300 COCO + 200 Flickr30k (real) + 500 SDXL + 500 FLUX (ml)
 
 ML engine options (--ml-engine)
 --------------------------------
@@ -173,18 +176,21 @@ def _print_results_summary(run_dir: Path) -> None:
 # ── Profile constants ─────────────────────────────────────────────────────────
 
 _PROFILE_N_GROUPS: dict[str, int] = {
-    "prototype":   20,
-    "full_design": 500,
+    "prototype":       20,
+    "prototype_full": 100,
+    "full_design":    500,
 }
 
 _PROFILE_COCO_TARGET: dict[str, int] = {
-    "prototype":   12,   # 12 of 20 real groups per run
-    "full_design": 300,
+    "prototype":       12,   # 12 of 20 real groups per run
+    "prototype_full":  60,   # 60 of 100 real groups per run (proposal 60/40 mix)
+    "full_design":    300,
 }
 
 _PROFILE_FLICKR_TARGET: dict[str, int] = {
-    "prototype":    8,   # 8 of 20 real groups per run
-    "full_design": 200,
+    "prototype":        8,   # 8 of 20 real groups per run
+    "prototype_full":  40,   # 40 of 100 real groups per run (proposal 60/40 mix)
+    "full_design":    200,
 }
 
 
@@ -229,9 +235,10 @@ def _resolve_hf_token(project_root: Path, profile: str, ml_engine: str) -> None:
             "    echo 'HF_TOKEN=hf_your_token_here' > .env\n"
         )
     else:
-        # full_design: token is effectively required for 500 generations
+        # prototype_full and full_design: token is effectively required for
+        # 100 / 500 generations respectively.
         print(
-            "Error: HF_TOKEN is required for full_design ML cover generation.\n"
+            f"Error: HF_TOKEN is required for {profile} ML cover generation.\n"
             "\n"
             "Create a .env file in the project root with your HuggingFace token:\n"
             "\n"
@@ -344,7 +351,11 @@ def main() -> None:
     parser.add_argument(
         "profile",
         choices=list(_PROFILE_N_GROUPS.keys()),
-        help="Experiment profile: 'prototype' (60 images) or 'full_design' (1500 images).",
+        help=(
+            "Experiment profile: 'prototype' (60 images, LSB-only), "
+            "'prototype_full' (300 images, full factor design), or "
+            "'full_design' (1500 images, full factor design)."
+        ),
     )
     parser.add_argument(
         "--run-id",
