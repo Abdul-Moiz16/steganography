@@ -130,9 +130,10 @@ def _list_runs() -> list[dict]:
             for key in ("payload_mode", "hardcoded_payload_bytes", "hardcoded_payload_max_bytes"):
                 if key in meta:
                     config.setdefault(key, meta.get(key))
-        # Last resort: parse profile from run ID (format: {profile}_{timestamp}_p{port})
+        # Last resort: parse profile from run ID (format: {profile}_{timestamp}_p{port}).
+        # Order matters: longest prefix first so 'prototype_full' wins over 'prototype'.
         if not config.get("profile"):
-            for known in ("prototype", "full_design"):
+            for known in ("prototype_full", "prototype", "full_design"):
                 if d.name.startswith(known):
                     config["profile"] = known
                     break
@@ -188,9 +189,10 @@ def _get_run_detail(run_id: str) -> dict:
         for key in ("payload_mode", "hardcoded_payload_bytes", "hardcoded_payload_max_bytes"):
             if key in meta:
                 config.setdefault(key, meta.get(key))
-    # Last resort: parse profile from run ID (format: {profile}_{timestamp}_p{port})
+    # Last resort: parse profile from run ID (format: {profile}_{timestamp}_p{port}).
+    # Order matters: longest prefix first so 'prototype_full' wins over 'prototype'.
     if not config.get("profile"):
-        for known in ("prototype", "full_design"):
+        for known in ("prototype_full", "prototype", "full_design"):
             if run_id.startswith(known):
                 config["profile"] = known
                 break
@@ -475,6 +477,7 @@ class Handler(BaseHTTPRequestHandler):
             ("tqdm",            "tqdm",             "tqdm",     True),
             ("matplotlib",      "matplotlib",       "matplotlib",True),
             ("cryptography",    "cryptography",     "cryptography",True),
+            ("piq (FSIM)",      "piq",              "piq",      False),
         ]
         packages = []
         for display, pkg_name, import_name, required in checks:

@@ -2,18 +2,27 @@ from __future__ import annotations
 
 """Named experiment profiles for prototype and full-design runs.
 
-Two profiles are defined:
+Three profiles are defined:
 
 ``prototype``
     20 groups downloaded per run (3 sources each = 60 images per run),
     spatial LSB only, low fill rate only,
-    plain + AES-256-CBC encryption — 6 conditions total.
+    plain + AES-256-CBC encryption - 6 conditions total.
     Used for rapid iteration and examiner-reproducible demonstration.
+
+``prototype_full``
+    100 groups downloaded per run (3 sources each = 300 images per run),
+    spatial LSB + DCT-LSB, all three fill rates,
+    plain + AES-256-CBC encryption - 36 conditions total.
+    Same factor coverage as ``full_design`` at 1/5 the data volume so every
+    figure (Exp 1-5, ROC panels, quality summary, contrast tables) gets real
+    data instead of placeholders. Used to validate the full pipeline before
+    committing to the 1500-image full run.
 
 ``full_design``
     500 groups downloaded per run (3 sources each = 1500 images per run),
     spatial LSB + DCT-LSB, all three fill rates,
-    plain + AES-256-CBC encryption — 36 conditions total.
+    plain + AES-256-CBC encryption - 36 conditions total.
     Mirrors the full proposal_updated_3.tex experimental design.
 """
 
@@ -60,6 +69,24 @@ PROFILES: dict[str, RunProfile] = {
             "(real: ~12 COCO + ~8 Flickr30k / SDXL / FLUX), "
             "spatial LSB embedding only, low fill rate (0.25 bpp), "
             "plain + AES-256-CBC encryption. 6 conditions total."
+        ),
+    ),
+    "prototype_full": RunProfile(
+        name="prototype_full",
+        # 100 unique groups per run shared across all three sources.
+        # Total images per run = 100 groups x 3 sources = 300 images.
+        # Real breakdown: 60 COCO + 40 Flickr30k (proposal 60/40 mix).
+        n_groups=100,
+        pool_groups=100,
+        active_methods=("lsb", "dct"),
+        active_payload_levels=("low", "medium", "high"),
+        description=(
+            "Prototype-full run: 100 groups downloaded per run; 100 groups x 3 sources = 300 images per run "
+            "(real: 60 COCO + 40 Flickr30k / SDXL 1.0 / FLUX.1-schnell), "
+            "spatial LSB + DCT-LSB embedding, all fill rates (0.25 / 0.50 / 0.75 bpp), "
+            "plain + AES-256-CBC encryption. 36 conditions total. "
+            "Same coverage as full_design at 1/5 the data volume, so every report figure "
+            "(Exp 1-5, ROC panels, quality summary) renders with real data."
         ),
     ),
     "full_design": RunProfile(

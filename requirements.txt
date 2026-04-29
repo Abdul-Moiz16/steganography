@@ -34,3 +34,7 @@ cryptography>=44.0.0
 brisque>=0.0.16
 numpy>=1.24, <2.0.0
 opencv-python==4.8.1.78
+
+# FSIM metric (optional). The runner imports this lazily and leaves the FSIM
+# column blank when piq is not installed, so minimal installs still work.
+piq>=0.7.0
