@@ -38,7 +38,7 @@ def _analyze_png(image_bytes: bytes) -> AnalyzeResult:
 
     #Save the score
     score_list = [
-        DetectorScore(detector="Chi-Square (Spatial)", score=stego_score),
+        DetectorScore(detector="Chi-Square (Spatial)", score=chi_score),
         DetectorScore(detector="RS Analysis", score=rs_score),
         DetectorScore(detector="Sample Pairs", score=sp_score)
     ]    
