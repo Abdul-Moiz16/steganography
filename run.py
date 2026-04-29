@@ -153,6 +153,21 @@ def _print_results_summary(run_dir: Path) -> None:
                 row_str += f"  {f'{val:.3f}' if val is not None else '  —':>10}"
             print(row_str)
 
+    figures_dir = run_dir / "figures"
+    if figures_dir.exists():
+        top_pngs = sorted(figures_dir.glob("*.png"))
+        nested_pngs = sorted(figures_dir.glob("*/*.png"))
+        if top_pngs or nested_pngs:
+            total = len(top_pngs) + len(nested_pngs)
+            print(f"\n  FIGURES  ({total} PNGs in {figures_dir})")
+            for path in top_pngs:
+                print(f"    - {path.name}")
+            sub_counts: dict[str, int] = {}
+            for path in nested_pngs:
+                sub_counts[path.parent.name] = sub_counts.get(path.parent.name, 0) + 1
+            for sub, count in sorted(sub_counts.items()):
+                print(f"    - {sub}/  ({count} PNGs)")
+
     print(f"\n{'═'*W}\n")
 
 # ── Profile constants ─────────────────────────────────────────────────────────
