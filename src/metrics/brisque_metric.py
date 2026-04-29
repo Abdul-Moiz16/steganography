@@ -1,3 +1,6 @@
+# Main worker: Daria
+# Contributor: David (Template)
+
 """Blind/Referenceless Image Spatial Quality Evaluator (BRISQUE).
 
 BRISQUE is a no-reference image quality metric that operates in the spatial
@@ -22,8 +25,8 @@ References
 from __future__ import annotations
 from PIL import Image
 import numpy as np
-# reference: https://pypi.org/project/brisque/
 from brisque import BRISQUE
+# reference: https://pypi.org/project/brisque/
 
 def brisque_score(image: Image.Image) -> float:
     """Compute the BRISQUE score for a single grayscale image.

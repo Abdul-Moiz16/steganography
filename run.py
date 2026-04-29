@@ -358,6 +358,24 @@ def main() -> None:
         default="inference_api",
         help="Backend for ML cover generation (default: inference_api).",
     )
+    parser.add_argument(
+        "--payload-mode",
+        choices=["random", "hardcoded"],
+        default="random",
+        help="Payload generation mode passed to the pipeline.",
+    )
+    parser.add_argument(
+        "--hardcoded-payload",
+        type=str,
+        default=None,
+        help="UTF-8 text payload used when --payload-mode=hardcoded.",
+    )
+    parser.add_argument(
+        "--hardcoded-payload-file",
+        type=Path,
+        default=None,
+        help="Text file payload used when --payload-mode=hardcoded.",
+    )
     args = parser.parse_args()
 
     profile      = args.profile
@@ -410,7 +428,12 @@ def main() -> None:
         "--execute-detectors",
         "--skip-unimplemented",
         "--generate-figures",
+        "--payload-mode",     args.payload_mode,
     ]
+    if args.hardcoded_payload is not None:
+        cli_args.extend(["--hardcoded-payload", args.hardcoded_payload])
+    if args.hardcoded_payload_file is not None:
+        cli_args.extend(["--hardcoded-payload-file", str(args.hardcoded_payload_file)])
 
     sys.argv = ["run.py"] + cli_args
 

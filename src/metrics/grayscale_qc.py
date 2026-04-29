@@ -1,3 +1,5 @@
+# Main writers: Jimena and Daria
+
 """Grayscale quality-control checks for cover images.
 
 Used in the quality-control screening step (Section 3.2 of the proposal)
@@ -16,9 +18,7 @@ images are regenerated with a new seed.
 """
 
 from __future__ import annotations
-
-from PIL import Image
-
+from PIL import Image, ImageStat
 
 def grayscale_mean(image: Image.Image) -> float:
     """Return the mean grayscale intensity of an image.
@@ -31,8 +31,7 @@ def grayscale_mean(image: Image.Image) -> float:
     -------
     Mean pixel value in [0, 255].
     """
-    raise NotImplementedError("Grayscale mean is not implemented yet.")
-
+    return float(ImageStat.Stat(image.convert("L")).mean[0])
 
 def grayscale_std(image: Image.Image) -> float:
     """Return the standard deviation of grayscale pixel intensities.
@@ -45,8 +44,7 @@ def grayscale_std(image: Image.Image) -> float:
     -------
     Standard deviation of pixel values.
     """
-    raise NotImplementedError("Grayscale std is not implemented yet.")
-
+    return float(ImageStat.Stat(image.convert("L")).stddev[0])
 
 def is_saturated(image: Image.Image, *, low: float = 10.0, high: float = 245.0) -> bool:
     """Check whether the image is saturated (near-black or near-white).
@@ -61,8 +59,7 @@ def is_saturated(image: Image.Image, *, low: float = 10.0, high: float = 245.0) 
     -------
     True if the grayscale mean falls outside [low, high].
     """
-    raise NotImplementedError("Saturation check is not implemented yet.")
-
+    return grayscale_mean(image) < low or grayscale_mean(image) > high
 
 def is_near_uniform(image: Image.Image, *, min_std: float = 5.0) -> bool:
     """Check whether the image is near-uniform (very low variance).
@@ -76,8 +73,7 @@ def is_near_uniform(image: Image.Image, *, min_std: float = 5.0) -> bool:
     -------
     True if the pixel standard deviation is below *min_std*.
     """
-    raise NotImplementedError("Near-uniform check is not implemented yet.")
-
+    return grayscale_std(image)<min_std
 
 def qc_pass(image: Image.Image) -> bool:
     """Run all grayscale quality-control checks.
@@ -90,4 +86,4 @@ def qc_pass(image: Image.Image) -> bool:
     -------
     True if the image passes all checks (not saturated, not near-uniform).
     """
-    raise NotImplementedError("QC pass check is not implemented yet.")
+    return not is_saturated(image) and not is_near_uniform(image)

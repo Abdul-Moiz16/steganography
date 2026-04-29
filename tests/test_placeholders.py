@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import pytest
+from io import BytesIO
+
 from PIL import Image
 
 from src.detection.statistical import (
@@ -10,7 +11,6 @@ from src.detection.statistical import (
     rs_analysis_score,
     sample_pairs_score,
 )
-from src.embedding.dct import embed_dct_lsb_jpeg
 from src.embedding.encryption import (
     decrypt_payload_aes_256_cbc,
     encrypt_payload_aes_256_cbc,
@@ -18,25 +18,10 @@ from src.embedding.encryption import (
 from src.embedding.lsb import embed_lsb
 
 
-@pytest.mark.parametrize(
-    ("fn", "args", "match"),
-    [
-        (
-            embed_dct_lsb_jpeg,
-            (b"jpeg-bytes", b"abc", 0.25),
-            "JPEG DCT-LSB embedding",
-        ),
-        (chi_square_dct_score, (b"jpeg-bytes",), "DCT chi-square"),
-        (
-            calibration_chi_square_score,
-            (b"jpeg-bytes",),
-            "Calibration chi-square",
-        ),
-    ],
-)
-def test_deferred_functions_raise_not_implemented(fn, args, match: str) -> None:
-    with pytest.raises(NotImplementedError, match=match):
-        fn(*args)
+def _make_jpeg_bytes(size: tuple[int, int] = (64, 64)) -> bytes:
+    buf = BytesIO()
+    Image.new("L", size, color=128).save(buf, format="JPEG", quality=95)
+    return buf.getvalue()
 
 
 # --- Tests for now-implemented functions ---
@@ -61,6 +46,17 @@ def test_chi_square_spatial_returns_float() -> None:
     score = chi_square_spatial_score(img)
     assert isinstance(score, float)
     assert 0.0 <= score <= 1.0
+
+
+def test_chi_square_dct_returns_float() -> None:
+    score = chi_square_dct_score(_make_jpeg_bytes())
+    assert isinstance(score, float)
+    assert 0.0 <= score <= 1.0
+
+
+def test_calibration_chi_square_returns_float() -> None:
+    score = calibration_chi_square_score(_make_jpeg_bytes())
+    assert isinstance(score, float)
 
 
 def test_rs_analysis_returns_float() -> None:
