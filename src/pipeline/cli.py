@@ -16,6 +16,27 @@ def _resolve_path(path: Path, project_root: Path) -> Path:
     return path if path.is_absolute() else (project_root / path)
 
 
+def _print_figure_outputs(out: dict) -> None:
+    """Summarise figures produced by ``generate_metrics_figures``."""
+    pngs = [v for v in out.values() if isinstance(v, Path) and v.suffix == ".png"]
+    if not pngs:
+        print("Figures: none generated")
+        return
+    parents = {p.parent for p in pngs}
+    figures_root = min(parents, key=lambda p: len(p.parts))
+    top_level = sorted(p for p in pngs if p.parent == figures_root)
+    nested_counts: dict[Path, int] = {}
+    for path in pngs:
+        if path.parent != figures_root:
+            nested_counts[path.parent] = nested_counts.get(path.parent, 0) + 1
+
+    print(f"Figures dir: {figures_root}  ({len(pngs)} PNGs)")
+    for path in top_level:
+        print(f"  - {path.name}")
+    for sub_dir, count in sorted(nested_counts.items()):
+        print(f"  - {sub_dir.name}/  ({count} PNGs)")
+
+
 def _add_payload_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--payload-mode",
@@ -298,8 +319,7 @@ def main() -> None:
                 _resolve_path(args.figures_dir, project_root) if args.figures_dir else None
             ),
         )
-        print(f"AUC by source figure: {out['auc_by_source_detector']}")
-        print(f"AUC by method figure: {out['auc_by_method_detector']}")
+        _print_figure_outputs(out)
     elif args.command == "run-all":
         # Resolve run directory when a profile is active.
         run_dir: Path | None = None
@@ -336,8 +356,7 @@ def main() -> None:
         print(f"Source metrics CSV: {out['source_metrics']}")
         print(f"Quality metrics CSV: {out['quality_metrics']}")
         if args.generate_figures:
-            print(f"AUC by source figure: {out['auc_by_source_detector']}")
-            print(f"AUC by method figure: {out['auc_by_method_detector']}")
+            _print_figure_outputs(out)
     else:
         raise ValueError(f"Unhandled command: {args.command}")
 

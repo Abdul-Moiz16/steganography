@@ -246,7 +246,9 @@ def test_cli_plot_metrics(monkeypatch, capsys, tmp_path: Path) -> None:
     main()
     out = capsys.readouterr().out
 
-    assert "AUC by source figure" in out
+    assert "Figures dir:" in out
+    assert "auc_by_source_detector.png" in out
+    assert "auc_by_method_detector.png" in out
     assert (tmp_path / "results" / "figures" / "auc_by_source_detector.png").exists()
     assert (tmp_path / "results" / "figures" / "auc_by_method_detector.png").exists()
 
