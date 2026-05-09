@@ -12,771 +12,169 @@
     <link rel="stylesheet" href="/public/css/reset.css">
     <link rel="stylesheet" href="/public/css/topbar.css">
     <link rel="stylesheet" href="/public/css/buttons.css">
-    <style>
-        body {
-            background: var(--bg);
-            font-family: var(--body);
-            color: var(--on-surface);
-            padding-top: var(--topbar-h);
-        }
-
-        /* ── Layout ── */
-        .toolbox-main {
-            max-width: 680px;
-            margin: 0 auto;
-            padding: 40px 24px 80px;
-        }
-
-        .toolbox-header {
-            margin-bottom: 28px;
-        }
-
-        .toolbox-title {
-            font-family: var(--headline);
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--on-surface);
-            letter-spacing: -0.5px;
-        }
-
-        .toolbox-subtitle {
-            font-size: 13px;
-            color: var(--secondary-dim);
-            margin-top: 4px;
-        }
-
-        /* ── Tabs ── */
-        .tab-bar {
-            display: flex;
-            gap: 4px;
-            background: var(--surface-cont-hi);
-            border-radius: var(--radius-xl);
-            padding: 4px;
-            margin-bottom: 28px;
-            width: fit-content;
-        }
-
-        .tab-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 18px;
-            border: none;
-            border-radius: 6px;
-            background: transparent;
-            font-family: var(--headline);
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--secondary-dim);
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-
-        .tab-btn .material-symbols-outlined { font-size: 16px; }
-
-        .tab-btn:hover { color: var(--on-surface); }
-
-        .tab-btn.active {
-            background: var(--surface-cont-lo);
-            color: var(--primary);
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-        }
-
-        /* ── Panel ── */
-        .panel { display: none; }
-        .panel.active { display: block; }
-
-        /* ── Card ── */
-        .card {
-            background: var(--surface-cont-lo);
-            border: 1px solid var(--outline-var);
-            border-radius: var(--radius-xl);
-            padding: 24px;
-            margin-bottom: 16px;
-        }
-
-        .card-title {
-            font-family: var(--headline);
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 16px;
-        }
-
-        /* ── Upload zone ── */
-        .upload-zone {
-            border: 2px dashed var(--outline);
-            border-radius: var(--radius-xl);
-            padding: 36px 24px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: var(--surface-cont-hi);
-            position: relative;
-        }
-
-        .upload-zone:hover,
-        .upload-zone.drag-over {
-            border-color: var(--primary);
-            background: var(--primary-cont);
-        }
-
-        .upload-zone input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-            width: 100%;
-            height: 100%;
-        }
-
-        .upload-icon {
-            font-size: 36px;
-            color: var(--secondary-dim);
-            margin-bottom: 8px;
-        }
-
-        .upload-label {
-            font-family: var(--headline);
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--on-surface);
-        }
-
-        .upload-hint {
-            font-size: 12px;
-            color: var(--secondary-dim);
-            margin-top: 4px;
-        }
-
-        /* ── File info bar ── */
-        .file-info {
-            display: none;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            background: var(--surface-cont-hi);
-            border-radius: var(--radius-xl);
-            margin-top: 12px;
-            font-size: 13px;
-        }
-
-        .file-info.visible { display: flex; }
-
-        .file-info .material-symbols-outlined { font-size: 18px; color: var(--primary); }
-
-        .file-name { font-weight: 500; flex: 1; }
-
-        .format-badge {
-            font-size: 11px;
-            font-weight: 600;
-            padding: 3px 8px;
-            border-radius: 100px;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
-
-        .format-badge.png {
-            background: var(--primary-cont);
-            color: var(--on-primary-cont);
-        }
-
-        .format-badge.jpeg {
-            background: var(--tertiary-cont);
-            color: var(--tertiary);
-        }
-
-        .format-method {
-            font-size: 11px;
-            color: var(--secondary-dim);
-        }
-
-        .clear-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: var(--secondary-dim);
-            display: flex;
-            align-items: center;
-            padding: 2px;
-            border-radius: 4px;
-            transition: color 0.15s;
-        }
-
-        .clear-btn:hover { color: var(--error); }
-        .clear-btn .material-symbols-outlined { font-size: 16px; }
-
-        /* ── Textarea ── */
-        .field-label {
-            font-family: var(--headline);
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--secondary);
-            margin-bottom: 6px;
-            display: block;
-        }
-
-        textarea, .text-display {
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid var(--outline);
-            border-radius: var(--radius-xl);
-            padding: 12px 14px;
-            font-family: var(--body);
-            font-size: 13px;
-            color: var(--on-surface);
-            background: var(--surface-cont-hi);
-            resize: vertical;
-            outline: none;
-            transition: border-color 0.2s;
-            min-height: 90px;
-        }
-
-        textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
-
-        .text-display {
-            cursor: default;
-            min-height: 60px;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        /* ── Actions row ── */
-        .actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 16px;
-        }
-
-        /* ── Spinner ── */
-        .spinner {
-            display: none;
-            width: 16px;
-            height: 16px;
-            border: 2px solid var(--outline);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-        }
-
-        .spinner.visible { display: inline-block; }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ── Result card ── */
-        .result-card {
-            display: none;
-            background: var(--surface-cont-lo);
-            border: 1px solid var(--outline-var);
-            border-radius: var(--radius-xl);
-            padding: 20px 24px;
-            margin-top: 16px;
-        }
-
-        .result-card.visible { display: block; }
-
-        .result-card.error {
-            border-color: var(--error-dim);
-            background: var(--error-cont);
-        }
-
-        .result-label {
-            font-family: var(--headline);
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--secondary-dim);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 10px;
-        }
-
-        .result-card.error .result-label { color: var(--error); }
-
-        .result-image {
-            width: 100%;
-            max-height: 240px;
-            object-fit: contain;
-            border-radius: 6px;
-            margin-bottom: 12px;
-            background: var(--surface-cont-hi);
-        }
-
-        /* ── Analyze scores ── */
-        .scores-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .score-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .score-name {
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--secondary);
-            width: 180px;
-            flex-shrink: 0;
-        }
-
-        .score-bar-wrap {
-            flex: 1;
-            height: 6px;
-            background: var(--surface-cont-hi);
-            border-radius: 100px;
-            overflow: hidden;
-        }
-
-        .score-bar {
-            height: 100%;
-            border-radius: 100px;
-            transition: width 0.4s ease;
-        }
-
-        .score-bar.low      { background: var(--green); }
-        .score-bar.moderate { background: var(--amber); }
-        .score-bar.high     { background: var(--error); }
-
-        .score-label {
-            font-size: 11px;
-            font-weight: 600;
-            width: 60px;
-            text-align: right;
-        }
-
-        .score-label.low      { color: var(--green); }
-        .score-label.moderate { color: var(--amber); }
-        .score-label.high     { color: var(--error); }
-    </style>
+    <link rel="stylesheet" href="/public/css/toolbox.css">
 </head>
 <body>
 
-<nav class="topbar">
-    <div class="topbar-left">
-        <img class="topbar-logo" src="/public/logo.png" alt="UM" width="26" height="26">
-        <span class="topbar-brand">Stego Explorer</span>
-        <div class="topbar-nav">
-            <a class="topbar-link" href="/">Runs</a>
-            <a class="topbar-link" href="/?page=proposal">Proposal</a>
-            <a class="topbar-link active" href="/toolbox">Toolbox</a>
-        </div>
-    </div>
-</nav>
-
-<main class="toolbox-main">
-
-    <div class="toolbox-header">
-        <div class="toolbox-title">Steganography Toolbox</div>
-        <div class="toolbox-subtitle">Encode, decode, or analyze a single image interactively.</div>
-    </div>
-
-    <div class="tab-bar">
-        <button class="tab-btn active" id="tab-encode" onclick="setTab('encode')">
-            <span class="material-symbols-outlined">lock</span> Encode
-        </button>
-        <button class="tab-btn" id="tab-decode" onclick="setTab('decode')">
-            <span class="material-symbols-outlined">lock_open</span> Decode
-        </button>
-        <button class="tab-btn" id="tab-analyze" onclick="setTab('analyze')">
-            <span class="material-symbols-outlined">search</span> Analyze
-        </button>
-    </div>
-
-    <!-- ── Encode panel ── -->
-    <div class="panel active" id="panel-encode">
-        <div class="card">
-            <div class="card-title">Image</div>
-            <div class="upload-zone" id="zone-encode"
-                 ondragover="onDragOver(event,'encode')"
-                 ondragleave="onDragLeave('encode')"
-                 ondrop="onDrop(event,'encode')">
-                <input type="file" accept=".png,.jpg,.jpeg" onchange="onFileChange(event,'encode')">
-                <div class="material-symbols-outlined upload-icon">upload_file</div>
-                <div class="upload-label">Drop image here or click to browse</div>
-                <div class="upload-hint">PNG or JPEG only</div>
-            </div>
-            <div class="file-info" id="file-info-encode">
-                <span class="material-symbols-outlined">image</span>
-                <span class="file-name" id="file-name-encode"></span>
-                <span class="format-badge" id="format-badge-encode"></span>
-                <span class="format-method" id="format-method-encode"></span>
-                <button class="clear-btn" onclick="clearFile('encode')" title="Remove">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
+    <nav class="topbar">
+        <div class="topbar-left">
+            <img class="topbar-logo" src="/public/logo.png" alt="UM" width="26" height="26">
+            <span class="topbar-brand">Stego Explorer</span>
+            <div class="topbar-nav">
+                <a class="topbar-link" href="/">Runs</a>
+                <a class="topbar-link" href="/?page=proposal">Proposal</a>
+                <a class="topbar-link active" href="/toolbox">Toolbox</a>
             </div>
         </div>
+    </nav>
 
-        <div class="card">
-            <label class="card-title" for="encode-message">Message</label>
-            <textarea id="encode-message" placeholder="Enter the text you want to hide…"></textarea>
-            <div class="actions">
-                <button class="btn btn-primary" id="btn-encode" onclick="submitEncode()" disabled>
-                    <span class="material-symbols-outlined">lock</span> Encode
-                </button>
-                <div class="spinner" id="spinner-encode"></div>
-            </div>
+    <main class="toolbox-main">
+
+        <div class="toolbox-header">
+            <div class="toolbox-title">Steganography Toolbox</div>
+            <div class="toolbox-subtitle">Encode, decode, or analyze a single image interactively.</div>
         </div>
 
-        <div class="result-card" id="result-encode">
-            <div class="result-label" id="result-encode-label"></div>
-            <img class="result-image" id="result-encode-img" src="" alt="Stego image" style="display:none">
-            <div id="result-encode-text" style="font-size:13px;color:var(--secondary-dim);"></div>
-            <div class="actions" id="result-encode-actions" style="display:none;margin-top:12px;">
-                <a class="btn btn-primary btn-sm" id="download-link" download="stego.png">
-                    <span class="material-symbols-outlined">download</span> Download
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- ── Decode panel ── -->
-    <div class="panel" id="panel-decode">
-        <div class="card">
-            <div class="card-title">Stego Image</div>
-            <div class="upload-zone" id="zone-decode"
-                 ondragover="onDragOver(event,'decode')"
-                 ondragleave="onDragLeave('decode')"
-                 ondrop="onDrop(event,'decode')">
-                <input type="file" accept=".png,.jpg,.jpeg" onchange="onFileChange(event,'decode')">
-                <div class="material-symbols-outlined upload-icon">upload_file</div>
-                <div class="upload-label">Drop stego image here or click to browse</div>
-                <div class="upload-hint">PNG or JPEG only</div>
-            </div>
-            <div class="file-info" id="file-info-decode">
-                <span class="material-symbols-outlined">image</span>
-                <span class="file-name" id="file-name-decode"></span>
-                <span class="format-badge" id="format-badge-decode"></span>
-                <span class="format-method" id="format-method-decode"></span>
-                <button class="clear-btn" onclick="clearFile('decode')" title="Remove">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
-            </div>
-        </div>
-
-        <div class="actions">
-            <button class="btn btn-primary" id="btn-decode" onclick="submitDecode()" disabled>
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tab-encode" onclick="setTab('encode')">
+                <span class="material-symbols-outlined">lock</span> Encode
+            </button>
+            <button class="tab-btn" id="tab-decode" onclick="setTab('decode')">
                 <span class="material-symbols-outlined">lock_open</span> Decode
             </button>
-            <div class="spinner" id="spinner-decode"></div>
-        </div>
-
-        <div class="result-card" id="result-decode">
-            <div class="result-label" id="result-decode-label"></div>
-            <div class="text-display" id="result-decode-text"></div>
-            <div class="actions" id="result-decode-copy" style="display:none;margin-top:10px;">
-                <button class="btn btn-ghost btn-sm" onclick="copyMessage()">
-                    <span class="material-symbols-outlined">content_copy</span> Copy
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ── Analyze panel ── -->
-    <div class="panel" id="panel-analyze">
-        <div class="card">
-            <div class="card-title">Image</div>
-            <div class="upload-zone" id="zone-analyze"
-                 ondragover="onDragOver(event,'analyze')"
-                 ondragleave="onDragLeave('analyze')"
-                 ondrop="onDrop(event,'analyze')">
-                <input type="file" accept=".png,.jpg,.jpeg" onchange="onFileChange(event,'analyze')">
-                <div class="material-symbols-outlined upload-icon">upload_file</div>
-                <div class="upload-label">Drop image here or click to browse</div>
-                <div class="upload-hint">PNG or JPEG only</div>
-            </div>
-            <div class="file-info" id="file-info-analyze">
-                <span class="material-symbols-outlined">image</span>
-                <span class="file-name" id="file-name-analyze"></span>
-                <span class="format-badge" id="format-badge-analyze"></span>
-                <span class="format-method" id="format-method-analyze"></span>
-                <button class="clear-btn" onclick="clearFile('analyze')" title="Remove">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
-            </div>
-        </div>
-
-        <div class="actions">
-            <button class="btn btn-primary" id="btn-analyze" onclick="submitAnalyze()" disabled>
+            <button class="tab-btn" id="tab-analyze" onclick="setTab('analyze')">
                 <span class="material-symbols-outlined">search</span> Analyze
             </button>
-            <div class="spinner" id="spinner-analyze"></div>
         </div>
 
-        <div class="result-card" id="result-analyze">
-            <div class="result-label" id="result-analyze-label"></div>
-            <div class="scores-list" id="scores-list"></div>
+        <!-- ── Encode panel ── -->
+        <div class="panel active" id="panel-encode">
+            <div class="card">
+                <div class="card-title">Image</div>
+                <div class="upload-zone" id="zone-encode"
+                    ondragover="onDragOver(event,'encode')"
+                    ondragleave="onDragLeave('encode')"
+                    ondrop="onDrop(event,'encode')">
+                    <input type="file" accept=".png,.jpg,.jpeg" onchange="onFileChange(event,'encode')">
+                    <div class="material-symbols-outlined upload-icon">upload_file</div>
+                    <div class="upload-label">Drop image here or click to browse</div>
+                    <div class="upload-hint">PNG or JPEG only</div>
+                </div>
+                <div class="file-info" id="file-info-encode">
+                    <span class="material-symbols-outlined">image</span>
+                    <span class="file-name" id="file-name-encode"></span>
+                    <span class="format-badge" id="format-badge-encode"></span>
+                    <span class="format-method" id="format-method-encode"></span>
+                    <button class="clear-btn" onclick="clearFile('encode')" title="Remove">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <label class="card-title" for="encode-message">Message</label>
+                <textarea id="encode-message" placeholder="Enter the text you want to hide…"></textarea>
+                <div class="actions">
+                    <button class="btn btn-primary" id="btn-encode" onclick="submitEncode()" disabled>
+                        <span class="material-symbols-outlined">lock</span> Encode
+                    </button>
+                    <div class="spinner" id="spinner-encode"></div>
+                </div>
+            </div>
+
+            <div class="result-card" id="result-encode">
+                <div class="result-label" id="result-encode-label"></div>
+                <img class="result-image" id="result-encode-img" src="" alt="Stego image" style="display:none">
+                <div id="result-encode-text" style="font-size:13px;color:var(--secondary-dim);"></div>
+                <div class="actions" id="result-encode-actions" style="display:none;margin-top:12px;">
+                    <a class="btn btn-primary btn-sm" id="download-link" download="stego.png">
+                        <span class="material-symbols-outlined">download</span> Download
+                    </a>
+                </div>
+            </div>
         </div>
-    </div>
 
-</main>
+        <!-- ── Decode panel ── -->
+        <div class="panel" id="panel-decode">
+            <div class="card">
+                <div class="card-title">Stego Image</div>
+                <div class="upload-zone" id="zone-decode"
+                    ondragover="onDragOver(event,'decode')"
+                    ondragleave="onDragLeave('decode')"
+                    ondrop="onDrop(event,'decode')">
+                    <input type="file" accept=".png,.jpg,.jpeg" onchange="onFileChange(event,'decode')">
+                    <div class="material-symbols-outlined upload-icon">upload_file</div>
+                    <div class="upload-label">Drop stego image here or click to browse</div>
+                    <div class="upload-hint">PNG or JPEG only</div>
+                </div>
+                <div class="file-info" id="file-info-decode">
+                    <span class="material-symbols-outlined">image</span>
+                    <span class="file-name" id="file-name-decode"></span>
+                    <span class="format-badge" id="format-badge-decode"></span>
+                    <span class="format-method" id="format-method-decode"></span>
+                    <button class="clear-btn" onclick="clearFile('decode')" title="Remove">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            </div>
 
-<script>
-    // ── State ──────────────────────────────────────────────────────────────────
-    const state = {
-        encode: { b64: null, filename: null, format: null },
-        decode: { b64: null, filename: null, format: null },
-        analyze: { b64: null, filename: null, format: null },
-    };
+            <div class="actions">
+                <button class="btn btn-primary" id="btn-decode" onclick="submitDecode()" disabled>
+                    <span class="material-symbols-outlined">lock_open</span> Decode
+                </button>
+                <div class="spinner" id="spinner-decode"></div>
+            </div>
 
-    // ── Tab switching ──────────────────────────────────────────────────────────
-    function setTab(tab) {
-        ['encode', 'decode', 'analyze'].forEach(t => {
-            document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
-            document.getElementById(`panel-${t}`).classList.toggle('active', t === tab);
-        });
-    }
+            <div class="result-card" id="result-decode">
+                <div class="result-label" id="result-decode-label"></div>
+                <div class="text-display" id="result-decode-text"></div>
+                <div class="actions" id="result-decode-copy" style="display:none;margin-top:10px;">
+                    <button class="btn btn-ghost btn-sm" onclick="copyMessage()">
+                        <span class="material-symbols-outlined">content_copy</span> Copy
+                    </button>
+                </div>
+            </div>
+        </div>
 
-    // ── File handling ──────────────────────────────────────────────────────────
-    function onFileChange(event, tab) {
-        const file = event.target.files[0];
-        if (file) loadFile(file, tab);
-    }
+        <!-- ── Analyze panel ── -->
+        <div class="panel" id="panel-analyze">
+            <div class="card">
+                <div class="card-title">Image</div>
+                <div class="upload-zone" id="zone-analyze"
+                    ondragover="onDragOver(event,'analyze')"
+                    ondragleave="onDragLeave('analyze')"
+                    ondrop="onDrop(event,'analyze')">
+                    <input type="file" accept=".png,.jpg,.jpeg" onchange="onFileChange(event,'analyze')">
+                    <div class="material-symbols-outlined upload-icon">upload_file</div>
+                    <div class="upload-label">Drop image here or click to browse</div>
+                    <div class="upload-hint">PNG or JPEG only</div>
+                </div>
+                <div class="file-info" id="file-info-analyze">
+                    <span class="material-symbols-outlined">image</span>
+                    <span class="file-name" id="file-name-analyze"></span>
+                    <span class="format-badge" id="format-badge-analyze"></span>
+                    <span class="format-method" id="format-method-analyze"></span>
+                    <button class="clear-btn" onclick="clearFile('analyze')" title="Remove">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            </div>
 
-    function onDragOver(event, tab) {
-        event.preventDefault();
-        document.getElementById(`zone-${tab}`).classList.add('drag-over');
-    }
+            <div class="actions">
+                <button class="btn btn-primary" id="btn-analyze" onclick="submitAnalyze()" disabled>
+                    <span class="material-symbols-outlined">search</span> Analyze
+                </button>
+                <div class="spinner" id="spinner-analyze"></div>
+            </div>
 
-    function onDragLeave(tab) {
-        document.getElementById(`zone-${tab}`).classList.remove('drag-over');
-    }
+            <div class="result-card" id="result-analyze">
+                <div class="result-label" id="result-analyze-label"></div>
+                <div class="scores-list" id="scores-list"></div>
+            </div>
+        </div>
 
-    function onDrop(event, tab) {
-        event.preventDefault();
-        document.getElementById(`zone-${tab}`).classList.remove('drag-over');
-        const file = event.dataTransfer.files[0];
-        if (file) loadFile(file, tab);
-    }
+    </main>
 
-    function loadFile(file, tab) {
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (!['png', 'jpg', 'jpeg'].includes(ext)) {
-            alert('Unsupported file type. Please use PNG or JPEG.');
-            return;
-        }
-        const format = ext === 'png' ? 'png' : 'jpeg';
-        const reader = new FileReader();
-        reader.onload = e => {
-            // strip the data:...;base64, prefix
-            const b64 = e.target.result.split(',')[1];
-            state[tab] = { b64, filename: file.name, format };
-            updateFileInfo(tab);
-            clearResult(tab);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function clearFile(tab) {
-        state[tab] = { b64: null, filename: null, format: null };
-        updateFileInfo(tab);
-        clearResult(tab);
-    }
-
-    function updateFileInfo(tab) {
-        const { b64, filename, format } = state[tab];
-        const infoEl   = document.getElementById(`file-info-${tab}`);
-        const nameEl   = document.getElementById(`file-name-${tab}`);
-        const badgeEl  = document.getElementById(`format-badge-${tab}`);
-        const methodEl = document.getElementById(`format-method-${tab}`);
-        const btnEl    = document.getElementById(`btn-${tab}`);
-
-        if (b64) {
-            infoEl.classList.add('visible');
-            nameEl.textContent = filename;
-            badgeEl.textContent = format.toUpperCase();
-            badgeEl.className = `format-badge ${format}`;
-            methodEl.textContent = format === 'png' ? '→ LSB method' : '→ DCT method';
-            btnEl.disabled = false;
-        } else {
-            infoEl.classList.remove('visible');
-            nameEl.textContent = '';
-            btnEl.disabled = true;
-        }
-    }
-
-    // ── API calls ──────────────────────────────────────────────────────────────
-    async function submitEncode() {
-        const { b64, filename } = state.encode;
-        const message = document.getElementById('encode-message').value.trim();
-        if (!message) { alert('Please enter a message to hide.'); return; }
-
-        setLoading('encode', true);
-        clearResult('encode');
-
-        try {
-            const res = await fetch('/api/toolbox/encode', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_b64: b64, filename, message }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
-            showEncodeResult(data);
-        } catch (err) {
-            showError('encode', err.message);
-        } finally {
-            setLoading('encode', false);
-        }
-    }
-
-    async function submitDecode() {
-        const { b64, filename } = state.decode;
-
-        setLoading('decode', true);
-        clearResult('decode');
-
-        try {
-            const res = await fetch('/api/toolbox/decode', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_b64: b64, filename }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
-            showDecodeResult(data);
-        } catch (err) {
-            showError('decode', err.message);
-        } finally {
-            setLoading('decode', false);
-        }
-    }
-
-    async function submitAnalyze() {
-        const { b64, filename } = state.analyze;
-
-        setLoading('analyze', true);
-        clearResult('analyze');
-
-        try {
-            const res = await fetch('/api/toolbox/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_b64: b64, filename }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
-            showAnalyzeResult(data);
-        } catch (err) {
-            showError('analyze', err.message);
-        } finally {
-            setLoading('analyze', false);
-        }
-    }
-
-    // ── Result rendering ───────────────────────────────────────────────────────
-    function showEncodeResult(data) {
-        const card    = document.getElementById('result-encode');
-        const label   = document.getElementById('result-encode-label');
-        const img     = document.getElementById('result-encode-img');
-        const text    = document.getElementById('result-encode-text');
-        const actions = document.getElementById('result-encode-actions');
-        const link    = document.getElementById('download-link');
-
-        const mime = data.format === 'png' ? 'image/png' : 'image/jpeg';
-        const ext  = data.format === 'png' ? 'png' : 'jpg';
-        const blob = b64ToBlob(data.image_b64, mime);
-        const url  = URL.createObjectURL(blob);
-
-        label.textContent = 'Stego image';
-        img.src = url;
-        img.style.display = 'block';
-        text.textContent = '';
-        link.href = url;
-        link.download = `stego.${ext}`;
-        actions.style.display = 'flex';
-
-        card.classList.add('visible');
-        card.classList.remove('error');
-    }
-
-    function showDecodeResult(data) {
-        const card   = document.getElementById('result-decode');
-        const label  = document.getElementById('result-decode-label');
-        const text   = document.getElementById('result-decode-text');
-        const copy   = document.getElementById('result-decode-copy');
-
-        label.textContent = 'Extracted message';
-        text.textContent = data.message;
-        copy.style.display = 'flex';
-
-        card.classList.add('visible');
-        card.classList.remove('error');
-    }
-
-    function showAnalyzeResult(data) {
-        const card  = document.getElementById('result-analyze');
-        const label = document.getElementById('result-analyze-label');
-        const list  = document.getElementById('scores-list');
-
-        label.textContent = `Detector scores — ${data.format.toUpperCase()}`;
-        list.innerHTML = data.scores.map(s => {
-            const pct = Math.min(100, Math.round(s.score * 100));
-            const cls = pct >= 67 ? 'high' : pct >= 34 ? 'moderate' : 'low';
-            return `
-                <div class="score-row">
-                    <div class="score-name">${formatDetectorName(s.detector)}</div>
-                    <div class="score-bar-wrap">
-                        <div class="score-bar ${cls}" style="width:${pct}%"></div>
-                    </div>
-                    <div class="score-label ${cls}">${pct}%</div>
-                </div>`;
-        }).join('');
-
-        card.classList.add('visible');
-        card.classList.remove('error');
-    }
-
-    function showError(tab, message) {
-        const card  = document.getElementById(`result-${tab}`);
-        const label = document.getElementById(`result-${tab}-label`);
-
-        label.textContent = message;
-        card.classList.add('visible', 'error');
-
-        // hide tab-specific success elements
-        if (tab === 'encode') {
-            document.getElementById('result-encode-img').style.display = 'none';
-            document.getElementById('result-encode-actions').style.display = 'none';
-        }
-        if (tab === 'decode') {
-            document.getElementById('result-decode-copy').style.display = 'none';
-        }
-    }
-
-    function clearResult(tab) {
-        const card = document.getElementById(`result-${tab}`);
-        card.classList.remove('visible', 'error');
-    }
-
-    // ── UI helpers ─────────────────────────────────────────────────────────────
-    function setLoading(tab, loading) {
-        document.getElementById(`btn-${tab}`).disabled = loading;
-        document.getElementById(`spinner-${tab}`).classList.toggle('visible', loading);
-    }
-
-    function copyMessage() {
-        const text = document.getElementById('result-decode-text').textContent;
-        navigator.clipboard.writeText(text);
-    }
-
-    function b64ToBlob(b64, mime) {
-        const bytes = atob(b64);
-        const arr = new Uint8Array(bytes.length);
-        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-        return new Blob([arr], { type: mime });
-    }
-
-    function formatDetectorName(key) {
-        return { rs_analysis: 'RS Analysis', chi_square_spatial: 'Chi-Square (Spatial)',
-                 sample_pairs: 'Sample Pairs', chi_square_dct: 'Chi-Square (DCT)',
-                 calibration_chi_square: 'Calibration Chi-Square' }[key] || key;
-    }
-</script>
+<script src="/public/js/toolbox.js"></script>
 </body>
 </html>
