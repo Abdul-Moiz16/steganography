@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import io
 from dataclasses import dataclass
+from PIL import Image
 
 from src.toolbox.encode import _get_extension
 from src.detection.chi_square_spatial import chi_square_spatial_score
 from src.detection.rs_analysis import rs_analysis_score
 from src.detection.sample_pairs import sample_pairs_score
-
 
 @dataclass
 class DetectorScore:
@@ -44,7 +45,6 @@ def _analyze_png(image_bytes: bytes) -> AnalyzeResult:
     ]    
     
     return AnalyzeResult(scores=score_list, format="png")
-
 
 def _analyze_jpeg(image_bytes: bytes) -> AnalyzeResult:
     #same here just for jpeg, some are not pushed yet

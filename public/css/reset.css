@@ -2,8 +2,8 @@
 
 body {
     font-family: var(--body);
-    background: var(--bg);
-    color: var(--on-bg);
+    background: var(--surface);
+    color: var(--on-surface);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     font-size: 14px;
@@ -40,7 +40,7 @@ body::after {
 ::selection { background: rgba(79, 70, 229, 0.2); }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-track { background: var(--surface); }
 ::-webkit-scrollbar-thumb { background: var(--outline-var); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--outline); }
 

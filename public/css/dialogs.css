@@ -52,17 +52,34 @@
 
 .loading-page { display: flex; justify-content: center; padding: 100px; }
 
+/* Toolbox Spinner */
+.spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--outline);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+.spinner.visible { display: inline-block; }
+
 @keyframes spin { to { transform: rotate(360deg); } }
 
-
-.lightbox {
-    display: none;
+/* Shared base for all modal overlays */
+.lightbox,
+.dialog-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    z-index: 200;
+    display: none;
     align-items: center;
     justify-content: center;
+}
+
+.lightbox {
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 200;
     backdrop-filter: blur(8px);
 }
 
@@ -83,7 +100,7 @@
     font-size: 28px;
     cursor: pointer;
     line-height: 1;
-    transition: color 0.15s ease;
+    transition: color var(--transition-fast);
 }
 
 .lightbox-close:hover { color: var(--on-surface); }
@@ -92,16 +109,11 @@
 /* confirm dialog */
 
 .dialog-overlay {
-    position: fixed;
-    inset: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: 300;
-    display: none;
-    align-items: center;
-    justify-content: center;
     backdrop-filter: blur(4px);
     opacity: 0;
-    transition: opacity 0.15s ease;
+    transition: opacity var(--transition-fast);
 }
 
 .dialog-overlay.open { display: flex; opacity: 1; }

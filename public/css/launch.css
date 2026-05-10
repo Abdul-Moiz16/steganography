@@ -65,7 +65,7 @@
 }
 
 .log-box {
-	background: var(--bg);
+	background: var(--surface);
 	color: var(--secondary);
 	border: 1px solid #e5e7eb;
 	border-radius: var(--radius-xl);
@@ -129,7 +129,7 @@
 	bottom: 0;
 	width: 400px;
 	max-width: 100vw;
-	background: var(--surface-cont-lo);
+	background: var(--surface-cont);
 	border-left: 1px solid #e5e7eb;
 	z-index: 70;
 	display: flex;
@@ -631,7 +631,7 @@
 }
 
 .lp-terminal-wrap {
-	background: var(--bg);
+	background: var(--surface);
 	border: 1px solid #e5e7eb;
 	border-radius: var(--radius-xl);
 	overflow: hidden;
@@ -702,7 +702,7 @@
 .lp-stat-card {
 	padding: 16px 18px;
 	border-radius: var(--radius-xl);
-	background: var(--surface-cont-lo);
+	background: var(--surface-cont);
 	border: 1px solid #e5e7eb;
 }
 

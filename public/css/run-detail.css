@@ -75,7 +75,7 @@
 }
 
 .rd-terminal-body {
-    background: var(--bg);
+    background: var(--surface);
 }
 
 .rd-error-banner {
