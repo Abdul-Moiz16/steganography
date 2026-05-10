@@ -1,235 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Proposal</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; background: #f0f0f0; font-family: sans-serif; overflow: hidden; }
-
-  #toolbar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 6px 14px;
-    background: #3c3c3c;
-    color: #fff;
-    font-size: 12px;
-    height: 40px;
-    flex-shrink: 0;
-  }
-  #toolbar button {
-    background: #555;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 3px 10px;
-    cursor: pointer;
-    font-size: 12px;
-  }
-  #toolbar button:hover { background: #777; }
-  #toolbar button:disabled { opacity: 0.4; cursor: default; }
-  #page-info { min-width: 80px; text-align: center; }
-  #zoom-label { min-width: 50px; text-align: right; }
-
-  #scroll-area {
-    height: calc(100vh - 40px);
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
-    gap: 12px;
-  }
-
-  .pdf-page {
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    display: block;
-  }
-
-  #loading {
-    margin-top: 60px;
-    color: #555;
-    font-size: 14px;
-  }
-
-  #error {
-    margin-top: 60px;
-    color: #c00;
-    font-size: 14px;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proposal</title>
+  <link rel="stylesheet" href="/public/css/variables.css">
+  <link rel="stylesheet" href="/public/css/proposal-viewer.css">
 </head>
 <body>
-<div id="toolbar">
-  <button id="btn-prev" disabled>&#8249; Prev</button>
-  <button id="btn-next" disabled>Next &#8250;</button>
-  <span id="page-info">— / —</span>
-  <span style="flex:1"></span>
-  <button id="btn-zoom-out">−</button>
-  <span id="zoom-label">100%</span>
-  <button id="btn-zoom-in">+</button>
-  <button id="btn-zoom-fit">Fit</button>
-</div>
-<div id="scroll-area">
-  <div id="loading">Loading PDF…</div>
-</div>
+  <div id="toolbar">
+    <button id="btn-prev" disabled>&#8249; Prev</button>
+    <button id="btn-next" disabled>Next &#8250;</button>
+    <span id="page-info">— / —</span>
+    <span style="flex:1"></span>
+    <button id="btn-zoom-out">−</button>
+    <span id="zoom-label">100%</span>
+    <button id="btn-zoom-in">+</button>
+    <button id="btn-zoom-fit">Fit</button>
+  </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>
-(function() {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  <div id="scroll-area">
+    <div id="loading">Loading PDF…</div>
+  </div>
 
-  var PDF_URL = '/api/proposal-pdf';
-  var ZOOM_STEPS = [0.5, 0.67, 0.75, 0.9, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
-
-  var pdfDoc = null;
-  var currentPage = 1;
-  var zoomIdx = 4; // 1.0
-  var canvases = [];
-  var renderTasks = {};
-
-  var scrollArea = document.getElementById('scroll-area');
-  var loading = document.getElementById('loading');
-  var pageInfo = document.getElementById('page-info');
-  var zoomLabel = document.getElementById('zoom-label');
-  var btnPrev = document.getElementById('btn-prev');
-  var btnNext = document.getElementById('btn-next');
-  var btnZoomIn = document.getElementById('btn-zoom-in');
-  var btnZoomOut = document.getElementById('btn-zoom-out');
-  var btnZoomFit = document.getElementById('btn-zoom-fit');
-
-  function scale() { return ZOOM_STEPS[zoomIdx]; }
-
-  function updateControls() {
-    if (!pdfDoc) return;
-    pageInfo.textContent = currentPage + ' / ' + pdfDoc.numPages;
-    btnPrev.disabled = currentPage <= 1;
-    btnNext.disabled = currentPage >= pdfDoc.numPages;
-    zoomLabel.textContent = Math.round(scale() * 100) + '%';
-    btnZoomOut.disabled = zoomIdx <= 0;
-    btnZoomIn.disabled = zoomIdx >= ZOOM_STEPS.length - 1;
-  }
-
-  function renderPage(pageNum) {
-    if (!pdfDoc) return;
-    var canvas = canvases[pageNum - 1];
-    if (!canvas) return;
-    if (renderTasks[pageNum]) {
-      renderTasks[pageNum].cancel();
-      delete renderTasks[pageNum];
-    }
-    pdfDoc.getPage(pageNum).then(function(page) {
-      var viewport = page.getViewport({ scale: scale() });
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      var ctx = canvas.getContext('2d');
-      var task = page.render({ canvasContext: ctx, viewport: viewport });
-      renderTasks[pageNum] = task;
-      task.promise.then(function() {
-        delete renderTasks[pageNum];
-      }).catch(function() {});
-    });
-  }
-
-  function renderAll() {
-    for (var i = 1; i <= pdfDoc.numPages; i++) {
-      renderPage(i);
-    }
-  }
-
-  function buildPages() {
-    scrollArea.innerHTML = '';
-    canvases = [];
-    for (var i = 0; i < pdfDoc.numPages; i++) {
-      var canvas = document.createElement('canvas');
-      canvas.className = 'pdf-page';
-      canvas.dataset.page = i + 1;
-      scrollArea.appendChild(canvas);
-      canvases.push(canvas);
-    }
-    renderAll();
-  }
-
-  // Track current page from scroll position
-  var scrollTimer = null;
-  scrollArea.addEventListener('scroll', function() {
-    clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(function() {
-      var mid = scrollArea.scrollTop + scrollArea.clientHeight / 2;
-      var best = 1, bestDist = Infinity;
-      canvases.forEach(function(c, i) {
-        var center = c.offsetTop + c.offsetHeight / 2;
-        var d = Math.abs(center - mid);
-        if (d < bestDist) { bestDist = d; best = i + 1; }
-      });
-      if (best !== currentPage) {
-        currentPage = best;
-        updateControls();
-      }
-    }, 80);
-  });
-
-  btnPrev.addEventListener('click', function() {
-    if (currentPage > 1) scrollToPage(currentPage - 1);
-  });
-  btnNext.addEventListener('click', function() {
-    if (currentPage < pdfDoc.numPages) scrollToPage(currentPage + 1);
-  });
-
-  function scrollToPage(n) {
-    currentPage = n;
-    updateControls();
-    if (canvases[n - 1]) {
-      canvases[n - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }
-
-  function fitZoom() {
-    if (!pdfDoc) return;
-    pdfDoc.getPage(1).then(function(page) {
-      var vp = page.getViewport({ scale: 1.0 });
-      var availW = scrollArea.clientWidth - 40;
-      var fit = availW / vp.width;
-      // find closest step
-      var best = 0;
-      ZOOM_STEPS.forEach(function(s, i) {
-        if (Math.abs(s - fit) < Math.abs(ZOOM_STEPS[best] - fit)) best = i;
-      });
-      zoomIdx = best;
-      renderAll();
-      updateControls();
-    });
-  }
-
-  btnZoomIn.addEventListener('click', function() {
-    if (zoomIdx < ZOOM_STEPS.length - 1) { zoomIdx++; renderAll(); updateControls(); }
-  });
-  btnZoomOut.addEventListener('click', function() {
-    if (zoomIdx > 0) { zoomIdx--; renderAll(); updateControls(); }
-  });
-  btnZoomFit.addEventListener('click', fitZoom);
-
-  // Load PDF
-  pdfjsLib.getDocument(PDF_URL).promise.then(function(doc) {
-    pdfDoc = doc;
-    loading.remove();
-    buildPages();
-    updateControls();
-    btnPrev.disabled = false;
-    btnNext.disabled = false;
-    setTimeout(fitZoom, 100);
-  }).catch(function(err) {
-    loading.style.display = 'none';
-    var errEl = document.getElementById('error') || document.createElement('div');
-    errEl.id = 'error';
-    errEl.textContent = 'Failed to load PDF: ' + err.message;
-    scrollArea.appendChild(errEl);
-  });
-})();
-</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="/public/js/proposal-viewer.js"></script>
 </body>
 </html>

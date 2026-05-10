@@ -42,7 +42,8 @@ function renderProposalPage() {
         <div class="proposal-header">
             <div class="proposal-header-left">
                 <div class="proposal-header-title">Project Proposal</div>
-                <div class="proposal-header-sub">Project Proposal, February 2026. During implementation, some things changed from the proposal:</div>
+                <div class="proposal-header-sub">Project Proposal, February 2026. <br> 
+				During implementation, some things changed from the proposal:</div>
             </div>
             <div class="div-cards">${cards}</div>
         </div>

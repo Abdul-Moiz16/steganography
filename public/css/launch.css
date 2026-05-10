@@ -743,7 +743,6 @@
 }
 
 /* responsive */
-
 @media (max-width: 1024px) {
 	.panels-row {
 		grid-template-columns: 1fr;

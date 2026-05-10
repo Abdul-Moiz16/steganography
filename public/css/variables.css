@@ -47,6 +47,7 @@
     --radius-lg:  4px;
     --radius-xl:  8px;
     --radius-full: 12px;
+    --radius-extra: 14px;
 
     /* Typography */
     --headline: 'Space Grotesk', system-ui, sans-serif;
