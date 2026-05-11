@@ -65,11 +65,27 @@ family of per-experiment contrast tables aligned with the proposal's RQs:
 | `wilcoxon_tests.csv` | comparison × detector | Paired Wilcoxon signed-rank robustness check |
 | `t_tests.csv` | comparison × detector | Paired t-test robustness check |
 | `encryption_invariance.csv` | detector × source × method × payload | Per-stratum AUC-equivalence verdict (CI within margin) |
+| `rq_verdicts.json` / `rq_verdicts.md` | one entry per RQ | Pre-computed cross-reference: verdict, pooled effect, significant strata. Drop the `.md` into the report's results overview |
+| `power_analysis.csv` | stratum | Per-stratum pilot-extrapolated minimum n for 80%/90% power, plus n needed for the proposal's 0.05 ΔAUC threshold |
+| `power_summary.csv` | RQ | Headline minimum-n recommendation per RQ family (Holm-aware) |
 
-The Wilcoxon, t-test, and encryption-invariance CSVs are produced automatically by
-`run_full_pipeline()` after figures are generated. The first two read
-`predictions.csv` directly; the third is skipped when only one encryption arm is
-active.
+The Wilcoxon, t-test, encryption-invariance, RQ verdicts, and power analysis are
+all produced automatically by `run_full_pipeline()` after figures are generated.
+The encryption-invariance CSV is skipped when only one encryption arm is active.
+
+### Figures
+
+In addition to the canonical `exp{N}` figures, the runner emits two RQ-specific
+supplementary plots and a verdict-cards composite:
+
+- `rq3_source_payload_heatmap.png` — AUC heatmap per (detector × method), rows
+  are carrier sources, columns are payload levels. Complements the `exp3a` line
+  plot for reviewers who prefer a tabular-style view.
+- `rq4_branch_auc_bars.png` — side-by-side spatial-vs-frequency AUC bars per
+  (detector × payload). Complements the `exp4` interaction forest.
+- `rq_summary_cards.png` — one card per RQ with the verdict glyph, headline
+  numbers, and one-line takeaway. Generated after `rq_verdicts.json` lands and
+  re-rendered automatically by the runner.
 
 ## Configurable knobs
 

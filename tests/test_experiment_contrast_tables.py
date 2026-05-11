@@ -152,6 +152,20 @@ def test_export_tolerates_empty_predictions(tmp_path: Path) -> None:
     assert outputs == {}
 
 
+def test_generate_metrics_figures_registers_new_rq_figures(run_dir: Path) -> None:
+    """The orchestrator must expose the RQ-specific plot output keys."""
+    from src.evaluation.plots import generate_metrics_figures
+
+    figures = generate_metrics_figures(run_dir / "metrics", run_dir / "figures")
+    for key in (
+        "rq3_source_payload_heatmap",
+        "rq4_branch_auc_bars",
+        "rq_summary_cards",
+    ):
+        assert key in figures, f"missing figure key: {key}"
+        assert figures[key].exists()
+
+
 def test_export_skips_exp4_when_only_one_method(tmp_path: Path) -> None:
     """Exp 4 needs both spatial and frequency branches; LSB-only data → no exp4."""
     (tmp_path / "predictions").mkdir(parents=True)
