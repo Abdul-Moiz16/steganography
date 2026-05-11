@@ -746,17 +746,45 @@ class PipelineRunner:
             except Exception as exc:  # noqa: BLE001 — analysis must not break the run
                 print(f"  [warn] analysis '{label}' failed: {exc}")
 
+        # ── Refresh RQ verdict cards now that verdicts.json is on disk ─────
+        # The figure was rendered earlier as a placeholder because verdicts
+        # are produced after the contrast tables.  Re-render so the writer
+        # sees the populated cards in figures/.
+        if generate_figures:
+            try:
+                import json as _json
+                from src.evaluation.plots import render_rq_summary_cards
+                verdicts_path = metrics_out / "rq_verdicts.json"
+                payload = _json.loads(verdicts_path.read_text()) if verdicts_path.exists() else None
+                if payload is not None:
+                    out["rq_summary_cards"] = render_rq_summary_cards(figures_out, payload)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  [warn] rq summary card refresh failed: {exc}")
+
         return out
 
     def _analysis_jobs(self) -> list[tuple[str, "callable[[Path], Path]"]]:
         """Return (label, callable) pairs to run after metrics + figures.
 
         Each callable accepts a run directory and returns the path of the CSV
-        it wrote. Encryption-invariance is skipped when only one encryption
-        arm is active because the paired comparison would be empty.
+        (or first-of-many path) it wrote. Encryption-invariance is skipped
+        when only one encryption arm is active because the paired comparison
+        would be empty. The RQ verdict + power-analysis modules read the
+        contrast CSVs written by generate_metrics_figures and are scheduled
+        last so they always see the latest tables.
         """
         from src.analysis.t_tests import run_t_tests
         from src.analysis.wilcoxon_tests import run_wilcoxon_tests
+        from src.analysis.rq_verdicts import run_rq_verdicts as _run_rq_verdicts
+        from src.analysis.power_analysis import run_power_analysis as _run_power
+
+        def _run_verdicts_first_path(run_dir: Path) -> Path:
+            json_path, _ = _run_rq_verdicts(run_dir)
+            return json_path
+
+        def _run_power_first_path(run_dir: Path) -> Path:
+            detail_path, _ = _run_power(run_dir)
+            return detail_path
 
         jobs: list[tuple[str, "callable[[Path], Path]"]] = [
             ("wilcoxon", run_wilcoxon_tests),
@@ -765,6 +793,8 @@ class PipelineRunner:
         if {"plain", "encrypted"}.issubset(self.config.active_encryption):
             from src.analysis.encryption_invariance import run_encryption_invariance
             jobs.append(("encryption_invariance", run_encryption_invariance))
+        jobs.append(("rq_verdicts", _run_verdicts_first_path))
+        jobs.append(("power_analysis", _run_power_first_path))
         return jobs
 
     # ── Run-directory helpers ────────────────────────────────────────────────

@@ -2174,6 +2174,270 @@ def _summarise_for_master(experiment: str, rows: list[dict]) -> list[dict]:
     return out
 
 
+# ── RQ-specific supplementary plots ──────────────────────────────────────────
+
+def _plot_rq3_source_payload_heatmap(
+    predictions: list[dict], figures_dir: Path,
+) -> Path:
+    """AUC heatmap: rows=sources, columns=payload levels, one subplot per
+    (detector × method). Complementary to the line-plot view in Exp 3a.
+    """
+    out_path = figures_dir / "rq3_source_payload_heatmap.png"
+    panels = sorted({(r["detector"], r["method"]) for r in predictions})
+    sources = sorted({r["source"] for r in predictions})
+    PAYLOAD_ORDER = ["low", "medium", "high"]
+    payloads = [p for p in PAYLOAD_ORDER if any(r["payload_level"] == p for r in predictions)]
+
+    if not panels or not sources or not payloads:
+        _write_placeholder_plot(out_path, "RQ3 — Source × Payload AUC", "No data.")
+        return out_path
+
+    n_panels = len(panels)
+    fig, axes = plt.subplots(
+        1, n_panels,
+        figsize=(2.4 * n_panels + 1.4, max(2.2, len(sources) * 0.55 + 1.6)),
+        squeeze=False,
+    )
+
+    for col, (detector, method) in enumerate(panels):
+        ax = axes[0, col]
+        matrix = np.full((len(sources), len(payloads)), np.nan)
+        for i, source in enumerate(sources):
+            for j, pl in enumerate(payloads):
+                rows = _filter_preds(
+                    predictions, detector=detector, source=source,
+                    method=method, payload_level=pl,
+                )
+                pos, neg = _pos_neg(rows)
+                auc, _, _ = _delong_components(pos, neg)
+                if auc is not None:
+                    matrix[i, j] = auc
+
+        # Centre the colormap on 0.5 with a span of ±0.5 so AUC=0.5 is grey.
+        im = ax.imshow(matrix, cmap=DIVERGING_CMAP, vmin=0.0, vmax=1.0, aspect="auto")
+        ax.set_xticks(range(len(payloads)))
+        ax.set_xticklabels(payloads)
+        ax.set_yticks(range(len(sources)))
+        ax.set_yticklabels(sources if col == 0 else [""] * len(sources))
+        ax.set_title(f"{detector}\n{method}", fontsize=9)
+        for i in range(len(sources)):
+            for j in range(len(payloads)):
+                v = matrix[i, j]
+                if not np.isnan(v):
+                    ax.text(j, i, f"{v:.2f}", ha="center", va="center",
+                            fontsize=8.5, color=THEME["text"])
+
+    cbar = fig.colorbar(im, ax=axes[0, :], shrink=0.7, pad=0.02)
+    cbar.set_label("ROC-AUC", fontsize=9)
+    fig.suptitle(
+        "RQ3 — AUC heatmap by carrier source and payload level",
+        fontsize=12, fontweight="bold",
+    )
+    _save_fig(fig, out_path)
+    return out_path
+
+
+def _plot_rq4_branch_auc_bars(
+    predictions: list[dict], figures_dir: Path,
+) -> Path:
+    """Side-by-side spatial vs frequency AUC bars per source, one subplot per
+    (detector × payload). Complements the interaction forest in Exp 4.
+    """
+    out_path = figures_dir / "rq4_branch_auc_bars.png"
+    methods = {r["method"] for r in predictions}
+    spatial = sorted(m for m in methods if "lsb" in m.lower() and "dct" not in m.lower())
+    frequency = sorted(m for m in methods if "dct" in m.lower())
+    if not spatial or not frequency:
+        _write_placeholder_plot(
+            out_path, "RQ4 — Spatial vs frequency AUC bars",
+            "Need both LSB and DCT branches.",
+        )
+        return out_path
+
+    sp_method, fr_method = spatial[0], frequency[0]
+    sources = sorted({r["source"] for r in predictions})
+    PAYLOAD_ORDER = ["low", "medium", "high"]
+    payloads = [p for p in PAYLOAD_ORDER if any(r["payload_level"] == p for r in predictions)]
+    detectors = sorted({r["detector"] for r in predictions})
+
+    n_rows = len(detectors)
+    n_cols = max(1, len(payloads))
+    fig, axes = plt.subplots(
+        n_rows, n_cols,
+        figsize=(3.4 * n_cols + 0.5, 2.6 * n_rows + 0.8),
+        squeeze=False,
+        sharey=True,
+    )
+
+    bar_width = 0.36
+    x_positions = np.arange(len(sources))
+
+    for r_idx, detector in enumerate(detectors):
+        for c_idx, payload_level in enumerate(payloads):
+            ax = axes[r_idx, c_idx]
+            sp_vals: list[float | None] = []
+            fr_vals: list[float | None] = []
+            for source in sources:
+                for method, store in ((sp_method, sp_vals), (fr_method, fr_vals)):
+                    rows = _filter_preds(
+                        predictions, detector=detector, source=source,
+                        method=method, payload_level=payload_level,
+                    )
+                    pos, neg = _pos_neg(rows)
+                    auc, _, _ = _delong_components(pos, neg)
+                    store.append(auc)
+
+            xs_left = x_positions - bar_width / 2
+            xs_right = x_positions + bar_width / 2
+            ax.bar(
+                xs_left, [v if v is not None else 0 for v in sp_vals], width=bar_width,
+                color=THEME["lsb"], label="Spatial (LSB)" if (r_idx, c_idx) == (0, 0) else None,
+                edgecolor="white", linewidth=0.7,
+            )
+            ax.bar(
+                xs_right, [v if v is not None else 0 for v in fr_vals], width=bar_width,
+                color=THEME["dct"], label="Frequency (DCT)" if (r_idx, c_idx) == (0, 0) else None,
+                edgecolor="white", linewidth=0.7,
+            )
+            ax.axhline(0.5, color=THEME["muted"], linewidth=0.7, linestyle="--", alpha=0.7)
+            ax.set_xticks(x_positions)
+            ax.set_xticklabels(sources, fontsize=8.5)
+            ax.set_ylim(0.45, 1.02)
+            if c_idx == 0:
+                ax.set_ylabel("ROC-AUC", fontsize=9)
+            if r_idx == 0:
+                ax.set_title(payload_level, fontsize=10)
+            if c_idx == n_cols - 1:
+                ax.text(
+                    1.04, 0.5, detector, transform=ax.transAxes,
+                    rotation=270, va="center", ha="left", fontsize=9,
+                    fontweight="bold", color=THEME["muted"],
+                )
+
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    if handles:
+        fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False,
+                   bbox_to_anchor=(0.5, -0.02))
+    fig.suptitle("RQ4 — Spatial vs frequency AUC by source", fontsize=12, fontweight="bold")
+    _save_fig(fig, out_path)
+    return out_path
+
+
+_RQ_SUMMARY_SPECS = (
+    {"rq": "RQ1", "title": "Real vs pooled ML carrier sources",
+     "verdict_key": "RQ1", "source_figure": "exp1_rq1_real_vs_pooled_ml.png"},
+    {"rq": "RQ2", "title": "SDXL vs PixArt-α within ML",
+     "verdict_key": "RQ2", "source_figure": "exp2_rq2_mla_vs_mlb.png"},
+    {"rq": "RQ3", "title": "Payload-level interaction",
+     "verdict_key": "RQ3", "source_figure": "exp3a_payload_level_auc.png"},
+    {"rq": "RQ4", "title": "Embedding branch interaction",
+     "verdict_key": "RQ4", "source_figure": "exp4_spatial_vs_frequency.png"},
+    {"rq": "RQ5", "title": "Encryption invariance",
+     "verdict_key": "RQ5", "source_figure": "exp5_encryption_effect.png"},
+)
+
+
+_VERDICT_GLYPH_FIG = {
+    "supported": ("[ supported ]", THEME["sig"]),
+    "mixed": ("[ mixed ]", THEME["accent"]),
+    "not_supported": ("[ not supported ]", THEME["muted"]),
+    "inconclusive_underpowered": ("[ underpowered ]", THEME["muted"]),
+    "no_data": ("[ no data ]", THEME["muted"]),
+}
+
+
+def render_rq_summary_cards(figures_dir: Path, verdicts_payload: dict | None) -> Path:
+    """Public wrapper used by the runner to refresh the RQ verdict cards
+    after ``rq_verdicts.json`` has been written.
+    """
+    figures_dir = figures_dir.resolve()
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    return _plot_rq_summary_cards(figures_dir, verdicts_payload)
+
+
+def _plot_rq_summary_cards(
+    figures_dir: Path, verdicts: dict | None,
+) -> Path:
+    """One-page composite of the five RQ verdicts.
+
+    Renders a vertical stack of cards (one per RQ) with the verdict glyph,
+    headline numbers, and a one-line takeaway. Embeds the corresponding
+    canonical exp figure as a thumbnail when available so the writer can
+    pick the same image for both the body and the appendix.
+    """
+    out_path = figures_dir / "rq_summary_cards.png"
+
+    if not verdicts or "verdicts" not in verdicts:
+        _write_placeholder_plot(
+            out_path, "RQ Verdict Cards",
+            "rq_verdicts.json not yet generated.",
+        )
+        return out_path
+
+    n_rqs = len(_RQ_SUMMARY_SPECS)
+    fig, axes = plt.subplots(n_rqs, 1, figsize=(11, 1.5 * n_rqs + 0.6))
+    if n_rqs == 1:
+        axes = [axes]
+
+    for ax, spec in zip(axes, _RQ_SUMMARY_SPECS):
+        ax.axis("off")
+        v = verdicts["verdicts"].get(spec["verdict_key"], {})
+        verdict = v.get("verdict", "no_data")
+        glyph, glyph_color = _VERDICT_GLYPH_FIG.get(verdict, ("·", THEME["muted"]))
+
+        header = f"{spec['rq']} — {spec['title']}"
+        bullets: list[str] = [f"Test: {v.get('test', '—')}"]
+        if "n_significant_holm_0_05" in v:
+            bullets.append(
+                f"Significant after Holm: {v['n_significant_holm_0_05']} / {v.get('n_strata', 0)}"
+                f"  (+{v.get('n_significant_positive', 0)}, −{v.get('n_significant_negative', 0)})"
+            )
+        if "n_significant_ci_excludes_0" in v:
+            bullets.append(
+                f"95% CI excludes 0: {v['n_significant_ci_excludes_0']} / {v.get('n_strata', 0)}"
+                f"  (+{v.get('n_significant_positive', 0)}, −{v.get('n_significant_negative', 0)})"
+            )
+        if "n_within_margin" in v:
+            bullets.append(
+                f"Within ±{v['margin']:.3f} AUC margin: "
+                f"{v['n_within_margin']} / {v.get('n_strata', 0)}"
+            )
+        if v.get("monotone_trend"):
+            bullets.append(f"Real-ML gap trend across payload: {v['monotone_trend']}")
+        if v.get("pooled_diff") is not None:
+            lo = v.get("pooled_ci_lo")
+            hi = v.get("pooled_ci_hi")
+            if lo is not None and hi is not None:
+                bullets.append(
+                    f"Pooled ΔAUC: {v['pooled_diff']:+.4f}  "
+                    f"(95% CI [{lo:+.4f}, {hi:+.4f}])"
+                )
+
+        # Title + verdict glyph
+        ax.text(0.0, 0.92, header, fontsize=12, fontweight="bold",
+                color=THEME["text"], transform=ax.transAxes, va="top")
+        ax.text(1.0, 0.92, glyph, fontsize=11, fontweight="bold",
+                color=glyph_color, transform=ax.transAxes, va="top", ha="right")
+
+        # Bullets
+        for i, line in enumerate(bullets):
+            ax.text(0.02, 0.66 - i * 0.18, "• " + line,
+                    fontsize=9, color=THEME["text"], transform=ax.transAxes, va="top")
+
+        # Divider line below each card except the last (drawn in axes coords).
+        if spec is not _RQ_SUMMARY_SPECS[-1]:
+            ax.plot(
+                [0.0, 1.0], [-0.05, -0.05],
+                color=THEME["grid"], linewidth=0.7,
+                transform=ax.transAxes, clip_on=False,
+            )
+
+    fig.suptitle("Research Question Verdicts — Summary Cards",
+                 fontsize=13, fontweight="bold", y=0.99)
+    _save_fig(fig, out_path)
+    return out_path
+
+
 def _write_experiment_contrast_tables(
     metrics_dir: Path, predictions: list[dict]
 ) -> dict[str, Path]:
@@ -2334,6 +2598,11 @@ def generate_metrics_figures(metrics_dir: Path, figures_dir: Path) -> dict[str, 
     interaction_path = figures_dir / "exp5_source_x_encryption.png"
     if interaction_path.exists():
         figures["exp5_source_x_encryption"] = interaction_path
+
+    # RQ-specific supplementary plots that complement the canonical exp{N} figures.
+    figures["rq3_source_payload_heatmap"] = _plot_rq3_source_payload_heatmap(predictions, figures_dir)
+    figures["rq4_branch_auc_bars"] = _plot_rq4_branch_auc_bars(predictions, figures_dir)
+
     figures.update(_plot_roc_condition_panels(predictions, figures_dir))
     figures["quality_summary"] = _plot_quality_summary(metrics_dir, figures_dir)
 
@@ -2341,5 +2610,17 @@ def generate_metrics_figures(metrics_dir: Path, figures_dir: Path) -> dict[str, 
         metrics_dir, predictions
     ).items():
         figures[key] = path
+
+    # Verdict cards depend on the contrast tables having been written above;
+    # they pull from metrics/rq_verdicts.json if available.
+    verdicts_payload: dict | None = None
+    verdicts_json = metrics_dir / "rq_verdicts.json"
+    if verdicts_json.exists():
+        try:
+            import json as _json
+            verdicts_payload = _json.loads(verdicts_json.read_text())
+        except Exception:
+            verdicts_payload = None
+    figures["rq_summary_cards"] = _plot_rq_summary_cards(figures_dir, verdicts_payload)
 
     return figures
