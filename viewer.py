@@ -222,6 +222,7 @@ def _get_run_detail(run_id: str) -> dict:
 
 
 def _payload_launch_config(body: dict, profile: str) -> tuple[dict, list[str], str | None]:
+    """Back-compat shim: kept for callers that only need the payload-mode fields."""
     from src.pipeline.config import PAYLOAD_MODE_HARDCODED, PAYLOAD_MODE_RANDOM, PipelineConfig
 
     payload_mode = body.get("payload_mode", body.get("payloadMode", PAYLOAD_MODE_RANDOM))
@@ -243,6 +244,122 @@ def _payload_launch_config(body: dict, profile: str) -> tuple[dict, list[str], s
         }
     )
     return meta, args, payload_text
+
+
+def _parse_knob_overrides(body: dict) -> dict:
+    """Pluck the seven optional knob overrides from a launch POST body.
+
+    The browser may use either snake_case or camelCase keys. List-typed knobs
+    accept either a JSON list or a comma-separated string. Returns a dict
+    ready to splat into ``PipelineConfig.from_profile``.
+    """
+    def _list_field(*names: str) -> tuple[str, ...] | None:
+        for name in names:
+            if name in body:
+                value = body[name]
+                if value is None:
+                    return None
+                if isinstance(value, str):
+                    value = [s.strip() for s in value.split(",") if s.strip()]
+                if not isinstance(value, (list, tuple)):
+                    raise ValueError(f"{name} must be a list or comma-separated string")
+                return tuple(value)
+        return None
+
+    out: dict = {}
+    if (v := body.get("n_groups", body.get("nGroups"))) is not None:
+        try:
+            out["n_groups"] = int(v)
+        except (TypeError, ValueError):
+            raise ValueError("n_groups must be an integer") from None
+    if (methods := _list_field("active_methods", "activeMethods")) is not None:
+        out["active_methods"] = methods
+    if (levels := _list_field("active_payload_levels", "activePayloadLevels")) is not None:
+        out["active_payload_levels"] = levels
+    if (encs := _list_field("active_encryption", "activeEncryption")) is not None:
+        out["active_encryption"] = encs
+    if (dets := _list_field("active_detectors", "activeDetectors")) is not None:
+        out["active_detectors"] = dets
+    if body.get("include_bd_sens") or body.get("includeBdSens"):
+        out["include_bd_sens_auxiliary"] = True
+    if (q := body.get("jpeg_quality", body.get("jpegQuality"))) is not None:
+        try:
+            out["jpeg_quality"] = int(q)
+        except (TypeError, ValueError):
+            raise ValueError("jpeg_quality must be an integer") from None
+    return out
+
+
+def _build_launch_config(body: dict) -> dict:
+    """Resolve a launch POST body into a complete ``PipelineConfig`` plus CLI args.
+
+    Returns a dict containing:
+        config            : the resolved PipelineConfig
+        cli_args          : list of CLI flags ready to pass to run.py
+        meta              : dict for .meta.json (UI display only)
+        payload_text      : hardcoded payload text or None
+        errors, warnings  : from config.validate()
+        planned_figures   : sorted list from config.planned_figures()
+    """
+    from src.pipeline.config import PipelineConfig
+
+    profile = body.get("profile", "prototype")
+    engine = body.get("engine", "stub")
+
+    meta, payload_args, payload_text = _payload_launch_config(body, profile)
+    overrides = _parse_knob_overrides(body)
+
+    config = PipelineConfig.from_profile(
+        PROJECT_ROOT,
+        profile,
+        n_groups=overrides.get("n_groups"),
+        active_methods=overrides.get("active_methods"),
+        active_payload_levels=overrides.get("active_payload_levels"),
+        active_encryption=overrides.get("active_encryption"),
+        active_detectors=overrides.get("active_detectors"),
+        include_bd_sens_auxiliary=overrides.get("include_bd_sens_auxiliary"),
+        jpeg_quality=overrides.get("jpeg_quality"),
+    )
+    errors, warnings = config.validate()
+
+    cli_args = list(payload_args)
+    if "n_groups" in overrides:
+        cli_args.extend(["--n-groups", str(overrides["n_groups"])])
+    if "active_methods" in overrides:
+        cli_args.extend(["--active-methods", *overrides["active_methods"]])
+    if "active_payload_levels" in overrides:
+        cli_args.extend(["--active-payload-levels", *overrides["active_payload_levels"]])
+    if "active_encryption" in overrides:
+        cli_args.extend(["--active-encryption", *overrides["active_encryption"]])
+    if "active_detectors" in overrides:
+        cli_args.extend(["--active-detectors", *overrides["active_detectors"]])
+    if overrides.get("include_bd_sens_auxiliary"):
+        cli_args.append("--include-bd-sens")
+    if "jpeg_quality" in overrides:
+        cli_args.extend(["--jpeg-quality", str(overrides["jpeg_quality"])])
+
+    meta_view = dict(meta)
+    meta_view.update({
+        "profile": profile,
+        "engine": engine,
+        "n_groups": config.n_groups,
+        "active_methods": list(config.active_methods),
+        "active_payload_levels": list(config.active_payload_levels),
+        "active_encryption": list(config.active_encryption),
+        "active_detectors": list(config.active_detectors),
+        "include_bd_sens_auxiliary": config.include_bd_sens_auxiliary,
+        "jpeg_quality": config.jpeg_quality,
+    })
+
+    return {
+        "config": config,
+        "cli_args": cli_args,
+        "meta": meta_view,
+        "payload_text": payload_text,
+        "errors": errors,
+        "warnings": warnings,
+        "planned_figures": sorted(config.planned_figures()),
+    }
 
 
 # ── HTTP handler ──────────────────────────────────────────────────────────────
@@ -288,6 +405,10 @@ class Handler(BaseHTTPRequestHandler):
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n)) if n else {}
             self._start_pipeline(body)
+        elif self.path == "/api/pipeline/preview":
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n)) if n else {}
+            self._preview_pipeline(body)
         elif self.path.startswith("/api/pipeline/kill/"):
             job_id = self.path[len("/api/pipeline/kill/"):]
             self._kill_job(job_id)
@@ -380,14 +501,36 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _preview_pipeline(self, body: dict):
+        """Validate a config without launching anything; surface planned figures."""
+        try:
+            preview = _build_launch_config(body)
+        except ValueError as exc:
+            return self._err(400, str(exc))
+        self._json({
+            "ok": not preview["errors"],
+            "errors": preview["errors"],
+            "warnings": preview["warnings"],
+            "planned_figures": preview["planned_figures"],
+            "resolved_config": preview["meta"],
+        })
+
     def _start_pipeline(self, body: dict):
         import datetime
         profile = body.get("profile", "prototype")
         engine = body.get("engine", "stub")
         try:
-            payload_meta, payload_args, payload_text = _payload_launch_config(body, profile)
+            preview = _build_launch_config(body)
         except ValueError as exc:
             return self._err(400, str(exc))
+
+        if preview["errors"]:
+            return self._err(400, "; ".join(preview["errors"]))
+
+        payload_text = preview["payload_text"]
+        cli_args = preview["cli_args"]
+        meta = preview["meta"]
+
         job_id = uuid.uuid4().hex[:8]
         # Embed port in run ID so two viewer instances never collide on the filesystem
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -400,13 +543,13 @@ class Handler(BaseHTTPRequestHandler):
         if payload_text is not None:
             payload_file = run_dir / ".hardcoded_payload.txt"
             payload_file.write_text(payload_text, encoding="utf-8")
-            payload_args.extend(["--hardcoded-payload-file", str(payload_file)])
+            cli_args.extend(["--hardcoded-payload-file", str(payload_file)])
         import json as _json
-        (run_dir / ".meta.json").write_text(_json.dumps({"profile": profile, "engine": engine, **payload_meta}))
+        (run_dir / ".meta.json").write_text(_json.dumps(meta))
         cmd = [
             sys.executable, str(PROJECT_ROOT / "run.py"), profile,
             "--ml-engine", engine, "--run-id", run_id,
-            *payload_args,
+            *cli_args,
         ]
         proc = subprocess.Popen(
             cmd,
@@ -414,7 +557,12 @@ class Handler(BaseHTTPRequestHandler):
         )
         with _JOBS_LOCK:
             RUNNING_JOBS[job_id] = {"proc": proc, "run_id": run_id}
-        self._json({"job_id": job_id, "run_id": run_id})
+        self._json({
+            "job_id": job_id,
+            "run_id": run_id,
+            "warnings": preview["warnings"],
+            "planned_figures": preview["planned_figures"],
+        })
 
     def _delete_run(self, run_id: str):
         # Sanitize: only allow alphanumeric, underscore, hyphen

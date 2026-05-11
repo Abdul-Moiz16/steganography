@@ -1997,6 +1997,183 @@ def _plot_quality_summary(metrics_dir: Path, figures_dir: Path) -> Path:
     return out_path
 
 
+def _collect_exp3_payload_interaction(predictions: list[dict]) -> list[dict]:
+    """Per (detector, method, source, payload_level) AUC + 95% CI and per-stratum source gap.
+
+    The Exp 3 forest in plots.py renders the per-source AUC trajectory across
+    payload levels. The corresponding tabular export captures the underlying
+    numbers — AUC, SE, CI bounds, n — plus the real-vs-pooled-ML source gap.
+    """
+    rows: list[dict] = []
+    if not predictions:
+        return rows
+    sources = sorted({r["source"] for r in predictions})
+    strata = sorted({(r["detector"], r["method"], r["payload_level"]) for r in predictions})
+
+    auc_index: dict[tuple[str, str, str, str], tuple[float | None, float | None, int, int]] = {}
+    for detector, method, payload_level in strata:
+        for source in sources:
+            sel = _filter_preds(
+                predictions, detector=detector, source=source,
+                method=method, payload_level=payload_level,
+            )
+            pos, neg = _pos_neg(sel)
+            auc, V10, V01 = _delong_components(pos, neg)
+            if auc is None:
+                auc_index[(detector, method, source, payload_level)] = (None, None, len(pos), len(neg))
+                continue
+            se = float(np.sqrt(max(_delong_var(V10, V01), 0.0)))
+            auc_index[(detector, method, source, payload_level)] = (auc, se, len(pos), len(neg))
+
+    for detector, method, payload_level in strata:
+        for source in sources:
+            auc, se, n_pos, n_neg = auc_index[(detector, method, source, payload_level)]
+            real_auc, *_ = auc_index.get((detector, method, "real", payload_level), (None, None, 0, 0))
+            ml_aucs = [
+                auc_index.get((detector, method, s, payload_level), (None,))[0]
+                for s in ("ml_a", "ml_b")
+            ]
+            ml_aucs = [v for v in ml_aucs if v is not None]
+            gap = (real_auc - mean(ml_aucs)) if (real_auc is not None and ml_aucs) else None
+            rows.append({
+                "experiment": "exp3_rq3_payload_interaction",
+                "detector": detector,
+                "method": method,
+                "source": source,
+                "payload_level": payload_level,
+                "auc": auc,
+                "se": se,
+                "ci_lo": (auc - 1.96 * se) if (auc is not None and se is not None) else None,
+                "ci_hi": (auc + 1.96 * se) if (auc is not None and se is not None) else None,
+                "n_pos": n_pos,
+                "n_neg": n_neg,
+                "real_minus_ml_gap": gap,
+            })
+    return rows
+
+
+def _collect_exp4_branch_interaction(predictions: list[dict]) -> list[dict]:
+    """Per (detector, payload_level): ΔΔ = gap_spatial − gap_frequency with a Wald CI.
+
+    Mirrors the data computed inside ``_plot_exp4``. Each row records both
+    per-branch source gaps and their interaction so the report can quote
+    numbers directly without re-deriving them from the figure.
+    """
+    rows: list[dict] = []
+    if not predictions:
+        return rows
+    methods = {r["method"] for r in predictions}
+    spatial = sorted(m for m in methods if "lsb" in m.lower() and "dct" not in m.lower())
+    frequency = sorted(m for m in methods if "dct" in m.lower())
+    if not spatial or not frequency:
+        return rows
+    sp_method, fr_method = spatial[0], frequency[0]
+    PAYLOAD_ORDER = ("low", "medium", "high")
+    payload_levels = [pl for pl in PAYLOAD_ORDER if any(r["payload_level"] == pl for r in predictions)]
+    detectors = sorted({r["detector"] for r in predictions})
+
+    for detector in detectors:
+        for payload_level in payload_levels:
+            sp_gap = _source_gap_stats(
+                predictions, detector=detector,
+                method=sp_method, payload_level=payload_level,
+            )
+            fr_gap = _source_gap_stats(
+                predictions, detector=detector,
+                method=fr_method, payload_level=payload_level,
+            )
+            if sp_gap.get("diff") is None or fr_gap.get("diff") is None:
+                continue
+            diff = sp_gap["diff"] - fr_gap["diff"]
+            se = math.sqrt(max(
+                (sp_gap.get("se") or 0.0) ** 2 + (fr_gap.get("se") or 0.0) ** 2, 0.0,
+            ))
+            z_val = diff / se if se > 1e-12 else 0.0
+            p_value = 2.0 * (1.0 - stats.norm.cdf(abs(z_val))) if se > 1e-12 else 1.0
+            rows.append({
+                "experiment": "exp4_rq4_spatial_vs_frequency",
+                "detector": detector,
+                "payload_level": payload_level,
+                "spatial_method": sp_method,
+                "frequency_method": fr_method,
+                "gap_spatial": sp_gap["diff"],
+                "gap_frequency": fr_gap["diff"],
+                "diff": diff,
+                "se": se,
+                "ci_lo": diff - 1.96 * se,
+                "ci_hi": diff + 1.96 * se,
+                "z": z_val,
+                "p": p_value,
+            })
+    return rows
+
+
+def _collect_exp5_source_x_encryption(exp5_per_stratum_rows: list[dict]) -> list[dict]:
+    """Per (detector, method, payload_level): ΔΔ = Δ_real − mean(Δ_ml_a, Δ_ml_b).
+
+    Consumes the already-computed paired DeLong rows from Exp 5 (one row per
+    (detector, source, method, payload_level)) and synthesises the source ×
+    encryption interaction term used by ``_plot_exp5_interaction``.
+    """
+    rows: list[dict] = []
+    by_key: dict[tuple[str, str, str, str], dict] = {}
+    for r in exp5_per_stratum_rows:
+        if r.get("diff") is None:
+            continue
+        by_key[(r["detector"], r["method"], r["payload_level"], r["source"])] = r
+    detectors = sorted({k[0] for k in by_key})
+    methods = sorted({k[1] for k in by_key})
+    payload_levels = sorted({k[2] for k in by_key})
+    for detector in detectors:
+        for method in methods:
+            for payload_level in payload_levels:
+                real_row = by_key.get((detector, method, payload_level, "real"))
+                ml_a_row = by_key.get((detector, method, payload_level, "ml_a"))
+                ml_b_row = by_key.get((detector, method, payload_level, "ml_b"))
+                if real_row is None:
+                    continue
+                ml_rows = [r for r in (ml_a_row, ml_b_row) if r is not None]
+                if not ml_rows:
+                    continue
+                ml_mean = mean(r["diff"] for r in ml_rows)
+                ml_var = sum(((r.get("se") or 0.0) ** 2) for r in ml_rows) / max(len(ml_rows) ** 2, 1)
+                diff = real_row["diff"] - ml_mean
+                se = math.sqrt(max((real_row.get("se") or 0.0) ** 2 + ml_var, 0.0))
+                z_val = diff / se if se > 1e-12 else 0.0
+                p_value = 2.0 * (1.0 - stats.norm.cdf(abs(z_val))) if se > 1e-12 else 1.0
+                rows.append({
+                    "experiment": "exp5_rq5_source_x_encryption",
+                    "detector": detector,
+                    "method": method,
+                    "payload_level": payload_level,
+                    "delta_real": real_row["diff"],
+                    "delta_ml_mean": ml_mean,
+                    "diff": diff,
+                    "se": se,
+                    "ci_lo": diff - 1.96 * se,
+                    "ci_hi": diff + 1.96 * se,
+                    "z": z_val,
+                    "p": p_value,
+                })
+    return rows
+
+
+_SUMMARY_FIELDS = (
+    "experiment", "detector", "method", "payload_level", "source", "encryption",
+    "n_pos_a", "n_neg_a", "n_pos_b", "n_neg_b",
+    "auc_a", "auc_b", "diff", "se", "ci_lo", "ci_hi", "z", "p", "p_holm",
+    "significant_holm_0_05",
+)
+
+
+def _summarise_for_master(experiment: str, rows: list[dict]) -> list[dict]:
+    """Project per-experiment rows down to the consolidated summary schema."""
+    out: list[dict] = []
+    for r in rows:
+        out.append({field: r.get(field) for field in _SUMMARY_FIELDS} | {"experiment": experiment})
+    return out
+
+
 def _write_experiment_contrast_tables(
     metrics_dir: Path, predictions: list[dict]
 ) -> dict[str, Path]:
@@ -2008,106 +2185,102 @@ def _write_experiment_contrast_tables(
         {(r["detector"], r["method"], r["payload_level"]) for r in predictions}
     )
 
+    # ── Exp 1: real vs pooled ML, per stratum (DeLong + Holm) ───────────────
     exp1_rows: list[dict] = []
     for detector, method, payload_level in strata:
         real_rows = _filter_preds(
-            predictions,
-            detector=detector,
-            source="real",
-            method=method,
-            payload_level=payload_level,
+            predictions, detector=detector, source="real",
+            method=method, payload_level=payload_level,
         )
         ml_rows = _filter_preds(
-            predictions,
-            detector=detector,
-            source="ml_a",
-            method=method,
-            payload_level=payload_level,
+            predictions, detector=detector, source="ml_a",
+            method=method, payload_level=payload_level,
         ) + _filter_preds(
-            predictions,
-            detector=detector,
-            source="ml_b",
-            method=method,
-            payload_level=payload_level,
+            predictions, detector=detector, source="ml_b",
+            method=method, payload_level=payload_level,
         )
         stat = _delong_compare(*_pos_neg(real_rows), *_pos_neg(ml_rows), paired=False)
-        exp1_rows.append(
-            {
-                "experiment": "exp1_rq1_real_vs_pooled_ml",
-                "detector": detector,
-                "method": method,
-                "payload_level": payload_level,
-                **stat,
-            }
-        )
+        exp1_rows.append({
+            "experiment": "exp1_rq1_real_vs_pooled_ml",
+            "detector": detector, "method": method, "payload_level": payload_level,
+            **stat,
+        })
     _holm_adjust(exp1_rows)
     outputs["exp1_contrasts"] = metrics_dir / "exp1_rq1_real_vs_pooled_ml_contrasts.csv"
     _write_csv(outputs["exp1_contrasts"], exp1_rows)
 
+    # ── Exp 2: ml_a vs ml_b per stratum (DeLong + Holm) ─────────────────────
     exp2_rows: list[dict] = []
     for detector, method, payload_level in strata:
         ml_a_rows = _filter_preds(
-            predictions,
-            detector=detector,
-            source="ml_a",
-            method=method,
-            payload_level=payload_level,
+            predictions, detector=detector, source="ml_a",
+            method=method, payload_level=payload_level,
         )
         ml_b_rows = _filter_preds(
-            predictions,
-            detector=detector,
-            source="ml_b",
-            method=method,
-            payload_level=payload_level,
+            predictions, detector=detector, source="ml_b",
+            method=method, payload_level=payload_level,
         )
         stat = _delong_compare(*_pos_neg(ml_a_rows), *_pos_neg(ml_b_rows), paired=False)
-        exp2_rows.append(
-            {
-                "experiment": "exp2_rq2_mla_vs_mlb",
-                "detector": detector,
-                "method": method,
-                "payload_level": payload_level,
-                **stat,
-            }
-        )
+        exp2_rows.append({
+            "experiment": "exp2_rq2_mla_vs_mlb",
+            "detector": detector, "method": method, "payload_level": payload_level,
+            **stat,
+        })
     _holm_adjust(exp2_rows)
     outputs["exp2_contrasts"] = metrics_dir / "exp2_rq2_mla_vs_mlb_contrasts.csv"
     _write_csv(outputs["exp2_contrasts"], exp2_rows)
 
+    # ── Exp 3: payload interaction (per source × payload AUC + gap) ─────────
+    exp3_rows = _collect_exp3_payload_interaction(predictions)
+    if exp3_rows:
+        outputs["exp3_contrasts"] = metrics_dir / "exp3_rq3_payload_interaction_contrasts.csv"
+        _write_csv(outputs["exp3_contrasts"], exp3_rows)
+
+    # ── Exp 4: spatial vs frequency branch interaction ──────────────────────
+    exp4_rows = _collect_exp4_branch_interaction(predictions)
+    if exp4_rows:
+        outputs["exp4_contrasts"] = metrics_dir / "exp4_rq4_spatial_vs_frequency_contrasts.csv"
+        _write_csv(outputs["exp4_contrasts"], exp4_rows)
+
+    # ── Exp 5: paired plain vs encrypted per (detector, source, method, payload) ──
     exp5_rows: list[dict] = []
     for detector, method, payload_level in strata:
         for source in sorted({r["source"] for r in predictions}):
             plain_rows = _filter_preds(
-                predictions,
-                detector=detector,
-                source=source,
-                method=method,
-                payload_level=payload_level,
-                encryption="plain",
+                predictions, detector=detector, source=source,
+                method=method, payload_level=payload_level, encryption="plain",
             )
             enc_rows = _filter_preds(
-                predictions,
-                detector=detector,
-                source=source,
-                method=method,
-                payload_level=payload_level,
-                encryption="encrypted",
+                predictions, detector=detector, source=source,
+                method=method, payload_level=payload_level, encryption="encrypted",
             )
-            stat = _delong_compare(
-                *_pos_neg(plain_rows), *_pos_neg(enc_rows), paired=True
-            )
-            exp5_rows.append(
-                {
-                    "experiment": "exp5_rq5_plain_vs_encrypted",
-                    "detector": detector,
-                    "source": source,
-                    "method": method,
-                    "payload_level": payload_level,
-                    **stat,
-                }
-            )
+            stat = _delong_compare(*_pos_neg(plain_rows), *_pos_neg(enc_rows), paired=True)
+            exp5_rows.append({
+                "experiment": "exp5_rq5_plain_vs_encrypted",
+                "detector": detector, "source": source,
+                "method": method, "payload_level": payload_level,
+                **stat,
+            })
     outputs["exp5_contrasts"] = metrics_dir / "exp5_rq5_encryption_contrasts.csv"
     _write_csv(outputs["exp5_contrasts"], exp5_rows)
+
+    # ── Exp 5 interaction: ΔΔ = Δ_real − mean(Δ_ml_*) ───────────────────────
+    exp5_interaction_rows = _collect_exp5_source_x_encryption(exp5_rows)
+    if exp5_interaction_rows:
+        outputs["exp5_interaction_contrasts"] = metrics_dir / "exp5_rq5_source_x_encryption_contrasts.csv"
+        _write_csv(outputs["exp5_interaction_contrasts"], exp5_interaction_rows)
+
+    # ── Consolidated experiments_summary.csv ────────────────────────────────
+    summary_rows: list[dict] = []
+    summary_rows += _summarise_for_master("exp1_rq1_real_vs_pooled_ml", exp1_rows)
+    summary_rows += _summarise_for_master("exp2_rq2_mla_vs_mlb", exp2_rows)
+    summary_rows += _summarise_for_master("exp3_rq3_payload_interaction", exp3_rows)
+    summary_rows += _summarise_for_master("exp4_rq4_spatial_vs_frequency", exp4_rows)
+    summary_rows += _summarise_for_master("exp5_rq5_plain_vs_encrypted", exp5_rows)
+    summary_rows += _summarise_for_master("exp5_rq5_source_x_encryption", exp5_interaction_rows)
+    if summary_rows:
+        outputs["experiments_summary"] = metrics_dir / "experiments_summary.csv"
+        _write_csv(outputs["experiments_summary"], summary_rows)
 
     return outputs
 

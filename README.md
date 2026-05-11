@@ -52,10 +52,24 @@ python run.py prototype --ml-engine stub
 
 # Explicit run ID
 python run.py prototype --run-id my_experiment_001
+
+# Override individual knobs (any subset; profile defaults fill the rest)
+python run.py prototype_full --ml-engine stub \
+    --n-groups 50 --active-methods lsb \
+    --active-detectors rs chi_square_spatial sample_pairs \
+    --active-encryption plain --jpeg-quality 95
+
+# Validate a config without running anything
+python run.py prototype --dry-run --ml-engine stub --include-bd-sens
 ```
 
 All outputs are written to `runs/{profile}_{timestamp}/`, keeping each run
 self-contained (covers, manifests, stego images, predictions, metrics, figures).
+The runner automatically writes per-experiment contrast CSVs (`exp1`…`exp5`),
+a consolidated `experiments_summary.csv`, and supplementary `wilcoxon_tests.csv`
++ `t_tests.csv` + `encryption_invariance.csv` to `metrics/` after the figures
+are generated. See [`src/pipeline/README.md`](src/pipeline/README.md) for the
+full knob compatibility matrix and figure-enablement rules.
 
 To run all tests:
 

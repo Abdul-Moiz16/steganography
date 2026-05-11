@@ -173,25 +173,20 @@ def _print_results_summary(run_dir: Path) -> None:
 
     print(f"\n{'═'*W}\n")
 
-# ── Profile constants ─────────────────────────────────────────────────────────
+# ── Cover-source mix ──────────────────────────────────────────────────────────
 
-_PROFILE_N_GROUPS: dict[str, int] = {
-    "prototype":       20,
-    "prototype_full": 100,
-    "full_design":    500,
-}
+# Per proposal §3.1 the real-image pool is 60% COCO + 40% Flickr30k regardless
+# of the profile. COCO and Flickr30k targets are now derived from n_groups so
+# overriding the group count via --n-groups scales the dataset draws cleanly.
+_REAL_COCO_RATIO = 0.6
 
-_PROFILE_COCO_TARGET: dict[str, int] = {
-    "prototype":       12,   # 12 of 20 real groups per run
-    "prototype_full":  60,   # 60 of 100 real groups per run (proposal 60/40 mix)
-    "full_design":    300,
-}
 
-_PROFILE_FLICKR_TARGET: dict[str, int] = {
-    "prototype":        8,   # 8 of 20 real groups per run
-    "prototype_full":  40,   # 40 of 100 real groups per run (proposal 60/40 mix)
-    "full_design":    200,
-}
+def _split_real_targets(n_groups: int) -> tuple[int, int]:
+    """Return (coco_target, flickr_target) for the given total real-cover count."""
+    coco = int(round(n_groups * _REAL_COCO_RATIO))
+    coco = max(0, min(n_groups, coco))
+    flickr = n_groups - coco
+    return coco, flickr
 
 
 # ── HF token resolution ───────────────────────────────────────────────────────
@@ -289,8 +284,7 @@ def _prepare_run_covers(
     if real_manifest.exists() and _row_count(real_manifest) >= n_groups:
         print(f"  [1/3] ✓ Real covers already downloaded.")
     else:
-        coco_n   = _PROFILE_COCO_TARGET[profile]
-        flickr_n = _PROFILE_FLICKR_TARGET[profile]
+        coco_n, flickr_n = _split_real_targets(n_groups)
         print(f"  [1/3] Downloading {coco_n} COCO + {flickr_n} Flickr30k covers (seed={seed}) …")
         from src.data.download_real_covers import download_real_covers
         download_real_covers(
@@ -343,6 +337,11 @@ def _prepare_run_covers(
 def main() -> None:
     import argparse
 
+    from src.pipeline.config import (
+        ALL_DETECTORS, ALL_ENCRYPTIONS, ALL_METHODS, ALL_PAYLOAD_LEVELS,
+    )
+    from src.pipeline.profile import PROFILES
+
     parser = argparse.ArgumentParser(
         description="Run the steganography pipeline for a named experiment profile.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -350,7 +349,7 @@ def main() -> None:
     )
     parser.add_argument(
         "profile",
-        choices=list(_PROFILE_N_GROUPS.keys()),
+        choices=list(PROFILES.keys()),
         help=(
             "Experiment profile: 'prototype' (60 images, LSB-only), "
             "'prototype_full' (300 images, full factor design), or "
@@ -387,16 +386,103 @@ def main() -> None:
         default=None,
         help="Text file payload used when --payload-mode=hardcoded.",
     )
+
+    # ── Profile overrides ─────────────────────────────────────────────────────
+    parser.add_argument(
+        "--n-groups",
+        type=int,
+        default=None,
+        help="Override the profile's groups-per-source count (scales COCO/Flickr 60/40).",
+    )
+    parser.add_argument(
+        "--active-methods",
+        nargs="+",
+        choices=list(ALL_METHODS),
+        default=None,
+        help=f"Subset of embedding methods to run (default: profile setting; choices: {list(ALL_METHODS)}).",
+    )
+    parser.add_argument(
+        "--active-payload-levels",
+        nargs="+",
+        choices=list(ALL_PAYLOAD_LEVELS),
+        default=None,
+        help=f"Subset of payload levels to run (default: profile setting; choices: {list(ALL_PAYLOAD_LEVELS)}).",
+    )
+    parser.add_argument(
+        "--active-encryption",
+        nargs="+",
+        choices=list(ALL_ENCRYPTIONS),
+        default=None,
+        help=f"Subset of encryption arms to run (default: both; choices: {list(ALL_ENCRYPTIONS)}).",
+    )
+    parser.add_argument(
+        "--active-detectors",
+        nargs="+",
+        choices=list(ALL_DETECTORS),
+        default=None,
+        help=f"Subset of detectors to run (default: all five; choices: {list(ALL_DETECTORS)}).",
+    )
+    parser.add_argument(
+        "--include-bd-sens",
+        action="store_true",
+        help="Include the BD-Sens auxiliary condition (k=2, 1.50 bpp) for Exp 3b.",
+    )
+    parser.add_argument(
+        "--jpeg-quality",
+        type=int,
+        default=None,
+        help="Override the JPEG quality factor (default: 95 — proposal-locked).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate the config and print the planned figure list, then exit without running.",
+    )
+
     args = parser.parse_args()
 
     profile      = args.profile
-    n_groups     = _PROFILE_N_GROUPS[profile]
     project_root = Path(__file__).parent.resolve()
 
     from src.pipeline.config import PipelineConfig
     from src.pipeline.runner import PipelineRunner
 
-    config = PipelineConfig.from_profile(project_root, profile)
+    config = PipelineConfig.from_profile(
+        project_root,
+        profile,
+        n_groups=args.n_groups,
+        active_methods=tuple(args.active_methods) if args.active_methods else None,
+        active_payload_levels=(
+            tuple(args.active_payload_levels) if args.active_payload_levels else None
+        ),
+        active_encryption=tuple(args.active_encryption) if args.active_encryption else None,
+        active_detectors=tuple(args.active_detectors) if args.active_detectors else None,
+        include_bd_sens_auxiliary=args.include_bd_sens or None,
+        jpeg_quality=args.jpeg_quality,
+    )
+    n_groups = config.n_groups
+
+    errors, warnings = config.validate()
+    for w in warnings:
+        print(f"  [warn] {w}")
+    if errors:
+        print("\nConfig is invalid:")
+        for e in errors:
+            print(f"  [error] {e}")
+        sys.exit(2)
+
+    if args.dry_run:
+        print("\n[dry-run] config validates clean.")
+        print(f"  n_groups            : {config.n_groups}")
+        print(f"  active_methods      : {list(config.active_methods)}")
+        print(f"  active_payload_levels: {list(config.active_payload_levels)}")
+        print(f"  active_encryption   : {list(config.active_encryption)}")
+        print(f"  active_detectors    : {list(config.active_detectors)}")
+        print(f"  include_bd_sens     : {config.include_bd_sens_auxiliary}")
+        print(f"  jpeg_quality        : {config.jpeg_quality}")
+        print(f"  planned figures     : {sorted(config.planned_figures())}")
+        sys.exit(0)
+
     runner = PipelineRunner(config)
 
     # ── Generate cover seed and create run directory ──────────────────────────
@@ -445,6 +531,22 @@ def main() -> None:
         cli_args.extend(["--hardcoded-payload", args.hardcoded_payload])
     if args.hardcoded_payload_file is not None:
         cli_args.extend(["--hardcoded-payload-file", str(args.hardcoded_payload_file)])
+
+    # Forward profile overrides so the child cli.main() rebuilds the same config.
+    if args.n_groups is not None:
+        cli_args.extend(["--n-groups", str(args.n_groups)])
+    if args.active_methods:
+        cli_args.extend(["--active-methods", *args.active_methods])
+    if args.active_payload_levels:
+        cli_args.extend(["--active-payload-levels", *args.active_payload_levels])
+    if args.active_encryption:
+        cli_args.extend(["--active-encryption", *args.active_encryption])
+    if args.active_detectors:
+        cli_args.extend(["--active-detectors", *args.active_detectors])
+    if args.include_bd_sens:
+        cli_args.append("--include-bd-sens")
+    if args.jpeg_quality is not None:
+        cli_args.extend(["--jpeg-quality", str(args.jpeg_quality)])
 
     sys.argv = ["run.py"] + cli_args
 

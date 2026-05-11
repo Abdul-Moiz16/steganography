@@ -13,6 +13,37 @@ function closeLaunchPanel() {
     if (drawer) drawer.classList.remove('open');
 }
 
+const ADVANCED_DEFAULTS = {
+    n_groups: '',
+    methods: { lsb: true, dct: true },
+    payload_levels: { low: true, medium: true, high: true },
+    encryption: { plain: true, encrypted: true },
+    detectors: {
+        rs: true,
+        chi_square_spatial: true,
+        sample_pairs: true,
+        chi_square_dct: true,
+        calibration_chi_square: true,
+    },
+    include_bd_sens: false,
+    jpeg_quality: 95,
+};
+
+const DETECTOR_LABELS = {
+    rs: 'RS Analysis (spatial)',
+    chi_square_spatial: 'χ² Spatial',
+    sample_pairs: 'Sample Pairs (spatial)',
+    chi_square_dct: 'χ² DCT',
+    calibration_chi_square: 'Calibration χ²',
+};
+
+function getAdvancedState() {
+    if (!STATE.lastAdvanced) {
+        STATE.lastAdvanced = JSON.parse(JSON.stringify(ADVANCED_DEFAULTS));
+    }
+    return STATE.lastAdvanced;
+}
+
 function renderLaunchDrawer() {
     const el = document.getElementById('launch-drawer-body');
     if (!el) return;
@@ -22,6 +53,7 @@ function renderLaunchDrawer() {
     const curPayloadMode = STATE.lastPayloadMode || 'random';
     const curHardcodedPayload = STATE.lastHardcodedPayload || '';
     const maxPayloadBytes = (PROFILE_META[curProfile] || PROFILE_META.prototype).hardcoded_payload_max_bytes;
+    const adv = getAdvancedState();
 
     function engineOpt(value, label, sub) {
         const checked = curEngine === value;
@@ -99,6 +131,52 @@ function renderLaunchDrawer() {
                     <span>UTF-8 text only</span>
                 </div>
             </div>
+        </div>` +
+        `<div class="drawer-section">
+            <details class="lp-advanced" ${STATE.lastAdvancedOpen ? 'open' : ''} ontoggle="STATE.lastAdvancedOpen = this.open">
+                <summary class="lp-advanced-summary">
+                    <span class="material-symbols-outlined">tune</span>
+                    Advanced configuration
+                </summary>
+                <div class="lp-advanced-body">
+                    <div class="lp-field-label">Groups per source</div>
+                    <input type="number" id="adv-n-groups" class="lp-num-input" min="5" max="500"
+                        value="${escapeAttr(adv.n_groups)}"
+                        placeholder="Profile default">
+                    <div class="lp-field-hint">Empty = use profile default. Minimum 5; below 20 disables confirmatory tests.</div>
+
+                    <div class="lp-field-label">Embedding methods</div>
+                    ${checkbox('adv-method-lsb', 'Spatial LSB (PNG)', adv.methods.lsb)}
+                    ${checkbox('adv-method-dct', 'DCT-LSB (JPEG)', adv.methods.dct)}
+
+                    <div class="lp-field-label">Payload levels</div>
+                    ${checkbox('adv-level-low',    'Low (0.25 bpp)',    adv.payload_levels.low)}
+                    ${checkbox('adv-level-medium', 'Medium (0.50 bpp)', adv.payload_levels.medium)}
+                    ${checkbox('adv-level-high',   'High (0.75 bpp)',   adv.payload_levels.high)}
+
+                    <div class="lp-field-label">Encryption arms</div>
+                    ${checkbox('adv-enc-plain',     'Plain',         adv.encryption.plain)}
+                    ${checkbox('adv-enc-encrypted', 'AES-256-CBC',   adv.encryption.encrypted)}
+
+                    <div class="lp-field-label">Detectors</div>
+                    ${Object.entries(DETECTOR_LABELS)
+                        .map(([k, label]) => checkbox('adv-det-' + k, label, adv.detectors[k]))
+                        .join('')}
+
+                    <div class="lp-field-label">Extras</div>
+                    ${checkbox('adv-bd-sens', 'Include BD-Sens (k=2) auxiliary', adv.include_bd_sens)}
+
+                    <div class="lp-field-label">JPEG quality</div>
+                    <input type="number" id="adv-jpeg-quality" class="lp-num-input" min="50" max="100"
+                        value="${escapeAttr(adv.jpeg_quality)}">
+                    <div class="lp-field-hint">Proposal-locked at 95. Other values trigger a warning.</div>
+
+                    <button class="btn-secondary" type="button" onclick="previewLaunch()" style="margin-top:8px">
+                        <span class="material-symbols-outlined">visibility</span> Preview validation
+                    </button>
+                    <div id="lp-preview-result" class="lp-preview-result"></div>
+                </div>
+            </details>
         </div>` +
         (activeCount > 0
             ? `<div class="drawer-section"><div class="sc-running-note">
@@ -242,6 +320,115 @@ function selectLpProfile(value, label, optEl) {
     updateHardcodedPayloadCount();
 }
 
+function checkbox(id, label, checked) {
+    return `<label class="lp-checkbox">
+        <input type="checkbox" id="${id}" ${checked ? 'checked' : ''}>
+        <span>${escapeHtml(label)}</span>
+    </label>`;
+}
+
+function collectAdvanced() {
+    function cb(id) {
+        const el = document.getElementById(id);
+        return el ? el.checked : false;
+    }
+    function pickList(map) {
+        return Object.entries(map).filter(([k, v]) => cb(v)).map(([k]) => k);
+    }
+    const nGroupsEl = document.getElementById('adv-n-groups');
+    const jpegEl = document.getElementById('adv-jpeg-quality');
+    const adv = {
+        methods: pickList({lsb: 'adv-method-lsb', dct: 'adv-method-dct'}),
+        payload_levels: pickList({low: 'adv-level-low', medium: 'adv-level-medium', high: 'adv-level-high'}),
+        encryption: pickList({plain: 'adv-enc-plain', encrypted: 'adv-enc-encrypted'}),
+        detectors: pickList(Object.fromEntries(
+            Object.keys(DETECTOR_LABELS).map(k => [k, 'adv-det-' + k])
+        )),
+        include_bd_sens: cb('adv-bd-sens'),
+        n_groups: nGroupsEl && nGroupsEl.value.trim() !== '' ? parseInt(nGroupsEl.value, 10) : null,
+        jpeg_quality: jpegEl && jpegEl.value.trim() !== '' ? parseInt(jpegEl.value, 10) : null,
+    };
+    // Persist to STATE so a re-render keeps the checkboxes in sync.
+    STATE.lastAdvanced = {
+        n_groups: nGroupsEl ? nGroupsEl.value : '',
+        methods: {lsb: adv.methods.includes('lsb'), dct: adv.methods.includes('dct')},
+        payload_levels: {
+            low: adv.payload_levels.includes('low'),
+            medium: adv.payload_levels.includes('medium'),
+            high: adv.payload_levels.includes('high'),
+        },
+        encryption: {
+            plain: adv.encryption.includes('plain'),
+            encrypted: adv.encryption.includes('encrypted'),
+        },
+        detectors: Object.fromEntries(
+            Object.keys(DETECTOR_LABELS).map(k => [k, adv.detectors.includes(k)])
+        ),
+        include_bd_sens: adv.include_bd_sens,
+        jpeg_quality: jpegEl ? (jpegEl.value || 95) : 95,
+    };
+    return adv;
+}
+
+function buildLaunchBody(profile, engine, payloadMode, hardcodedPayload) {
+    const adv = collectAdvanced();
+    const body = {
+        profile: profile,
+        engine: engine,
+        payload_mode: payloadMode,
+        hardcoded_payload: payloadMode === 'hardcoded' ? hardcodedPayload : null,
+        active_methods: adv.methods,
+        active_payload_levels: adv.payload_levels,
+        active_encryption: adv.encryption,
+        active_detectors: adv.detectors,
+        include_bd_sens: adv.include_bd_sens,
+    };
+    if (adv.n_groups !== null && !Number.isNaN(adv.n_groups)) body.n_groups = adv.n_groups;
+    if (adv.jpeg_quality !== null && !Number.isNaN(adv.jpeg_quality)) body.jpeg_quality = adv.jpeg_quality;
+    return body;
+}
+
+function previewLaunch() {
+    const profile = document.getElementById('launch-profile').value;
+    const engineEl = document.querySelector('input[name="launch-engine"]:checked');
+    const engine = engineEl ? engineEl.value : 'stub';
+    const payloadModeEl = document.querySelector('input[name="launch-payload-mode"]:checked');
+    const payloadMode = payloadModeEl ? payloadModeEl.value : 'random';
+    const payloadTextEl = document.getElementById('hardcoded-payload');
+    const hardcodedPayload = payloadTextEl ? payloadTextEl.value : '';
+    const body = buildLaunchBody(profile, engine, payloadMode, hardcodedPayload);
+    const out = document.getElementById('lp-preview-result');
+    if (out) out.innerHTML = '<span class="loader sc-loader"></span> Validating…';
+    api('/api/pipeline/preview', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+    }).then(res => {
+        if (!out) return;
+        const parts = [];
+        if (res.errors && res.errors.length) {
+            parts.push(`<div class="sc-error"><strong>Errors:</strong><ul>${
+                res.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')
+            }</ul></div>`);
+        } else {
+            parts.push(`<div class="sc-success"><span class="material-symbols-outlined">check_circle</span> Config validates.</div>`);
+        }
+        if (res.warnings && res.warnings.length) {
+            parts.push(`<div class="sc-warn"><strong>Warnings:</strong><ul>${
+                res.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('')
+            }</ul></div>`);
+        }
+        if (res.planned_figures && res.planned_figures.length) {
+            parts.push(`<div class="sc-info"><strong>Planned figures (${res.planned_figures.length}):</strong> ${
+                res.planned_figures.map(f => `<code>${escapeHtml(f)}</code>`).join(' ')
+            }</div>`);
+        }
+        out.innerHTML = parts.join('');
+    }).catch(err => {
+        if (out) out.innerHTML = `<div class="sc-error">Preview failed: ${escapeHtml(err.message)}</div>`;
+    });
+}
+
 function launchRun() {
     const profile = document.getElementById('launch-profile').value;
     const engineEl = document.querySelector('input[name="launch-engine"]:checked');
@@ -281,12 +468,7 @@ function launchRun() {
     api('/api/pipeline/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            profile: profile,
-            engine: engine,
-            payload_mode: payloadMode,
-            hardcoded_payload: payloadMode === 'hardcoded' ? hardcodedPayload : null
-        })
+        body: JSON.stringify(buildLaunchBody(profile, engine, payloadMode, hardcodedPayload)),
     }).then(res => {
         if (!res.job_id) throw new Error('No job id returned by backend');
         const job = createJob(res.job_id, profile, engine, payloadMode);

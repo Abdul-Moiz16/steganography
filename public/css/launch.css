@@ -925,6 +925,113 @@
 	padding: 6px 0;
 }
 
+.sc-success {
+	font-size: 11px;
+	color: var(--success, #2e7d32);
+	padding: 6px 0;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.sc-warn {
+	font-size: 11px;
+	color: var(--warning, #b76e00);
+	padding: 6px 0;
+}
+
+.sc-info {
+	font-size: 11px;
+	color: var(--muted, #555);
+	padding: 6px 0;
+	line-height: 1.5;
+}
+
+.sc-info code {
+	background: var(--surface-elevated, rgba(0,0,0,0.05));
+	border-radius: 3px;
+	padding: 1px 5px;
+	margin-right: 4px;
+	font-size: 10px;
+	display: inline-block;
+	margin-bottom: 3px;
+}
+
+.lp-advanced {
+	border: 1px solid var(--border, rgba(0,0,0,0.08));
+	border-radius: var(--radius-md, 8px);
+	background: var(--surface, transparent);
+	padding: 8px 12px;
+}
+
+.lp-advanced-summary {
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--muted, #444);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	user-select: none;
+	list-style: none;
+}
+
+.lp-advanced-summary::-webkit-details-marker { display: none; }
+
+.lp-advanced-body {
+	margin-top: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.lp-advanced-body .lp-field-label {
+	margin-top: 8px;
+}
+
+.lp-checkbox {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+	color: var(--text, #222);
+	padding: 3px 0;
+	cursor: pointer;
+}
+
+.lp-checkbox input[type="checkbox"] {
+	margin: 0;
+	cursor: pointer;
+}
+
+.lp-num-input {
+	width: 100%;
+	padding: 6px 10px;
+	font-size: 12px;
+	font-family: monospace;
+	border: 1px solid var(--border, rgba(0,0,0,0.15));
+	border-radius: var(--radius-sm, 4px);
+	background: var(--input-bg, #fff);
+}
+
+.lp-field-hint {
+	font-size: 10px;
+	color: var(--muted, #777);
+	line-height: 1.4;
+	margin-top: -2px;
+	margin-bottom: 4px;
+}
+
+.lp-preview-result {
+	margin-top: 8px;
+	font-size: 11px;
+}
+
+.lp-preview-result ul {
+	margin: 4px 0 0 14px;
+	padding: 0;
+}
+
 .sc-badge {
 	display: inline-flex;
 	align-items: center;
