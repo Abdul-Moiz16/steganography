@@ -24,10 +24,22 @@ def chi_square_dct_score(jpeg_bytes: bytes) -> float:
 
     Implementation notes:
     - Parse quantized DCT coefficients directly from the JPEG bitstream.
-    - Exclude DC coefficients and operate on the non-zero AC coefficient value
-      pairs relevant to DCT-LSB replacement.
-    - Return one scalar score where larger values indicate stronger evidence
-      of coefficient-LSB embedding.
+    - Exclude DC coefficients and zero-valued AC coefficients (these are
+      never modified by the JSteg-style embedding rule used in this study).
+    - Build pairs of values that map to each other under LSB replacement,
+      following Westfeld & Pfitzmann (1999): on the magnitude-LSB convention
+      used by the JSteg embedder, the relevant pairs are (2k, 2k+1) for
+      k >= 1 on the positive side and (-(2k+1), -2k) for k >= 1 on the
+      negative side. Coefficients with |c| <= 1 are excluded because the
+      embedder leaves them untouched (they would otherwise contribute a
+      large natural-imbalance chi-square term that drowns out the
+      embedding-induced flattening).
+    - Score follows the spatial-domain detector convention: return the
+      survival probability chi2.sf(chi_stat, df). A natural cover gives a
+      large chi_stat -> tiny survival probability -> score near 0; a
+      randomly-embedded stego image flattens the pairs -> small chi_stat
+      -> survival probability near 1. Larger score = stronger stego
+      evidence.
     """
     ac_values = _get_ac_coefficients(jpeg_bytes)
     frequencies = _count_ac_frequencies(ac_values)
@@ -36,21 +48,21 @@ def chi_square_dct_score(jpeg_bytes: bytes) -> float:
     if not pairs:
         return 0.0
 
-    chi2_stat = 0.0
+    chi_stat = 0.0
+    pair_count = 0
 
     for n_lower, n_upper in pairs:
         total = n_lower + n_upper
-
         if total == 0:
             continue
+        expected = total / 2.0
+        chi_stat += ((n_lower - expected) ** 2) / expected
+        pair_count += 1
 
-        difference = n_lower - n_upper
-        chi2_stat += (difference ** 2) / total
+    if pair_count <= 1:
+        return 0.0
 
-    df = len(pairs)
-    p_value = chi2.sf(chi2_stat, df)
-
-    return float(1.0 - p_value)
+    return float(chi2.sf(chi_stat, df=pair_count - 1))
 
 
 def _get_ac_coefficients(jpeg_bytes: bytes) -> np.ndarray:
@@ -87,19 +99,36 @@ def _count_ac_frequencies(ac_values: np.ndarray) -> dict[int, int]:
 
 
 def _build_pairs(frequencies: dict[int, int]) -> list[tuple[int, int]]:
-    pairs = []
+    """Build Westfeld pairs of coefficient values that swap under LSB embedding.
 
-    all_values = sorted(frequencies.keys())
-    i = 0
+    Under the JSteg-style magnitude-LSB rule used in this study, the
+    embedder skips zero-valued and unit-magnitude coefficients. The
+    coefficient values that swap under random embedding are therefore
+    the pairs
 
-    while i < len(all_values):
-        value = all_values[i]
-        next_value = value + 1
+        (2,3), (4,5), (6,7), ...                # positive side
+        (-3,-2), (-5,-4), (-7,-6), ...          # negative side
 
-        if next_value in frequencies:
-            pairs.append((frequencies[value], frequencies[next_value]))
-            i += 2
-        else:
-            i += 1
+    A missing key on either side is treated as a count of zero so the
+    pair is still emitted whenever at least one of its members appears.
+    """
+    pairs: list[tuple[int, int]] = []
+
+    if not frequencies:
+        return pairs
+
+    pos_values = [v for v in frequencies.keys() if v > 0]
+    pos_max = max(pos_values, default=0)
+    for k in range(1, pos_max // 2 + 1):
+        lower, upper = 2 * k, 2 * k + 1
+        if lower in frequencies or upper in frequencies:
+            pairs.append((frequencies.get(lower, 0), frequencies.get(upper, 0)))
+
+    neg_values = [v for v in frequencies.keys() if v < 0]
+    neg_min = min(neg_values, default=0)
+    for k in range(1, abs(neg_min) // 2 + 1):
+        lower, upper = -(2 * k + 1), -2 * k
+        if lower in frequencies or upper in frequencies:
+            pairs.append((frequencies.get(lower, 0), frequencies.get(upper, 0)))
 
     return pairs

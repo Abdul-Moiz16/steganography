@@ -2,7 +2,8 @@
 
 Improves on the basic DCT chi-square test by building a calibration
 reference from a non-block-aligned crop of the suspect image,
-recompressing it, and comparing coefficient histograms.
+recompressing it at the same JPEG quality, and comparing coefficient
+histograms.
 
 Reference
 ---------
@@ -13,82 +14,131 @@ Reference
 
 from __future__ import annotations
 
-from scipy.fft import dctn
-import numpy as np
-from PIL import Image
 import io
 
+import numpy as np
+from PIL import Image
 
-def calibration_chi_square_score(jpeg_bytes: bytes, *, jpeg_quality: int = 95) -> float:
-    """Return the calibration-based chi-square score for one JPEG image.
+from src.embedding.jpeg_dct import luminance_coefficients, read_dct_jpeg
 
-    Implementation notes:
-    - Build a calibration reference by taking a non-block-aligned crop,
-      recompressing it at the same quality level, and comparing the resulting
-      coefficient histogram against the candidate image.
-    - Keep the recompression quality aligned with the proposal's Q=95 setup.
-    - Return one scalar score where larger values indicate stronger stego
-      evidence.
+
+# Eight lowest-frequency AC positions (zig-zag order, excluding DC). These
+# carry the strongest stego signal under JSteg/F5-style embedding because
+# their dynamic range covers the small magnitudes most affected by
+# coefficient-LSB modification.
+_LOW_FREQUENCY_AC_POSITIONS: tuple[tuple[int, int], ...] = (
+    (0, 1), (1, 0), (1, 1), (0, 2),
+    (2, 0), (1, 2), (2, 1), (2, 2),
+)
+
+# Cochran's rule of thumb for chi-square applicability: only include bins
+# whose expected count is at least 5. This avoids the long-tail
+# instability that would otherwise dominate the statistic.
+_MIN_EXPECTED_COUNT = 5.0
+
+
+def calibration_chi_square_score(
+    jpeg_bytes: bytes,
+    *,
+    jpeg_quality: int = 95,
+) -> float:
+    """Return the Fridrich-Goljan-Hogea calibration chi-square score.
+
+    Implementation outline (Fridrich, Goljan & Hogea, 2003):
+    1. Read the candidate's quantized luminance DCT coefficients directly
+       from the JPEG bitstream.
+    2. Decompress the candidate to spatial pixels, crop four pixels from
+       the top-left corner to break the 8x8 block grid, and recompress
+       the cropped image at the same JPEG quality factor. The
+       recompressed (calibrated) JPEG's DCT histogram is an estimate of
+       the cover's histogram even when the candidate is stego, because
+       the recompression destroys the small embedding-induced bias on
+       low-magnitude AC coefficients.
+    3. Aggregate values at the eight lowest-frequency AC positions for
+       both the candidate and the calibration.
+    4. Build a shared-bin histogram, scale the calibration histogram to
+       the candidate's total, and compute Pearson's chi-square distance
+       restricting to bins with expected count >= 5 (Cochran's rule).
+
+    The returned score is the raw chi-square distance. Larger values
+    indicate stronger divergence of the candidate from cover-like
+    statistics, i.e. stronger stego evidence (high score = stego).
     """
-    # decompress the jpeg bytes into a pixel array
-    img = Image.open(io.BytesIO(jpeg_bytes)).convert("L")  # convert to grayscale
-    pixels = np.array(img, dtype=np.float64)
+    candidate_coeffs = luminance_coefficients(read_dct_jpeg(jpeg_bytes))
+    calibrated_coeffs = _calibrated_coefficients(jpeg_bytes, jpeg_quality=jpeg_quality)
 
-    h, w = pixels.shape
-    # this guarantees that we can split the image into 8x8 blocks, although the images passed is 512x512 but just an extra safety measure
-    h8, w8 = (h // 8) * 8, (w // 8) * 8
-    pixels = pixels[:h8, :w8] - 128  # center values around 0 so each pixel is in range [-128, 127] rather than [0, 255]
+    if calibrated_coeffs is None:
+        return 0.0
 
-    # 8x8 blocks is how jpeg stores data in
-    def blockwise_dct(arr):
-        H, W = arr.shape
-        blocks = arr.reshape(H // 8, 8, W // 8, 8).transpose(0, 2, 1, 3)
-        return dctn(blocks, type=2, norm="ortho", axes=(-2, -1))
+    candidate_values = _gather_low_frequency_ac(candidate_coeffs)
+    calibrated_values = _gather_low_frequency_ac(calibrated_coeffs)
 
-    candidate_dct = blockwise_dct(pixels)
+    if candidate_values.size == 0 or calibrated_values.size == 0:
+        return 0.0
 
-    # Calibration: shift block grid by 4 pixels
-    # reload pixels fresh without the -128 shift so we can recrop cleanly
-    img_ref = Image.open(io.BytesIO(jpeg_bytes)).convert("L")
-    ref_pixels = np.array(img_ref, dtype=np.float64)
+    return _scaled_chi_square(candidate_values, calibrated_values)
 
-    # crop 4 pixels off the top-left corner so the block grid is now misaligned
-    ref_pixels = ref_pixels[4:, 4:]
 
-    # realign to multiples of 8 after the crop
-    h2, w2 = ref_pixels.shape
-    h28, w28 = (h2 // 8) * 8, (w2 // 8) * 8
-    ref_pixels = ref_pixels[:h28, :w28] - 128
+def _calibrated_coefficients(
+    jpeg_bytes: bytes,
+    *,
+    jpeg_quality: int,
+) -> np.ndarray | None:
+    """Decompress, crop 4 px, recompress, and return calibrated DCT coefficients."""
+    image = Image.open(io.BytesIO(jpeg_bytes)).convert("L")
+    pixels = np.array(image, dtype=np.uint8)
 
-    calibration_dct = blockwise_dct(ref_pixels)
+    if pixels.shape[0] <= 4 or pixels.shape[1] <= 4:
+        return None
 
-    # collect low-frequency AC coefficients from every block
-    # these 8 coefficient slots in each block actually carry signal and are most likely to contain embedded bits
-    ac_positions = [(0, 1), (1, 0), (1, 1), (0, 2),
-                    (2, 0), (1, 2), (2, 1), (2, 2)]
+    cropped = pixels[4:, 4:]
+    h_aligned = (cropped.shape[0] // 8) * 8
+    w_aligned = (cropped.shape[1] // 8) * 8
 
-    candidate_coeffs = []
-    calibration_coeffs = []
+    if h_aligned == 0 or w_aligned == 0:
+        return None
 
-    for (r, c) in ac_positions:
-        candidate_coeffs.append(candidate_dct[:, :, r, c].ravel())
-        calibration_coeffs.append(calibration_dct[:, :, r, c].ravel())
+    cropped = cropped[:h_aligned, :w_aligned]
 
-    candidate_coeffs = np.rint(np.concatenate(candidate_coeffs)).astype(int)
-    calibration_coeffs = np.rint(np.concatenate(calibration_coeffs)).astype(int)
+    buffer = io.BytesIO()
+    Image.fromarray(cropped, mode="L").save(buffer, format="JPEG", quality=jpeg_quality)
+    return luminance_coefficients(read_dct_jpeg(buffer.getvalue()))
 
-    # Build histograms over a shared value range
-    lo = min(candidate_coeffs.min(), calibration_coeffs.min())
-    hi = max(candidate_coeffs.max(), calibration_coeffs.max())
+
+def _gather_low_frequency_ac(coefficients: np.ndarray) -> np.ndarray:
+    """Concatenate values at the configured low-frequency AC positions."""
+    parts: list[np.ndarray] = []
+    for row, col in _LOW_FREQUENCY_AC_POSITIONS:
+        parts.append(coefficients[:, :, row, col].ravel().astype(np.int64))
+
+    if not parts:
+        return np.empty(0, dtype=np.int64)
+
+    return np.concatenate(parts)
+
+
+def _scaled_chi_square(
+    candidate_values: np.ndarray,
+    calibrated_values: np.ndarray,
+) -> float:
+    """Pearson chi-square between candidate and scaled calibration histogram."""
+    lo = int(min(candidate_values.min(), calibrated_values.min()))
+    hi = int(max(candidate_values.max(), calibrated_values.max()))
     bins = np.arange(lo, hi + 2)
 
-    cand_hist, _ = np.histogram(candidate_coeffs, bins=bins)
-    cal_hist,  _ = np.histogram(calibration_coeffs, bins=bins)
+    candidate_hist, _ = np.histogram(candidate_values, bins=bins)
+    calibrated_hist, _ = np.histogram(calibrated_values, bins=bins)
 
-    # Chi-square between the two histograms (skip empty reference bins)
-    mask = cal_hist > 0
-    cand_hist = cand_hist[mask]
-    cal_hist = cal_hist[mask]
+    candidate_total = float(candidate_values.size)
+    calibrated_total = float(calibrated_values.size)
+    if calibrated_total == 0.0:
+        return 0.0
 
-    chi_stat = float(np.sum((cand_hist - cal_hist) ** 2 / cal_hist))
-    return chi_stat
+    expected = calibrated_hist.astype(np.float64) * (candidate_total / calibrated_total)
+
+    mask = expected >= _MIN_EXPECTED_COUNT
+    if not np.any(mask):
+        return 0.0
+
+    diff = candidate_hist[mask].astype(np.float64) - expected[mask]
+    return float(np.sum((diff ** 2) / expected[mask]))

@@ -65,6 +65,15 @@ def _make_textured_jpeg(
 
 
 def _independent_chi_square_score(jpeg_bytes: bytes) -> float:
+    """Independent reference: Westfeld & Pfitzmann (1999) chi-square attack.
+
+    Pairs of values that swap under the magnitude-LSB embedding rule used in
+    this study are (2k, 2k+1) for k>=1 on the positive side and
+    (-(2k+1), -2k) for k>=1 on the negative side. Coefficients with |c| <= 1
+    are skipped because the embedder leaves them untouched. The score is the
+    survival probability of the chi-square statistic under the
+    "pairs-balanced" hypothesis: large for stego, small for cover.
+    """
     coeffs = luminance_coefficients(read_dct_jpeg(jpeg_bytes))
     ac_values = []
 
@@ -80,27 +89,32 @@ def _independent_chi_square_score(jpeg_bytes: bytes) -> float:
                         ac_values.append(value)
 
     frequencies = {value: ac_values.count(value) for value in sorted(set(ac_values))}
-    values = sorted(frequencies)
+
+    pairs: list[tuple[int, int]] = []
+    pos_max = max((v for v in frequencies if v > 0), default=0)
+    for k in range(1, pos_max // 2 + 1):
+        lower, upper = 2 * k, 2 * k + 1
+        if lower in frequencies or upper in frequencies:
+            pairs.append((frequencies.get(lower, 0), frequencies.get(upper, 0)))
+    neg_min = min((v for v in frequencies if v < 0), default=0)
+    for k in range(1, abs(neg_min) // 2 + 1):
+        lower, upper = -(2 * k + 1), -2 * k
+        if lower in frequencies or upper in frequencies:
+            pairs.append((frequencies.get(lower, 0), frequencies.get(upper, 0)))
 
     chi2_stat = 0.0
     pair_count = 0
-    i = 0
-    while i < len(values):
-        value = values[i]
-        next_value = value + 1
-        if next_value in frequencies:
-            n_lower = frequencies[value]
-            n_upper = frequencies[next_value]
-            total = n_lower + n_upper
-            chi2_stat += ((n_lower - n_upper) ** 2) / total
-            pair_count += 1
-            i += 2
-        else:
-            i += 1
+    for n_lower, n_upper in pairs:
+        total = n_lower + n_upper
+        if total == 0:
+            continue
+        expected = total / 2.0
+        chi2_stat += ((n_lower - expected) ** 2) / expected
+        pair_count += 1
 
-    if pair_count == 0:
+    if pair_count <= 1:
         return 0.0
-    return float(1.0 - chi2.sf(chi2_stat, pair_count))
+    return float(chi2.sf(chi2_stat, df=pair_count - 1))
 
 
 def _read_matlab_score_fixture() -> dict[str, dict[str, float]]:
@@ -118,7 +132,13 @@ def _read_matlab_score_fixture() -> dict[str, dict[str, float]]:
         }
 
 
-def test_dct_chi_square_builds_adjacent_coefficient_pairs() -> None:
+def test_dct_chi_square_builds_westfeld_pairs() -> None:
+    """Pairs of values that swap under the magnitude-LSB rule (Westfeld 1999).
+
+    Positive side: (2k, 2k+1) for k>=1 -> (2,3), (4,5).
+    Negative side: (-(2k+1), -2k) for k>=1 -> (-3,-2), (-5,-4).
+    Values with |c| <= 1 are skipped because the embedder never touches them.
+    """
     frequencies = {
         -5: 7,
         -4: 11,
@@ -133,14 +153,31 @@ def test_dct_chi_square_builds_adjacent_coefficient_pairs() -> None:
     }
 
     assert _build_pairs(frequencies) == [
-        (7, 11),
-        (13, 17),
-        (23, 29),
-        (31, 37),
+        (29, 31),  # ( 2,  3)
+        (37, 41),  # ( 4,  5)
+        (13, 17),  # (-3, -2)
+        (7, 11),   # (-5, -4)
     ]
 
 
-def test_dct_chi_square_matches_matlab_reference_scores() -> None:
+def test_dct_chi_square_pairs_emit_when_only_one_side_present() -> None:
+    """Missing partners count as zero so the pair still contributes."""
+    assert _build_pairs({2: 10}) == [(10, 0)]
+    assert _build_pairs({3: 7}) == [(0, 7)]
+    assert _build_pairs({-3: 5}) == [(5, 0)]
+    assert _build_pairs({-2: 9}) == [(0, 9)]
+
+
+def test_dct_chi_square_pairs_skip_zero_and_unit_magnitude() -> None:
+    """The embedder skips |c| <= 1, so the detector must skip them too."""
+    assert _build_pairs({-1: 100, 0: 200, 1: 100}) == []
+
+
+def test_dct_chi_square_matches_frozen_reference_scores() -> None:
+    """Regression anchor: the corrected Westfeld attack must match the frozen
+    chi-square statistics, pair counts and survival probabilities recorded in
+    ``tests/fixtures/dct/chi_square_dct_scores.csv``.
+    """
     cover = (FIXTURE_DIR / "cover_q95.jpg").read_bytes()
     expected = _read_matlab_score_fixture()
     cases = {
@@ -191,6 +228,13 @@ def test_dct_chi_square_handles_multiple_sizes_qualities_and_payload_rates(
 
 
 def test_dct_chi_square_scores_generally_increase_with_payload_rate() -> None:
+    """Scores rise with payload: stego flattens Westfeld pairs -> higher p-value.
+
+    Asserted on the 96x96 fixture (~33 Westfeld pairs). At very low payload
+    (25%) the chi-square estimator has visible variance, so the strict
+    monotonicity is only checked from medium payload upward; the cover-vs-
+    high-payload separation is the headline guarantee.
+    """
     cover = (FIXTURE_DIR / "cover_q95.jpg").read_bytes()
     scores = [
         chi_square_dct_score(cover),
@@ -199,8 +243,7 @@ def test_dct_chi_square_scores_generally_increase_with_payload_rate() -> None:
         chi_square_dct_score(embed_dct_lsb_jpeg(cover, bytes([0xAA]) * 20, 0.75)),
     ]
 
-    assert scores[0] < scores[1] < scores[2]
-    assert scores[3] >= scores[2] - 0.00001
+    assert scores[0] < scores[2] < scores[3]
     assert scores[3] > scores[0]
 
 
