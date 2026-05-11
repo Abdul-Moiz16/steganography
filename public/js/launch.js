@@ -3,7 +3,17 @@ function openLaunchPanel() {
     const drawer = document.getElementById('launch-drawer');
     if (overlay) overlay.classList.add('open');
     if (drawer) drawer.classList.add('open');
-    renderLaunchDrawer();
+    try {
+        renderLaunchDrawer();
+    } catch (err) {
+        console.error('renderLaunchDrawer failed:', err);
+        const body = document.getElementById('launch-drawer-body');
+        if (body) {
+            body.innerHTML = '<div class="sc-error" style="margin:20px">Drawer render failed: '
+                + (err && err.message ? err.message : String(err))
+                + '</div>';
+        }
+    }
 }
 
 function closeLaunchPanel() {
@@ -29,12 +39,16 @@ const ADVANCED_DEFAULTS = {
     jpeg_quality: 95,
 };
 
-const DETECTOR_LABELS = {
+// Detector labels for the launch drawer's "Advanced" checkboxes. Kept
+// separate from utils.js DETECTOR_LABELS because the drawer uses richer
+// labels (branch annotations + chi-square glyph) while the rest of the
+// app uses ASCII-only fallbacks.
+const ADV_DETECTOR_LABELS = {
     rs: 'RS Analysis (spatial)',
-    chi_square_spatial: 'χ² Spatial',
+    chi_square_spatial: 'Chi-Square (spatial)',
     sample_pairs: 'Sample Pairs (spatial)',
-    chi_square_dct: 'χ² DCT',
-    calibration_chi_square: 'Calibration χ²',
+    chi_square_dct: 'Chi-Square (DCT)',
+    calibration_chi_square: 'Calibration Chi-Square (DCT)',
 };
 
 function getAdvancedState() {
@@ -159,7 +173,7 @@ function renderLaunchDrawer() {
                     ${checkbox('adv-enc-encrypted', 'AES-256-CBC',   adv.encryption.encrypted)}
 
                     <div class="lp-field-label">Detectors</div>
-                    ${Object.entries(DETECTOR_LABELS)
+                    ${Object.entries(ADV_DETECTOR_LABELS)
                         .map(([k, label]) => checkbox('adv-det-' + k, label, adv.detectors[k]))
                         .join('')}
 
@@ -342,7 +356,7 @@ function collectAdvanced() {
         payload_levels: pickList({low: 'adv-level-low', medium: 'adv-level-medium', high: 'adv-level-high'}),
         encryption: pickList({plain: 'adv-enc-plain', encrypted: 'adv-enc-encrypted'}),
         detectors: pickList(Object.fromEntries(
-            Object.keys(DETECTOR_LABELS).map(k => [k, 'adv-det-' + k])
+            Object.keys(ADV_DETECTOR_LABELS).map(k => [k, 'adv-det-' + k])
         )),
         include_bd_sens: cb('adv-bd-sens'),
         n_groups: nGroupsEl && nGroupsEl.value.trim() !== '' ? parseInt(nGroupsEl.value, 10) : null,
@@ -362,7 +376,7 @@ function collectAdvanced() {
             encrypted: adv.encryption.includes('encrypted'),
         },
         detectors: Object.fromEntries(
-            Object.keys(DETECTOR_LABELS).map(k => [k, adv.detectors.includes(k)])
+            Object.keys(ADV_DETECTOR_LABELS).map(k => [k, adv.detectors.includes(k)])
         ),
         include_bd_sens: adv.include_bd_sens,
         jpeg_quality: jpegEl ? (jpegEl.value || 95) : 95,
