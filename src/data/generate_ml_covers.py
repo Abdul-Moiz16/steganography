@@ -139,9 +139,25 @@ class InferenceAPITextToImageGenerator:
         guidance_scale: float,
         negative_prompt: str,
     ) -> Image.Image:
+        """Generate one image via the HF Inference API, retrying on transient failures.
+
+        Retries on any 5xx, connection error, timeout, or explicit rate-limit
+        signal. Backoff is exponential (5, 10, 20, 40 s, capped at 60 s) with
+        a small random jitter to avoid thundering-herd retries when the
+        backend recovers. Non-retryable auth/permission errors (4xx, except
+        429) fail fast.
+        """
+        import random
         import time
 
-        max_retries = 5
+        max_retries = 8  # gives ~3-4 min of survivable transient outage
+        # Substrings indicating a retryable transient condition.
+        retryable = ("500", "502", "503", "504", "429", "rate", "timeout",
+                     "timed out", "connection", "reset by peer", "temporarily")
+        # Substrings indicating a permanent error — don't waste retries on these.
+        non_retryable = ("401", "403", "404", "unauthor", "forbidden",
+                         "not found", "invalid api key")
+
         for attempt in range(max_retries):
             try:
                 image = self.client.text_to_image(
@@ -157,12 +173,20 @@ class InferenceAPITextToImageGenerator:
                     raise TypeError("Inference API did not return a PIL image.")
                 return image
             except Exception as exc:
-                if attempt < max_retries - 1 and ("503" in str(exc) or "rate" in str(exc).lower()):
-                    wait = 2 ** attempt * 5
-                    print(f"  [inference_api] {exc} — retrying in {wait}s ...")
-                    time.sleep(wait)
-                else:
+                msg = str(exc).lower()
+                is_permanent = any(s in msg for s in non_retryable)
+                is_transient = any(s in msg for s in retryable)
+                if is_permanent or not is_transient or attempt >= max_retries - 1:
                     raise
+                wait = min(60, 5 * (2 ** attempt)) + random.uniform(0, 2)
+                print(
+                    f"  [inference_api] transient error (attempt {attempt + 1}/{max_retries}): "
+                    f"{type(exc).__name__}: {str(exc)[:140]} "
+                    f"— sleeping {wait:.1f}s"
+                )
+                time.sleep(wait)
+        # Should never reach here — the loop either returns or re-raises.
+        raise RuntimeError("Unreachable: exhausted retries without raising")
 
 
 class DiffusersTextToImageGenerator:
@@ -375,21 +399,43 @@ def generate_ml_covers_from_prompts(
 
     from tqdm import tqdm
 
-    for source in ("ml_a", "ml_b"):
-        generator = _init_generator(
-            engine=engine,
-            source=source,
-            ml_a_model_id=ml_a_model_id,
-            ml_b_model_id=ml_b_model_id,
-        )
-        spec = specs[source]
+    import time as _time
 
-        for row in tqdm(prompt_rows, desc=f"Generating {source}", unit="img"):
-            group_id = int(row["group_id"])
-            prompt = row["caption_text"]
-            seed = _seed_for(group_id, source, seed_base)
+    def _resolved_paths(group_id: int, source: str) -> tuple[Path, Path]:
+        if run_dir is not None:
+            return (
+                run_dir / "covers" / source / cover_filename(group_id, source, "spatial"),
+                run_dir / "covers" / source / cover_filename(group_id, source, "frequency"),
+            )
+        return (
+            paths.cover_path(group_id, source, "spatial"),  # type: ignore[arg-type]
+            paths.cover_path(group_id, source, "frequency"),  # type: ignore[arg-type]
+        )
+
+    def _row_for(group_id: int, source: str, prompt_row: dict, seed: int) -> dict:
+        spatial_path, frequency_path = _resolved_paths(group_id, source)
+        return _build_cover_row(
+            group_id=group_id,
+            source=source,
+            dataset_name=specs[source].dataset_name,
+            orig_id=prompt_row["orig_id"],
+            caption_id=prompt_row["caption_id"],
+            caption_text=prompt_row["caption_text"],
+            spatial_path_rel=_to_project_relative(project_root, spatial_path),
+            frequency_path_rel=_to_project_relative(project_root, frequency_path),
+            seed=seed,
+        )
+
+    def _attempt_one(prompt_row: dict, source: str, generator) -> tuple[dict | None, str | None]:
+        """Return (manifest_row, error_message). Skip-if-exists supports resume."""
+        group_id = int(prompt_row["group_id"])
+        seed = _seed_for(group_id, source, seed_base)
+        spatial_path, frequency_path = _resolved_paths(group_id, source)
+        if spatial_path.exists() and frequency_path.exists():
+            return _row_for(group_id, source, prompt_row, seed), None
+        try:
             generated = generator.generate(
-                prompt=prompt,
+                prompt=prompt_row["caption_text"],
                 seed=seed,
                 width=width,
                 height=height,
@@ -397,33 +443,63 @@ def generate_ml_covers_from_prompts(
                 guidance_scale=guidance_scale,
                 negative_prompt=negative_prompt,
             )
-
             standardized = standardize_image(generated, size=image_size)
-            if run_dir is not None:
-                spatial_path = run_dir / "covers" / source / cover_filename(group_id, source, "spatial")
-                frequency_path = run_dir / "covers" / source / cover_filename(group_id, source, "frequency")
-            else:
-                spatial_path = paths.cover_path(group_id, source, "spatial")  # type: ignore[arg-type]
-                frequency_path = paths.cover_path(group_id, source, "frequency")  # type: ignore[arg-type]
             save_png(standardized, spatial_path)
             save_jpeg(standardized, frequency_path)
+            return _row_for(group_id, source, prompt_row, seed), None
+        except Exception as exc:  # noqa: BLE001 — we record and continue
+            return None, f"{type(exc).__name__}: {str(exc)[:200]}"
 
-            manifest_row = _build_cover_row(
-                group_id=group_id,
-                source=source,
-                dataset_name=spec.dataset_name,
-                orig_id=row["orig_id"],
-                caption_id=row["caption_id"],
-                caption_text=row["caption_text"],
-                spatial_path_rel=_to_project_relative(project_root, spatial_path),
-                frequency_path_rel=_to_project_relative(project_root, frequency_path),
-                seed=seed,
-            )
-            rows_ml_all.append(manifest_row)
-            if source == "ml_a":
-                rows_ml_a.append(manifest_row)
+    all_failures: list[dict[str, object]] = []
+
+    for source in ("ml_a", "ml_b"):
+        generator = _init_generator(
+            engine=engine,
+            source=source,
+            ml_a_model_id=ml_a_model_id,
+            ml_b_model_id=ml_b_model_id,
+        )
+        produced_rows: list[dict] = []
+        failed_rows: list[dict] = []
+
+        # Pass 1: every prompt.
+        for row in tqdm(prompt_rows, desc=f"Generating {source}", unit="img"):
+            manifest_row, err = _attempt_one(row, source, generator)
+            if manifest_row is not None:
+                produced_rows.append(manifest_row)
             else:
-                rows_ml_b.append(manifest_row)
+                failed_rows.append({"prompt_row": row, "error": err})
+                print(f"  [warn] {source} group {row['group_id']} failed after retries: {err}")
+
+        # Pass 2: re-attempt anything that failed (transient backend recovery).
+        if failed_rows:
+            print(
+                f"  [retry] re-attempting {len(failed_rows)} failed {source} generations "
+                f"after a 30s breather ..."
+            )
+            _time.sleep(30)
+            still_failed: list[dict] = []
+            for entry in failed_rows:
+                manifest_row, err = _attempt_one(entry["prompt_row"], source, generator)
+                if manifest_row is not None:
+                    produced_rows.append(manifest_row)
+                else:
+                    still_failed.append({"prompt_row": entry["prompt_row"], "error": err})
+            failed_rows = still_failed
+
+        # Record any permanent failures so the user can target a follow-up rescue.
+        for entry in failed_rows:
+            all_failures.append({
+                "source": source,
+                "group_id": int(entry["prompt_row"]["group_id"]),
+                "caption_id": entry["prompt_row"].get("caption_id", ""),
+                "error": entry["error"],
+            })
+
+        # Sort by group_id for stable manifest ordering.
+        produced_rows.sort(key=lambda r: int(r["group_id"]))
+        rows_ml_all.extend(produced_rows)
+        (rows_ml_a if source == "ml_a" else rows_ml_b).extend(produced_rows)
 
         _release_generator(generator)
 
@@ -446,6 +522,23 @@ def generate_ml_covers_from_prompts(
     write_rows_csv(ml_b_manifest, rows_ml_b, fieldnames=FIELDNAMES)
     write_rows_csv(ml_manifest, rows_ml_all, fieldnames=FIELDNAMES)
 
+    # Persist any permanent failures so the user can target a re-run.
+    if all_failures:
+        if run_dir is not None:
+            failures_path = run_dir / "manifests" / "ml_generation_failures.csv"
+        else:
+            failures_path = paths.manifests_dir / "ml_generation_failures.csv"
+        write_rows_csv(
+            failures_path,
+            all_failures,
+            fieldnames=["source", "group_id", "caption_id", "error"],
+        )
+        print(
+            f"\n  [warn] {len(all_failures)} permanent ML-cover failures recorded at "
+            f"{failures_path}. Re-run the same command to retry only the missing "
+            f"groups (already-generated files are skipped)."
+        )
+
     summary = {
         "engine": engine,
         "seed_base": seed_base,
@@ -455,6 +548,7 @@ def generate_ml_covers_from_prompts(
         "rows_ml_a": len(rows_ml_a),
         "rows_ml_b": len(rows_ml_b),
         "rows_ml_total": len(rows_ml_all),
+        "permanent_failures": len(all_failures),
         "covers_master_ml_a_path": _to_project_relative(project_root, ml_a_manifest),
         "covers_master_ml_b_path": _to_project_relative(project_root, ml_b_manifest),
         "covers_master_ml_path": _to_project_relative(project_root, ml_manifest),

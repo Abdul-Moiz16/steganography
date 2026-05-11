@@ -306,16 +306,45 @@ def _prepare_run_covers(
         if not prompts_csv.exists():
             print("  Error: generation_prompts.csv not found — real covers must be downloaded first.")
             sys.exit(1)
-        print(f"  [2/3] Generating ML covers (engine={ml_engine}) …")
+        # Inference-API backends occasionally return transient 5xx errors. The
+        # generator now keeps already-saved files on disk and re-tries the
+        # missing groups on each call, so up to 3 outer passes give the
+        # backend a chance to recover from longer outages before we surface
+        # a hard failure to the user.
         from src.data.generate_ml_covers import generate_ml_covers_from_prompts
-        generate_ml_covers_from_prompts(
-            project_root=project_root,
-            prompts_csv=prompts_csv,
-            engine=ml_engine,
-            max_groups=n_groups,
-            seed_base=seed,
-            run_dir=run_dir,
-        )
+        max_outer_attempts = 3
+        for attempt in range(1, max_outer_attempts + 1):
+            print(f"  [2/3] Generating ML covers (engine={ml_engine}, attempt {attempt}/{max_outer_attempts}) …")
+            generate_ml_covers_from_prompts(
+                project_root=project_root,
+                prompts_csv=prompts_csv,
+                engine=ml_engine,
+                max_groups=n_groups,
+                seed_base=seed,
+                run_dir=run_dir,
+            )
+            ml_a_rows = _row_count(ml_a_manifest)
+            ml_b_rows = _row_count(ml_b_manifest)
+            if ml_a_rows >= n_groups and ml_b_rows >= n_groups:
+                break
+            missing_a = max(0, n_groups - ml_a_rows)
+            missing_b = max(0, n_groups - ml_b_rows)
+            if attempt < max_outer_attempts:
+                wait = 60 * attempt
+                print(
+                    f"  [retry] {missing_a} ml_a + {missing_b} ml_b groups still missing — "
+                    f"waiting {wait}s before another pass ..."
+                )
+                import time as _t
+                _t.sleep(wait)
+            else:
+                print(
+                    f"  [error] {missing_a} ml_a + {missing_b} ml_b groups remain unfilled "
+                    f"after {max_outer_attempts} passes. See "
+                    f"manifests/ml_generation_failures.csv for the offending prompts. "
+                    f"Re-run the same command later to retry only the missing groups."
+                )
+                sys.exit(2)
 
     # ── Step 3: merge manifests ────────────────────────────────────────────
     print(f"  [3/3] Merging covers manifest ({n_groups} groups × 3 sources = {n_groups * 3} rows) …")
