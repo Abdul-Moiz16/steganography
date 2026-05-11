@@ -58,6 +58,163 @@ function getAdvancedState() {
     return STATE.lastAdvanced;
 }
 
+// ── Live power estimate (Hanley & McNeil 1982, closed form) ──────────────────
+//
+// Mirrors src/analysis/power_analysis.py so the user sees the same numbers in
+// the drawer that the post-run CSVs will eventually report. Updates as the
+// advanced-section checkboxes / inputs change.
+
+const _SPATIAL_DETECTORS = ['rs', 'chi_square_spatial', 'sample_pairs'];
+const _DCT_DETECTORS = ['chi_square_dct', 'calibration_chi_square'];
+const _POWER_TARGET_AUC = 0.85;
+const _POWER_LEVEL = 0.80;
+const _ALPHA = 0.05;
+
+function _hanleyMcneilVar(auc, nPos, nNeg) {
+    if (!(auc > 0 && auc < 1) || nPos < 1 || nNeg < 1) return NaN;
+    const q1 = auc / (2 - auc);
+    const q2 = 2 * auc * auc / (1 + auc);
+    return (
+        auc * (1 - auc)
+        + (nPos - 1) * (q1 - auc * auc)
+        + (nNeg - 1) * (q2 - auc * auc)
+    ) / (nPos * nNeg);
+}
+
+// Abramowitz & Stegun 26.2.23 — inverse normal survival, |error| < 4.5e-4.
+function _zForUpperTail(p) {
+    if (p <= 0) return Infinity;
+    if (p >= 0.5) return 0;
+    const t = Math.sqrt(-2 * Math.log(p));
+    const c0 = 2.515517, c1 = 0.802853, c2 = 0.010328;
+    const d1 = 1.432788, d2 = 0.189269, d3 = 0.001308;
+    return t - (c0 + c1 * t + c2 * t * t) / (1 + d1 * t + d2 * t * t + d3 * t * t * t);
+}
+
+function _familySizeRq12(methods, detectors, payloads) {
+    // Strata per RQ1/RQ2 confirmatory family: spatial-detector × LSB × payload
+    // PLUS dct-detector × DCT × payload.
+    const spatialCount = detectors.filter(d => _SPATIAL_DETECTORS.includes(d)).length;
+    const dctCount = detectors.filter(d => _DCT_DETECTORS.includes(d)).length;
+    let n = 0;
+    if (methods.includes('lsb')) n += spatialCount * payloads.length;
+    if (methods.includes('dct')) n += dctCount * payloads.length;
+    return Math.max(1, n);
+}
+
+function _familySizeRq5(methods, detectors, payloads) {
+    return _familySizeRq12(methods, detectors, payloads) * 3;  // × 3 sources
+}
+
+function _detectableDelta(nGroups, familySize, mode) {
+    if (!(nGroups >= 5) || familySize < 1) return null;
+    const tailP = _ALPHA / (2 * familySize);
+    const zAlpha = _zForUpperTail(tailP);
+    const zBeta = _zForUpperTail(1 - _POWER_LEVEL);
+    const vOne = _hanleyMcneilVar(_POWER_TARGET_AUC, nGroups, nGroups);
+    let varDiff;
+    if (mode === 'unpaired_asym') {
+        // Real n=N vs pooled ML n=2N (ml_a + ml_b combined).
+        const vTwo = _hanleyMcneilVar(_POWER_TARGET_AUC, 2 * nGroups, 2 * nGroups);
+        varDiff = vOne + vTwo;
+    } else if (mode === 'paired') {
+        // Shared covers cancel V01 component; conservative approximation.
+        varDiff = vOne;
+    } else {
+        // Default: unpaired symmetric.
+        varDiff = 2 * vOne;
+    }
+    if (!(varDiff > 0)) return null;
+    return (zAlpha + zBeta) * Math.sqrt(varDiff);
+}
+
+function computePowerEstimate(adv, profile) {
+    let nGroups = (typeof adv.n_groups === 'number' && adv.n_groups >= 5)
+        ? adv.n_groups
+        : null;
+    if (nGroups == null) {
+        const profileMeta = PROFILE_META[profile] || PROFILE_META.prototype;
+        nGroups = profileMeta.n_groups;
+    }
+    const methods = adv.methods;
+    const detectors = adv.detectors;
+    const payloads = adv.payload_levels;
+    const enc = adv.encryption;
+
+    const famRq12 = _familySizeRq12(methods, detectors, payloads);
+    const famRq5 = _familySizeRq5(methods, detectors, payloads);
+    const bothEnc = enc.includes('plain') && enc.includes('encrypted');
+
+    return {
+        nGroups: nGroups,
+        nGroupsFromProfile: !(typeof adv.n_groups === 'number' && adv.n_groups >= 5),
+        familyRq12: famRq12,
+        familyRq5: famRq5,
+        rq1Delta: _detectableDelta(nGroups, famRq12, 'unpaired_asym'),
+        rq2Delta: _detectableDelta(nGroups, famRq12, 'unpaired_sym'),
+        rq5Delta: bothEnc ? _detectableDelta(nGroups, famRq5, 'paired') : null,
+        rq5Enabled: bothEnc,
+        targetAuc: _POWER_TARGET_AUC,
+        powerLevel: _POWER_LEVEL,
+    };
+}
+
+function _formatDeltaCell(delta) {
+    if (delta == null) return `<span class="lp-power-na">unavailable</span>`;
+    const cls = delta <= 0.05 ? 'lp-power-ok' : (delta <= 0.075 ? 'lp-power-warn' : 'lp-power-low');
+    return `<span class="${cls}">ΔAUC ≥ ${delta.toFixed(3)}</span>`;
+}
+
+function renderPowerEstimate(adv, profile) {
+    const est = computePowerEstimate(adv, profile);
+    const nSuffix = est.nGroupsFromProfile ? ` <span class="lp-muted">(profile default)</span>` : '';
+    const rq5Row = est.rq5Enabled
+        ? `<div class="lp-power-row"><span>RQ5 — plain vs AES (paired)</span><span>${_formatDeltaCell(est.rq5Delta)}</span></div>`
+        : `<div class="lp-power-row lp-power-row--muted"><span>RQ5 — needs both encryption arms</span><span>—</span></div>`;
+    return `<div class="lp-power-estimate">
+        <div class="lp-power-title">
+            <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">insights</span>
+            Detectable effect at N = ${est.nGroups}${nSuffix}
+        </div>
+        <div class="lp-power-rows">
+            <div class="lp-power-row"><span>RQ1 — real vs pooled ML</span><span>${_formatDeltaCell(est.rq1Delta)}</span></div>
+            <div class="lp-power-row"><span>RQ2 — SDXL vs PixArt-α</span><span>${_formatDeltaCell(est.rq2Delta)}</span></div>
+            ${rq5Row}
+        </div>
+        <div class="lp-power-foot">
+            80% power, α=0.05, Holm over ${est.familyRq12} (RQ1/2) / ${est.familyRq5} (RQ5)
+            · operating AUC ≈ ${est.targetAuc}
+            · proposal threshold ΔAUC = 0.05
+        </div>
+    </div>`;
+}
+
+function _readAdvancedFromForm() {
+    function cb(id) {
+        const el = document.getElementById(id);
+        return el ? el.checked : false;
+    }
+    const nGroupsEl = document.getElementById('adv-n-groups');
+    const nGroupsRaw = nGroupsEl && nGroupsEl.value.trim() !== '' ? parseInt(nGroupsEl.value, 10) : null;
+    const methods = ['lsb', 'dct'].filter(m => cb('adv-method-' + m));
+    const payload_levels = ['low', 'medium', 'high'].filter(p => cb('adv-level-' + p));
+    const encryption = ['plain', 'encrypted'].filter(e => cb('adv-enc-' + e));
+    const detectors = Object.keys(ADV_DETECTOR_LABELS).filter(d => cb('adv-det-' + d));
+    return {
+        n_groups: nGroupsRaw,
+        methods, payload_levels, encryption, detectors,
+        include_bd_sens: cb('adv-bd-sens'),
+    };
+}
+
+function updatePowerEstimate() {
+    const block = document.getElementById('lp-power-estimate-block');
+    if (!block) return;
+    const profileEl = document.getElementById('launch-profile');
+    const profile = profileEl ? profileEl.value : (STATE.lastProfile || 'prototype');
+    block.innerHTML = renderPowerEstimate(_readAdvancedFromForm(), profile);
+}
+
 function renderLaunchDrawer() {
     const el = document.getElementById('launch-drawer-body');
     if (!el) return;
@@ -158,6 +315,7 @@ function renderLaunchDrawer() {
                         value="${escapeAttr(adv.n_groups)}"
                         placeholder="Profile default">
                     <div class="lp-field-hint">Empty = use profile default. Minimum 5; below 20 disables confirmatory tests.</div>
+                    <div id="lp-power-estimate-block"></div>
 
                     <div class="lp-field-label">Embedding methods</div>
                     ${checkbox('adv-method-lsb', 'Spatial LSB (PNG)', adv.methods.lsb)}
@@ -233,6 +391,26 @@ function renderLaunchDrawer() {
         });
         updateHardcodedPayloadCount();
     }
+
+    // Re-render the power estimate whenever any knob that affects family
+    // size or N changes. Targets the n-groups input plus every advanced
+    // checkbox so the estimate updates as the user toggles methods,
+    // payload levels, detectors, or encryption arms.
+    const advSelectors = [
+        '#adv-n-groups',
+        'input[id^="adv-method-"]',
+        'input[id^="adv-level-"]',
+        'input[id^="adv-enc-"]',
+        'input[id^="adv-det-"]',
+    ];
+    advSelectors.forEach(sel => {
+        el.querySelectorAll(sel).forEach(input => {
+            const evt = input.type === 'checkbox' ? 'change' : 'input';
+            input.addEventListener(evt, updatePowerEstimate);
+        });
+    });
+    updatePowerEstimate();
+
     loadSystemCheck();
 }
 
