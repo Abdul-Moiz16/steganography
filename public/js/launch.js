@@ -311,10 +311,16 @@ function renderLaunchDrawer() {
                 </summary>
                 <div class="lp-advanced-body">
                     <div class="lp-field-label">Groups per source</div>
-                    <input type="number" id="adv-n-groups" class="lp-num-input" min="5" max="500"
+                    <input type="number" id="adv-n-groups" class="lp-num-input" min="5" max="2000"
                         value="${escapeAttr(adv.n_groups)}"
-                        placeholder="Profile default">
-                    <div class="lp-field-hint">Empty = use profile default. Minimum 5; below 20 disables confirmatory tests.</div>
+                        placeholder="e.g. 500 (empty = profile default)">
+                    <div class="lp-preset-row">
+                        <button type="button" class="lp-preset-chip" data-n="20">20<span>prototype</span></button>
+                        <button type="button" class="lp-preset-chip" data-n="100">100<span>test</span></button>
+                        <button type="button" class="lp-preset-chip" data-n="500">500<span>proposal</span></button>
+                        <button type="button" class="lp-preset-chip" data-n="1000">1000<span>powered</span></button>
+                    </div>
+                    <div class="lp-field-hint">Minimum 5; below 20 disables confirmatory tests. Click a preset or type a value.</div>
                     <div id="lp-power-estimate-block"></div>
 
                     <div class="lp-field-label">Embedding methods</div>
@@ -407,6 +413,18 @@ function renderLaunchDrawer() {
         el.querySelectorAll(sel).forEach(input => {
             const evt = input.type === 'checkbox' ? 'change' : 'input';
             input.addEventListener(evt, updatePowerEstimate);
+        });
+    });
+    el.querySelectorAll('.lp-preset-chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+            const target = document.getElementById('adv-n-groups');
+            if (!target) return;
+            target.value = this.dataset.n;
+            // Mark the active chip and clear the others.
+            el.querySelectorAll('.lp-preset-chip').forEach(c => {
+                c.classList.toggle('lp-preset-chip--active', c === this);
+            });
+            updatePowerEstimate();
         });
     });
     updatePowerEstimate();
