@@ -178,7 +178,7 @@ function renderPowerEstimate(adv, profile) {
         </div>
         <div class="lp-power-rows">
             <div class="lp-power-row"><span>RQ1 — real vs pooled ML</span><span>${_formatDeltaCell(est.rq1Delta)}</span></div>
-            <div class="lp-power-row"><span>RQ2 — SDXL vs PixArt-α</span><span>${_formatDeltaCell(est.rq2Delta)}</span></div>
+            <div class="lp-power-row"><span>RQ2 — SDXL vs FLUX.1-schnell</span><span>${_formatDeltaCell(est.rq2Delta)}</span></div>
             ${rq5Row}
         </div>
         <div class="lp-power-foot">

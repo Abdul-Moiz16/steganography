@@ -2326,7 +2326,7 @@ def _plot_rq4_branch_auc_bars(
 _RQ_SUMMARY_SPECS = (
     {"rq": "RQ1", "title": "Real vs pooled ML carrier sources",
      "verdict_key": "RQ1", "source_figure": "exp1_rq1_real_vs_pooled_ml.png"},
-    {"rq": "RQ2", "title": "SDXL vs PixArt-α within ML",
+    {"rq": "RQ2", "title": "SDXL vs FLUX.1-schnell within ML",
      "verdict_key": "RQ2", "source_figure": "exp2_rq2_mla_vs_mlb.png"},
     {"rq": "RQ3", "title": "Payload-level interaction",
      "verdict_key": "RQ3", "source_figure": "exp3a_payload_level_auc.png"},

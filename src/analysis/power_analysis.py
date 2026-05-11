@@ -197,7 +197,7 @@ _FAMILIES = (
         "rq": "RQ2",
         "file": "exp2_rq2_mla_vs_mlb_contrasts.csv",
         "default_n_tests": 9,
-        "label": "SDXL vs PixArt-α",
+        "label": "SDXL vs FLUX.1-schnell",
     },
     {
         "rq": "RQ4",

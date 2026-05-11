@@ -56,7 +56,7 @@ family of per-experiment contrast tables aligned with the proposal's RQs:
 | `condition_metrics.csv` | detector × method × payload × encryption | Per-stratum AUC summary |
 | `quality_metrics.csv` | method × payload × source | PSNR / SSIM / FSIM per cover/stego pair |
 | `exp1_rq1_real_vs_pooled_ml_contrasts.csv` | detector × method × payload | Paired DeLong + Holm: real vs pooled ML |
-| `exp2_rq2_mla_vs_mlb_contrasts.csv` | detector × method × payload | Paired DeLong + Holm: SDXL vs PixArt |
+| `exp2_rq2_mla_vs_mlb_contrasts.csv` | detector × method × payload | Paired DeLong + Holm: SDXL vs FLUX.1-schnell |
 | `exp3_rq3_payload_interaction_contrasts.csv` | detector × method × source × payload | Per-source AUC + 95% CI plus real-vs-ML gap (Exp 3a) |
 | `exp4_rq4_spatial_vs_frequency_contrasts.csv` | detector × payload | Branch interaction ΔΔ with Wald CI (Exp 4) |
 | `exp5_rq5_encryption_contrasts.csv` | detector × source × method × payload | Paired DeLong: plain vs AES-256-CBC |

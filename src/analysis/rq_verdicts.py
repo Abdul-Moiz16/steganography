@@ -279,7 +279,7 @@ _RQ_SPECS = (
     },
     {
         "rq": "RQ2",
-        "title": "SDXL vs PixArt-α within ML",
+        "title": "SDXL vs FLUX.1-schnell within ML",
         "test": "DeLong + Bonferroni–Holm (confirmatory)",
         "file": "exp2_rq2_mla_vs_mlb_contrasts.csv",
         "classifier": _verdict_from_holm_family,
