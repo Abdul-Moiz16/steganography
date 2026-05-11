@@ -107,10 +107,13 @@ class PipelineRunner:
 
     def _detectors_for_method(self, method: str) -> list[str]:
         if method == "lsb":
-            return ["rs", "chi_square_spatial", "sample_pairs"]
-        if method == "dct":
-            return ["chi_square_dct", "calibration_chi_square"]
-        raise ValueError(f"Unknown method: {method}")
+            branch_detectors = ("rs", "chi_square_spatial", "sample_pairs")
+        elif method == "dct":
+            branch_detectors = ("chi_square_dct", "calibration_chi_square")
+        else:
+            raise ValueError(f"Unknown method: {method}")
+        active = set(self.config.active_detectors)
+        return [d for d in branch_detectors if d in active]
 
     def standardize_covers_from_index(
         self,
@@ -187,7 +190,7 @@ class PipelineRunner:
             for payload_level in self.config.active_payload_levels:
                 payload_stream_bits = self.config.spatial_payload_bits(payload_level)
                 fill_rate = self.config.payload_fill_rates[payload_level]
-                for encryption in ENCRYPTION_STATES:
+                for encryption in self.config.active_encryption:
                     # Plain payload fills capacity exactly; encrypted payload
                     # is generated 16 bytes shorter so its ciphertext (after
                     # PKCS7 padding) matches capacity.
@@ -265,7 +268,7 @@ class PipelineRunner:
                     cover["spatial_path"] if method == "lsb" else cover["frequency_path"]
                 )
                 for payload_level in self.config.active_payload_levels:
-                    for encryption in ENCRYPTION_STATES:
+                    for encryption in self.config.active_encryption:
                         payload_row = payload_index[(group_id, payload_level, encryption)]
                         payload_path = self._to_project_relative(payload_row["payload_path"])
 
@@ -731,7 +734,38 @@ class PipelineRunner:
                 figures_dir=figures_out,
             ))
 
+        # ── Per-run statistical analyses ──────────────────────────────────
+        # These modules read predictions.csv and write supplementary tables
+        # under metrics/. They are best-effort: a failure logs the error and
+        # leaves the rest of the run intact.
+        analysis_dir = metrics_out.parent
+        for label, runner_fn in self._analysis_jobs():
+            try:
+                out_path = runner_fn(analysis_dir)
+                out[f"analysis_{label}"] = out_path
+            except Exception as exc:  # noqa: BLE001 — analysis must not break the run
+                print(f"  [warn] analysis '{label}' failed: {exc}")
+
         return out
+
+    def _analysis_jobs(self) -> list[tuple[str, "callable[[Path], Path]"]]:
+        """Return (label, callable) pairs to run after metrics + figures.
+
+        Each callable accepts a run directory and returns the path of the CSV
+        it wrote. Encryption-invariance is skipped when only one encryption
+        arm is active because the paired comparison would be empty.
+        """
+        from src.analysis.t_tests import run_t_tests
+        from src.analysis.wilcoxon_tests import run_wilcoxon_tests
+
+        jobs: list[tuple[str, "callable[[Path], Path]"]] = [
+            ("wilcoxon", run_wilcoxon_tests),
+            ("t_tests", run_t_tests),
+        ]
+        if {"plain", "encrypted"}.issubset(self.config.active_encryption):
+            from src.analysis.encryption_invariance import run_encryption_invariance
+            jobs.append(("encryption_invariance", run_encryption_invariance))
+        return jobs
 
     # ── Run-directory helpers ────────────────────────────────────────────────
 

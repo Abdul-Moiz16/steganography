@@ -6,7 +6,16 @@ import argparse
 from dataclasses import replace
 from pathlib import Path
 
-from src.pipeline.config import PAYLOAD_MODE_HARDCODED, PAYLOAD_MODE_RANDOM, PAYLOAD_MODES, PipelineConfig
+from src.pipeline.config import (
+    ALL_DETECTORS,
+    ALL_ENCRYPTIONS,
+    ALL_METHODS,
+    ALL_PAYLOAD_LEVELS,
+    PAYLOAD_MODE_HARDCODED,
+    PAYLOAD_MODE_RANDOM,
+    PAYLOAD_MODES,
+    PipelineConfig,
+)
 from src.pipeline.profile import PROFILES
 from src.pipeline.runner import PipelineRunner
 
@@ -240,6 +249,37 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="Cover selection seed (recorded in config.json for reproducibility).",
     )
+    p_all.add_argument("--n-groups", type=int, default=None, help="Override groups-per-source.")
+    p_all.add_argument(
+        "--active-methods",
+        nargs="+",
+        choices=list(ALL_METHODS),
+        default=None,
+        help="Subset of embedding methods to run.",
+    )
+    p_all.add_argument(
+        "--active-payload-levels",
+        nargs="+",
+        choices=list(ALL_PAYLOAD_LEVELS),
+        default=None,
+        help="Subset of payload levels to run.",
+    )
+    p_all.add_argument(
+        "--active-encryption",
+        nargs="+",
+        choices=list(ALL_ENCRYPTIONS),
+        default=None,
+        help="Subset of encryption arms to run.",
+    )
+    p_all.add_argument(
+        "--active-detectors",
+        nargs="+",
+        choices=list(ALL_DETECTORS),
+        default=None,
+        help="Subset of detectors to run.",
+    )
+    p_all.add_argument("--include-bd-sens", action="store_true", help="Include BD-Sens auxiliary condition.")
+    p_all.add_argument("--jpeg-quality", type=int, default=None, help="Override JPEG quality factor.")
     _add_payload_args(p_all)
     return parser
 
@@ -253,7 +293,33 @@ def main() -> None:
     # Build a profile-scoped config when --profile is given, else use full defaults.
     profile_name: str | None = getattr(args, "profile", None)
     if profile_name:
-        config = PipelineConfig.from_profile(project_root, profile_name)
+        config = PipelineConfig.from_profile(
+            project_root,
+            profile_name,
+            n_groups=getattr(args, "n_groups", None),
+            active_methods=(
+                tuple(args.active_methods) if getattr(args, "active_methods", None) else None
+            ),
+            active_payload_levels=(
+                tuple(args.active_payload_levels)
+                if getattr(args, "active_payload_levels", None)
+                else None
+            ),
+            active_encryption=(
+                tuple(args.active_encryption)
+                if getattr(args, "active_encryption", None)
+                else None
+            ),
+            active_detectors=(
+                tuple(args.active_detectors)
+                if getattr(args, "active_detectors", None)
+                else None
+            ),
+            include_bd_sens_auxiliary=(
+                True if getattr(args, "include_bd_sens", False) else None
+            ),
+            jpeg_quality=getattr(args, "jpeg_quality", None),
+        )
     else:
         config = PipelineConfig.from_project_root(project_root)
 
@@ -261,6 +327,14 @@ def main() -> None:
         config = _apply_payload_args(config, args, project_root)
     except ValueError as exc:
         parser.error(str(exc))
+
+    errors, warnings = config.validate()
+    for w in warnings:
+        print(f"  [warn] {w}")
+    if errors:
+        for e in errors:
+            print(f"  [error] {e}")
+        parser.error("Config validation failed; see errors above.")
 
     runner = PipelineRunner(config)
 
