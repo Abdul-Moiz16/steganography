@@ -11,8 +11,11 @@ stay closed-loop (in-memory in/out), while this module:
 - keeps the operational pipeline aligned with `proposal_updated_3.tex`.
 """
 
+import csv
 import hashlib
 import json
+import multiprocessing as _mp
+import os
 import random
 import secrets
 from datetime import datetime
@@ -79,6 +82,129 @@ def _stable_iv(group_id: int, payload_level: str) -> bytes:
     """Create a deterministic 16-byte IV from group and payload level."""
     digest = hashlib.sha256(f"{group_id}:{payload_level}".encode("utf-8")).digest()
     return digest[:16]
+
+
+_PREDICTIONS_FIELDNAMES = [
+    "detector", "group_id", "source", "method",
+    "payload_level", "encryption", "label", "score",
+]
+
+
+def _score_path(detector: str, path: Path, jpeg_quality: int) -> float:
+    """Stateless detector dispatch used by both sequential and parallel paths."""
+    if detector == "rs":
+        return float(rs_analysis_score(load_image(path)))
+    if detector == "chi_square_spatial":
+        return float(chi_square_spatial_score(load_image(path)))
+    if detector == "sample_pairs":
+        return float(sample_pairs_score(load_image(path)))
+    if detector == "chi_square_dct":
+        return float(chi_square_dct_score(load_bytes(path)))
+    if detector == "calibration_chi_square":
+        return float(calibration_chi_square_score(load_bytes(path), jpeg_quality=jpeg_quality))
+    raise ValueError(f"Unknown detector: {detector}")
+
+
+def _score_one_task(task: dict) -> list[dict]:
+    """Worker entry: score one (row, detector) pair on cover AND stego.
+
+    Picklable, no shared mutable state. Returns the two output rows that
+    correspond to label=1 (stego) and label=0 (cover) for the requested
+    (row, detector) combination.
+    """
+    detector = task["detector"]
+    row = task["row"]
+    project_root = Path(task["project_root"])
+    jpeg_quality = task["jpeg_quality"]
+
+    def _resolve(rel_or_abs: str) -> Path:
+        p = Path(rel_or_abs)
+        return p if p.is_absolute() else (project_root / p)
+
+    common = {
+        "detector": detector,
+        "group_id": int(row["group_id"]),
+        "source": row["source"],
+        "method": row["method"],
+        "payload_level": row["payload_level"],
+        "encryption": row["encryption"],
+    }
+    out: list[dict] = []
+    try:
+        stego_score = _score_path(detector, _resolve(row["stego_path"]), jpeg_quality)
+        out.append({**common, "label": 1, "score": stego_score})
+    except NotImplementedError:
+        if task.get("skip_unimplemented", False):
+            return []
+        raise
+    try:
+        cover_score = _score_path(detector, _resolve(row["cover_path"]), jpeg_quality)
+        out.append({**common, "label": 0, "score": cover_score})
+    except NotImplementedError:
+        if task.get("skip_unimplemented", False):
+            return out  # keep the stego row we already scored
+        raise
+    return out
+
+
+def _append_unique(writer, fh, produced: list[dict], done_keys: set[tuple]) -> None:
+    """Write rows that are not already in ``done_keys``; flush after each task.
+
+    Single-writer pattern: only the main process calls this. csv.DictWriter
+    emits one whole line per ``writerow`` call so partial writes from a
+    SIGKILL show up as at most one truncated final line, which the resume
+    parser drops.
+    """
+    for r in produced:
+        key = (
+            r["detector"], int(r["group_id"]), r["source"], r["method"],
+            r["payload_level"], r["encryption"], int(r["label"]),
+        )
+        if key in done_keys:
+            continue
+        writer.writerow(r)
+        done_keys.add(key)
+    fh.flush()
+
+
+def tasks_with_progress(tasks: list[dict]):
+    """Iterate over tasks with a tqdm progress bar (sequential fallback path)."""
+    from tqdm import tqdm
+    yield from tqdm(tasks, desc="Detecting", unit="task")
+
+
+def _load_existing_prediction_keys(path: Path) -> set[tuple]:
+    """Parse an existing predictions.csv and return the set of completed keys.
+
+    Tolerant of: missing file, empty file, schema mismatch (e.g. foreign CSV
+    at the same path), truncated/malformed final row (kill -9 mid-write).
+    The set members are 7-tuples mirroring _PREDICTIONS_FIELDNAMES minus
+    'score', which is enough to deduplicate work on resume.
+    """
+    if not path.exists() or path.stat().st_size == 0:
+        return set()
+    keys: set[tuple] = set()
+    with path.open(newline="") as f:
+        reader = csv.reader(f)
+        try:
+            header = next(reader)
+        except StopIteration:
+            return set()
+        if header != _PREDICTIONS_FIELDNAMES:
+            return set()
+        for row in reader:
+            if len(row) != len(_PREDICTIONS_FIELDNAMES):
+                continue  # truncated/malformed row -- drop
+            try:
+                keys.add((
+                    row[0],
+                    int(row[1]),
+                    row[2], row[3], row[4], row[5],
+                    int(row[6]),
+                ))
+            except (ValueError, IndexError):
+                continue
+    return keys
 
 
 class PipelineRunner:
@@ -441,89 +567,111 @@ class PipelineRunner:
         *,
         execute: bool = False,
         skip_unimplemented: bool = False,
+        n_workers: int | None = None,
     ) -> Path:
         """Run detector scoring over the full proposal-aligned evaluation table.
 
         Output schema:
         detector, group_id, source, method, payload_level, encryption, label, score
+
+        Parallel + incremental: tasks are dispatched to a multiprocessing pool
+        (default ``cpu_count - 1`` workers, override via ``n_workers``) and
+        prediction rows are appended to disk as soon as each task returns.
+        A re-run reads the existing predictions.csv, skips already-completed
+        (detector, group_id, source, method, payload_level, encryption, label)
+        keys, and only dispatches the gap -- making mid-run interruptions
+        cheap to recover from.
         """
         from tqdm import tqdm
 
         stego_rows = read_rows_csv(stego_manifest_path)
+        out_path = output_path or (self.paths.predictions_dir / "predictions.csv")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        pred_rows: list[dict[str, object]] = []
-        for row in tqdm(stego_rows, desc="Detecting", unit="img"):
-            group_id = int(row["group_id"])
+        # Dry-run: keep the old behaviour (write placeholder rows in one shot).
+        if not execute:
+            placeholder_rows: list[dict] = []
+            for row in stego_rows:
+                for detector in self._detectors_for_method(row["method"]):
+                    for label in (1, 0):
+                        placeholder_rows.append({
+                            "detector": detector,
+                            "group_id": int(row["group_id"]),
+                            "source": row["source"],
+                            "method": row["method"],
+                            "payload_level": row["payload_level"],
+                            "encryption": row["encryption"],
+                            "label": label,
+                            "score": "",
+                        })
+            write_rows_csv(out_path, placeholder_rows, fieldnames=_PREDICTIONS_FIELDNAMES)
+            return out_path
+
+        # Build the task list: one task per (row, detector) pair.
+        tasks: list[dict] = []
+        for row in stego_rows:
             for detector in self._detectors_for_method(row["method"]):
-                pos_score = ""
-                if execute:
-                    try:
-                        pos_score = self._score_detector_row(
-                            detector=detector,
-                            label=1,
-                            row=row,
-                        )
-                    except NotImplementedError:
-                        if skip_unimplemented:
-                            continue
-                        raise
+                tasks.append({
+                    "detector": detector,
+                    "row": row,
+                    "project_root": str(self.config.project_root),
+                    "jpeg_quality": self.config.jpeg_quality,
+                    "skip_unimplemented": skip_unimplemented,
+                })
 
-                pred_rows.append(
-                    {
-                        "detector": detector,
-                        "group_id": group_id,
-                        "source": row["source"],
-                        "method": row["method"],
-                        "payload_level": row["payload_level"],
-                        "encryption": row["encryption"],
-                        "label": 1,
-                        "score": pos_score,
-                    }
+        # Resume: drop tasks whose output rows are already on disk.
+        done_keys = _load_existing_prediction_keys(out_path)
+
+        def _task_keys(task: dict) -> tuple[tuple, tuple]:
+            r, d = task["row"], task["detector"]
+            base = (d, int(r["group_id"]), r["source"], r["method"],
+                    r["payload_level"], r["encryption"])
+            return (base + (1,), base + (0,))
+
+        pending_tasks = [t for t in tasks if not all(k in done_keys for k in _task_keys(t))]
+        if not pending_tasks:
+            return out_path
+
+        # Open in append mode; write header if the file is fresh (or was foreign
+        # and got rejected by _load_existing_prediction_keys, leaving done_keys empty).
+        file_needs_header = (not out_path.exists()) or out_path.stat().st_size == 0
+        if not file_needs_header and not done_keys:
+            # Foreign/corrupt header -- start fresh.
+            out_path.unlink()
+            file_needs_header = True
+
+        n_workers = n_workers if n_workers is not None else max(1, (os.cpu_count() or 2) - 1)
+        # Per-task work is small (~30-200 ms on vectorised detectors); larger
+        # chunksize amortises the IPC overhead.
+        chunksize = max(1, len(pending_tasks) // max(1, n_workers * 8))
+
+        with out_path.open("a", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=_PREDICTIONS_FIELDNAMES)
+            if file_needs_header:
+                writer.writeheader()
+                fh.flush()
+
+            if n_workers <= 1:
+                # Sequential fallback (useful for debugging or single-core hosts).
+                iterator = (
+                    _score_one_task(t)
+                    for t in tasks_with_progress(pending_tasks)
                 )
+                for produced in iterator:
+                    _append_unique(writer, fh, produced, done_keys)
+            else:
+                with _mp.Pool(processes=n_workers) as pool:
+                    iterator = pool.imap_unordered(
+                        _score_one_task, pending_tasks, chunksize=chunksize
+                    )
+                    for produced in tqdm(
+                        iterator, total=len(pending_tasks),
+                        desc=f"Detecting ({n_workers} workers)",
+                        unit="task",
+                    ):
+                        _append_unique(writer, fh, produced, done_keys)
 
-                neg_score = ""
-                if execute:
-                    try:
-                        neg_score = self._score_detector_row(
-                            detector=detector,
-                            label=0,
-                            row=row,
-                        )
-                    except NotImplementedError:
-                        if skip_unimplemented:
-                            pred_rows.pop()
-                            continue
-                        raise
-
-                pred_rows.append(
-                    {
-                        "detector": detector,
-                        "group_id": group_id,
-                        "source": row["source"],
-                        "method": row["method"],
-                        "payload_level": row["payload_level"],
-                        "encryption": row["encryption"],
-                        "label": 0,
-                        "score": neg_score,
-                    }
-                )
-
-        out = output_path or (self.paths.predictions_dir / "predictions.csv")
-        write_rows_csv(
-            out,
-            pred_rows,
-            fieldnames=[
-                "detector",
-                "group_id",
-                "source",
-                "method",
-                "payload_level",
-                "encryption",
-                "label",
-                "score",
-            ],
-        )
-        return out
+        return out_path
 
     def compute_metrics_from_predictions(
         self,
