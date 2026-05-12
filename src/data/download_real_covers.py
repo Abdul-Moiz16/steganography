@@ -54,6 +54,9 @@ class DownloadRecord:
     seed: int
 
 
+_NETWORK_RETRYABLE = (URLError, TimeoutError, ConnectionError)
+
+
 def _request_json(
     url: str,
     *,
@@ -77,7 +80,11 @@ def _request_json(
                 time.sleep(sleep_seconds)
                 continue
             raise
-        except URLError:
+        except _NETWORK_RETRYABLE:
+            # Read timeout, connection reset, DNS hiccup, dropped socket --
+            # any transient network failure during the HTTPS round-trip is
+            # retried with the same backoff as URLError. Without this catch
+            # a single TimeoutError mid-read aborts a multi-hour download.
             if attempt < retries - 1:
                 time.sleep(backoff_seconds * (2**attempt) + random.uniform(0.0, 0.5))
                 continue
@@ -107,7 +114,7 @@ def _request_bytes(
                 time.sleep(sleep_seconds)
                 continue
             raise
-        except URLError:
+        except _NETWORK_RETRYABLE:
             if attempt < retries - 1:
                 time.sleep(backoff_seconds * (2**attempt) + random.uniform(0.0, 0.5))
                 continue
