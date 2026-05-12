@@ -109,14 +109,18 @@ def test_exp4_csv_records_branch_interaction(run_dir: Path) -> None:
     outputs = _write_experiment_contrast_tables(run_dir / "metrics", predictions)
     rows = _read_csv(outputs["exp4_contrasts"])
     expected_columns = {
-        "experiment", "detector", "payload_level",
+        "experiment", "payload_level",
         "spatial_method", "frequency_method",
+        "n_spatial_detectors", "n_frequency_detectors",
         "gap_spatial", "gap_frequency", "diff", "se",
         "ci_lo", "ci_hi", "z", "p",
     }
     assert expected_columns == set(rows[0].keys())
-    # Each detector should appear once per payload level present.
+    # One pooled row per payload level present.
     assert {r["payload_level"] for r in rows} == set(PAYLOADS)
+    # Each row pools across multiple detectors.
+    assert all(int(r["n_spatial_detectors"]) >= 1 for r in rows)
+    assert all(int(r["n_frequency_detectors"]) >= 1 for r in rows)
 
 
 def test_exp5_interaction_csv_has_dd_columns(run_dir: Path) -> None:

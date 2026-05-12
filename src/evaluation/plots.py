@@ -1206,132 +1206,101 @@ def _plot_exp3b(predictions: list[dict], figures_dir: Path) -> Path:
 
 
 def _plot_exp4(predictions: list[dict], figures_dir: Path) -> Path:
-    """Exp 4: Source × Branch interaction.
+    """Exp 4: Source x Branch interaction.
 
-    For every (detector, payload) where both a spatial method (lsb) and a
-    frequency method (dct) are populated, we compute the source-gap on each
-    branch and form the interaction term
+    Branch-level analysis: each spatial detector contributes a source-gap
+    measurement at every payload level on the LSB+PNG branch; each DCT
+    detector contributes one on the DCT-LSB+JPEG branch. Within a branch
+    the contributions are inverse-variance pooled into a single gap; the
+    interaction term ``DD = gap_spatial - gap_frequency`` carries a Wald
+    CI from the propagated SEs.
 
-        ΔΔ = gap_spatial − gap_frequency
-
-    with a Wald CI from the propagated DeLong SEs. Output:
-        Left   — per-(detector × payload) interaction forest.
-        Right  — meta-analytic diamond per detector + overall.
+    Layout:
+        Left  -- forest of per-payload pooled ΔΔ values.
+        Right -- per-branch raw source-gaps (real - ML) per payload, so
+                 the reader can see what each side contributes.
     """
     out_path = figures_dir / "exp4_spatial_vs_frequency.png"
 
-    methods = {r["method"] for r in predictions}
-    spatial = sorted(m for m in methods if "lsb" in m.lower() and "dct" not in m.lower())
-    frequency = sorted(m for m in methods if "dct" in m.lower())
-
-    if not spatial or not frequency:
+    rows = _collect_exp4_branch_interaction(predictions)
+    if not rows:
+        methods = {r["method"] for r in predictions}
         missing = []
-        if not spatial:
+        if not any("lsb" in m.lower() and "dct" not in m.lower() for m in methods):
             missing.append("spatial  (LSB+PNG)")
-        if not frequency:
+        if not any("dct" in m.lower() for m in methods):
             missing.append("frequency  (DCT-LSB+JPEG)")
+        reason = (
+            f"Missing branch data: {', '.join(missing)}."
+            if missing
+            else "No per-payload branch comparison available."
+        )
         _write_placeholder_plot(
-            out_path,
-            "Exp 4 — Spatial vs. Frequency Branch AUC",
-            f"Missing branch data: {', '.join(missing)}.\n"
-            "Prototype run includes only the LSB+PNG spatial branch.\n"
-            "Full design required for DCT-LSB+JPEG frequency branch.",
+            out_path, "Exp 4 -- Spatial vs. Frequency Branch", reason,
         )
         return out_path
 
-    sp_method = spatial[0]
-    fr_method = frequency[0]
-
-    PAYLOAD_ORDER = ["low", "medium", "high"]
-    payload_levels = [
-        pl for pl in PAYLOAD_ORDER
-        if any(r["payload_level"] == pl for r in predictions)
+    interaction_entries = [
+        {
+            "label": f"payload = {r['payload_level']}",
+            "diff": r["diff"],
+            "se": r["se"],
+            "ci_lo": r["ci_lo"],
+            "ci_hi": r["ci_hi"],
+            "z": r["z"],
+            "p": r["p"],
+        }
+        for r in rows
     ]
-    detectors = sorted({r["detector"] for r in predictions})
-
-    # Per-(detector, payload) interaction results.
-    per_cell: list[dict] = []
-    for detector in detectors:
-        for payload_level in payload_levels:
-            sp_gap = _source_gap_stats(
-                predictions, detector=detector,
-                method=sp_method, payload_level=payload_level,
-            )
-            fr_gap = _source_gap_stats(
-                predictions, detector=detector,
-                method=fr_method, payload_level=payload_level,
-            )
-            if sp_gap.get("diff") is None or fr_gap.get("diff") is None:
-                continue
-            diff = sp_gap["diff"] - fr_gap["diff"]
-            se = math.sqrt(
-                max(
-                    (sp_gap.get("se") or 0.0) ** 2
-                    + (fr_gap.get("se") or 0.0) ** 2,
-                    0.0,
-                )
-            )
-            ci_lo = diff - 1.96 * se
-            ci_hi = diff + 1.96 * se
-            z_val = diff / se if se > 1e-12 else 0.0
-            p_value = (
-                2.0 * (1.0 - stats.norm.cdf(abs(z_val))) if se > 1e-12 else 1.0
-            )
-            per_cell.append({
-                "label": f"{detector}  /  {payload_level}",
-                "_detector": detector,
-                "auc_a": sp_gap["diff"],
-                "auc_b": fr_gap["diff"],
-                "diff": diff,
-                "se": se,
-                "ci_lo": ci_lo,
-                "ci_hi": ci_hi,
-                "z": z_val,
-                "p": p_value,
-            })
-
-    if not per_cell:
-        _write_placeholder_plot(out_path, "Exp 4: Spatial vs. Frequency", "No data.")
-        return out_path
-
-    # Right panel: per-detector meta-analytic diamond + overall.
-    summary: list[dict] = []
-    for detector in detectors:
-        det_rows = [r for r in per_cell if r["_detector"] == detector]
-        diamond = _meta_diamond(det_rows)
-        if diamond is not None:
-            summary.append({"label": f"{detector}  ⟨meta⟩", **diamond})
-    overall = _meta_diamond(per_cell)
+    overall = _meta_diamond(interaction_entries)
     if overall is not None:
-        summary.insert(0, {"label": "All detectors  (meta-analytic)", **overall})
+        interaction_entries.append({"label": "All payloads  (meta)", **overall})
 
-    n_left_rows = len(per_cell)
-    n_right_rows = len(summary)
-    fig_height = max(3.5, max(n_left_rows, n_right_rows) * 0.5 + 1.8)
+    branch_entries: list[dict] = []
+    for r in rows:
+        branch_entries.append({
+            "label": f"spatial  /  {r['payload_level']}",
+            "diff": r["gap_spatial"],
+            "se": 0.0,
+            "ci_lo": r["gap_spatial"],
+            "ci_hi": r["gap_spatial"],
+            "z": 0.0,
+            "p": 1.0,
+        })
+        branch_entries.append({
+            "label": f"frequency  /  {r['payload_level']}",
+            "diff": r["gap_frequency"],
+            "se": 0.0,
+            "ci_lo": r["gap_frequency"],
+            "ci_hi": r["gap_frequency"],
+            "z": 0.0,
+            "p": 1.0,
+        })
+
+    fig_height = max(3.5, max(len(interaction_entries), len(branch_entries)) * 0.5 + 1.8)
     fig, axes = plt.subplots(
         1, 2, figsize=(14, fig_height),
-        gridspec_kw={"width_ratios": [1.4, 1.0], "wspace": 0.55},
+        gridspec_kw={"width_ratios": [1.0, 1.2], "wspace": 0.55},
     )
-
     _forest_plot(
-        axes[0], per_cell,
-        "Interaction  ΔΔ = gap$_{spatial}$ − gap$_{frequency}$",
+        axes[0], interaction_entries,
+        r"Interaction  $\Delta\Delta$ = gap$_{spatial}$ - gap$_{frequency}$",
         color=THEME["ns"], sig_color=THEME["sig"],
     )
-    axes[0].set_title("Per-stratum source × branch interaction")
+    axes[0].set_title("Per-payload pooled interaction")
 
-    if summary:
-        _forest_plot(
-            axes[1], summary,
-            "Pooled  ΔΔ-AUC",
-            color=THEME["ns"], sig_color=THEME["sig"],
-        )
-        axes[1].set_title("Meta-analytic summary")
-    else:
-        axes[1].axis("off")
+    _forest_plot(
+        axes[1], branch_entries,
+        r"Per-branch source gap  AUC$_{real}$ - $\bar{AUC}_{ML}$",
+        color=THEME["accent"], sig_color=THEME["sig"],
+    )
+    axes[1].set_title("Branch-level source gaps (context)")
 
+    n_sp = rows[0]["n_spatial_detectors"]
+    n_fr = rows[0]["n_frequency_detectors"]
     fig.suptitle(
-        "Exp 4 — Source × Branch Interaction  (Exploratory, 95% CI)",
+        f"Exp 4 -- Source x Branch Interaction  (Exploratory; pooled across "
+        f"{n_sp} spatial / {n_fr} DCT detectors)",
         fontsize=12, fontweight="bold",
     )
     _save_fig(fig, out_path)
@@ -2052,12 +2021,62 @@ def _collect_exp3_payload_interaction(predictions: list[dict]) -> list[dict]:
     return rows
 
 
-def _collect_exp4_branch_interaction(predictions: list[dict]) -> list[dict]:
-    """Per (detector, payload_level): ΔΔ = gap_spatial − gap_frequency with a Wald CI.
+def _pool_branch_source_gap(
+    predictions: list[dict],
+    *,
+    method: str,
+    payload_level: str,
+    detectors: list[str],
+) -> dict | None:
+    """Inverse-variance pooled source-gap across all detectors on one branch.
 
-    Mirrors the data computed inside ``_plot_exp4``. Each row records both
-    per-branch source gaps and their interaction so the report can quote
-    numbers directly without re-deriving them from the figure.
+    Each detector contributes its own (real - pooled-ML) AUC difference and
+    DeLong-derived variance at the given (method, payload_level). The
+    branch-level estimate is the inverse-variance weighted mean -- the same
+    pooling used for meta-analytic diamonds elsewhere in this module.
+
+    Returns ``None`` if no detector has usable data at this stratum.
+    """
+    contributions: list[tuple[float, float]] = []
+    for detector in detectors:
+        gap = _source_gap_stats(
+            predictions, detector=detector,
+            method=method, payload_level=payload_level,
+        )
+        diff = gap.get("diff")
+        se = gap.get("se")
+        if diff is None or se is None or se < 0:
+            continue
+        contributions.append((float(diff), float(se)))
+    if not contributions:
+        return None
+
+    # Degenerate case: every detector returned SE=0 (e.g. perfect AUC on all
+    # sources for every detector). Inverse-variance weighting is undefined,
+    # but the pooled estimate is unambiguous -- the mean of the agreeing diffs.
+    if all(s == 0.0 for _, s in contributions):
+        pooled = sum(d for d, _ in contributions) / len(contributions)
+        return {"diff": pooled, "se": 0.0, "n_detectors": len(contributions)}
+
+    # Drop SE=0 contributions from the inverse-variance pool (infinite weight).
+    weighted = [(d, s) for d, s in contributions if s > 0]
+    weights = [1.0 / (s * s) for _, s in weighted]
+    total_w = sum(weights)
+    if total_w <= 0:
+        return None
+    pooled = sum(w * d for w, (d, _) in zip(weights, weighted)) / total_w
+    pooled_se = math.sqrt(1.0 / total_w)
+    return {"diff": pooled, "se": pooled_se, "n_detectors": len(contributions)}
+
+
+def _collect_exp4_branch_interaction(predictions: list[dict]) -> list[dict]:
+    """Per payload-level: ΔΔ = gap_spatial − gap_frequency with a Wald CI.
+
+    Spatial detectors (RS, χ², Sample Pairs) only run on LSB stego rows;
+    DCT detectors (χ²-DCT, calibration χ²) only run on DCT-LSB stego rows.
+    No single detector spans both branches, so the proposal-aligned
+    comparison is *branch-vs-branch*: pool every detector inside a branch
+    via inverse-variance weighting, then take the difference.
     """
     rows: list[dict] = []
     if not predictions:
@@ -2068,43 +2087,46 @@ def _collect_exp4_branch_interaction(predictions: list[dict]) -> list[dict]:
     if not spatial or not frequency:
         return rows
     sp_method, fr_method = spatial[0], frequency[0]
+
+    spatial_detectors = sorted({r["detector"] for r in predictions if r["method"] == sp_method})
+    dct_detectors = sorted({r["detector"] for r in predictions if r["method"] == fr_method})
+    if not spatial_detectors or not dct_detectors:
+        return rows
+
     PAYLOAD_ORDER = ("low", "medium", "high")
     payload_levels = [pl for pl in PAYLOAD_ORDER if any(r["payload_level"] == pl for r in predictions)]
-    detectors = sorted({r["detector"] for r in predictions})
 
-    for detector in detectors:
-        for payload_level in payload_levels:
-            sp_gap = _source_gap_stats(
-                predictions, detector=detector,
-                method=sp_method, payload_level=payload_level,
-            )
-            fr_gap = _source_gap_stats(
-                predictions, detector=detector,
-                method=fr_method, payload_level=payload_level,
-            )
-            if sp_gap.get("diff") is None or fr_gap.get("diff") is None:
-                continue
-            diff = sp_gap["diff"] - fr_gap["diff"]
-            se = math.sqrt(max(
-                (sp_gap.get("se") or 0.0) ** 2 + (fr_gap.get("se") or 0.0) ** 2, 0.0,
-            ))
-            z_val = diff / se if se > 1e-12 else 0.0
-            p_value = 2.0 * (1.0 - stats.norm.cdf(abs(z_val))) if se > 1e-12 else 1.0
-            rows.append({
-                "experiment": "exp4_rq4_spatial_vs_frequency",
-                "detector": detector,
-                "payload_level": payload_level,
-                "spatial_method": sp_method,
-                "frequency_method": fr_method,
-                "gap_spatial": sp_gap["diff"],
-                "gap_frequency": fr_gap["diff"],
-                "diff": diff,
-                "se": se,
-                "ci_lo": diff - 1.96 * se,
-                "ci_hi": diff + 1.96 * se,
-                "z": z_val,
-                "p": p_value,
-            })
+    for payload_level in payload_levels:
+        sp = _pool_branch_source_gap(
+            predictions, method=sp_method,
+            payload_level=payload_level, detectors=spatial_detectors,
+        )
+        fr = _pool_branch_source_gap(
+            predictions, method=fr_method,
+            payload_level=payload_level, detectors=dct_detectors,
+        )
+        if sp is None or fr is None:
+            continue
+        diff = sp["diff"] - fr["diff"]
+        se = math.sqrt(sp["se"] ** 2 + fr["se"] ** 2)
+        z_val = diff / se if se > 1e-12 else 0.0
+        p_value = 2.0 * (1.0 - stats.norm.cdf(abs(z_val))) if se > 1e-12 else 1.0
+        rows.append({
+            "experiment": "exp4_rq4_spatial_vs_frequency",
+            "payload_level": payload_level,
+            "spatial_method": sp_method,
+            "frequency_method": fr_method,
+            "n_spatial_detectors": sp["n_detectors"],
+            "n_frequency_detectors": fr["n_detectors"],
+            "gap_spatial": sp["diff"],
+            "gap_frequency": fr["diff"],
+            "diff": diff,
+            "se": se,
+            "ci_lo": diff - 1.96 * se,
+            "ci_hi": diff + 1.96 * se,
+            "z": z_val,
+            "p": p_value,
+        })
     return rows
 
 
