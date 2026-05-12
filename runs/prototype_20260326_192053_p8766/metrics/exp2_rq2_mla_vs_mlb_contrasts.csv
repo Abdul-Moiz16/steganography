@@ -1,0 +1,4 @@
+experiment,detector,method,payload_level,auc_a,auc_b,diff,se,ci_lo,ci_hi,z,p,n_a,n_b,n_pos_a,n_neg_a,n_pos_b,n_neg_b,p_holm,significant_holm_0_05
+exp2_rq2_mla_vs_mlb,chi_square_spatial,lsb,low,0.6425,0.69375,-0.05125000000000002,0.0865835708641642,-0.22095379889376185,0.11845379889376181,-0.5919136793330352,0.5539083931610742,80,80,40,40,40,40,1.0,False
+exp2_rq2_mla_vs_mlb,rs,lsb,low,1.0,1.0,0.0,0.0,0.0,0.0,0.0,1.0,80,80,40,40,40,40,1.0,False
+exp2_rq2_mla_vs_mlb,sample_pairs,lsb,low,1.0,1.0,0.0,0.0,0.0,0.0,0.0,1.0,80,80,40,40,40,40,1.0,False

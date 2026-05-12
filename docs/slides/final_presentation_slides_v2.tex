@@ -1,0 +1,725 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+% ---- Minimalist theme (matches midway / implementation slides) ----
+\usetheme{default}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{frametitle continuation}{}
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{enumerate items}[default]
+
+% ---- Font: TeX Gyre Heros ----
+\usepackage[T1]{fontenc}
+\usepackage{tgheros}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{microtype}
+
+% ---- Packages ----
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,shapes.geometric,backgrounds}
+
+% ---- Maastricht University colors ----
+\definecolor{umdark}{HTML}{001C3D}
+\definecolor{umorange}{HTML}{E84E10}
+\definecolor{umlight}{HTML}{4A90C4}
+\definecolor{umgray}{HTML}{6B7280}
+\newcommand{\icite}[1]{{\footnotesize\color{umgray!85}#1}}
+
+% ---- Apply colors to Beamer ----
+\setbeamercolor{normal text}{fg=umdark}
+\setbeamercolor{frametitle}{fg=umdark}
+\setbeamercolor{title}{fg=umdark}
+\setbeamercolor{subtitle}{fg=umgray}
+\setbeamercolor{author}{fg=umgray}
+\setbeamercolor{date}{fg=umgray}
+\setbeamercolor{institute}{fg=umorange}
+\setbeamercolor{itemize item}{fg=umorange}
+\setbeamercolor{itemize subitem}{fg=umlight}
+\setbeamercolor{enumerate item}{fg=umorange}
+\setbeamercolor{block title}{bg=umdark,fg=white}
+\setbeamercolor{block body}{bg=umdark!5,fg=umdark}
+\setbeamercolor{block title alerted}{bg=umorange,fg=white}
+\setbeamercolor{block body alerted}{bg=umorange!8,fg=umdark}
+\setbeamercolor{block title example}{bg=umlight,fg=white}
+\setbeamercolor{block body example}{bg=umlight!8,fg=umdark}
+
+% ---- Frametitle style ----
+\setbeamertemplate{frametitle}{%
+  \vspace{0.35cm}%
+  \noindent\hspace*{0pt}%
+  \parbox{\textwidth}{%
+    {\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}\insertframetitle}%
+    \vspace{2pt}\\%
+    {\color{umorange}\rule{\textwidth}{1.2pt}}%
+  }%
+  \vspace{-2pt}%
+}
+\setbeamerfont{frametitle}{size=\large,series=\bfseries}
+\setbeamersize{text margin left=0.7cm,text margin right=0.7cm}
+
+% ---- Footline ----
+\setbeamertemplate{footline}{%
+  \hbox{%
+    \begin{beamercolorbox}[wd=\paperwidth,ht=2.2ex,dp=1ex]{footline}%
+      \hspace{1em}{\scriptsize\color{umgray}Final Presentation -- Carrier Origin and Steganographic Detectability}%
+      \hfill%
+      {\scriptsize\color{umgray}\insertframenumber/\inserttotalframenumber}%
+      \hspace{1em}%
+    \end{beamercolorbox}%
+  }%
+}
+
+% ---- Shared TikZ styles ----
+\tikzset{
+  pstage/.style    = {rectangle, draw=umdark, fill=umdark!8, rounded corners=2pt,
+                       minimum width=2.05cm, minimum height=0.85cm, align=center,
+                       font=\scriptsize\bfseries\color{umdark}},
+  pout/.style      = {font=\tiny\color{umgray}, align=center},
+  parrow/.style    = {-Stealth, thick, umorange},
+  srcbox/.style    = {rectangle, draw=umorange, fill=umorange!12, rounded corners=2pt,
+                       minimum width=1.6cm, minimum height=0.55cm, align=center,
+                       font=\scriptsize\bfseries\color{umdark}},
+  capbox/.style    = {rectangle, draw=umlight, fill=umlight!12, rounded corners=2pt,
+                       minimum width=4.4cm, minimum height=0.55cm, align=center,
+                       font=\scriptsize\itshape\color{umdark}},
+  condcell/.style  = {rectangle, draw=umdark!25, fill=white,
+                       minimum width=0.42cm, minimum height=0.32cm, font=\tiny},
+  bitcell/.style   = {rectangle, draw=umdark!60, fill=white,
+                       minimum width=0.40cm, minimum height=0.45cm, font=\scriptsize\ttfamily, inner sep=1pt},
+  bitlsb/.style    = {rectangle, draw=umorange, line width=0.9pt, fill=umorange!15,
+                       minimum width=0.40cm, minimum height=0.45cm, font=\scriptsize\ttfamily\bfseries, inner sep=1pt},
+  dctcell/.style   = {rectangle, draw=umdark!25, fill=white,
+                       minimum width=0.36cm, minimum height=0.36cm, font=\tiny\color{umdark}},
+  dctused/.style   = {rectangle, draw=umorange, fill=umorange!18, line width=0.4pt,
+                       minimum width=0.36cm, minimum height=0.36cm, font=\tiny\color{umdark}},
+  dctskip/.style   = {rectangle, draw=umgray, fill=umgray!22, line width=0.4pt,
+                       minimum width=0.36cm, minimum height=0.36cm, font=\tiny\color{umgray}},
+}
+
+% ---- Metadata ----
+\title{Does the Source of Carrier Image Affect\\Steganographic Detectability?}
+\subtitle{Final Presentation}
+\newcommand{\teamauthors}{Abdul Moiz Akbar \;|\; Malo Coquin \;|\; Daria Gjonbalaj \;|\; Nico Muller-Spath\\Jimena Narvaez del Cid \;|\; David Wicker \;|\; Nikolas Zouros}
+\author[Project 2.2 Team]{Project 2.2 Team}
+\institute{Department of Advanced Computing Sciences\\Maastricht University}
+\date{Project 2.2 \;|\; May 2026}
+
+\begin{document}
+
+% ============================================================
+% 1. Opening
+% ============================================================
+\begin{frame}[plain]
+\vfill
+\begin{center}
+{\color{umorange}\rule{0.42\textwidth}{2pt}}\\[12pt]
+{\LARGE\bfseries\color{umdark}\inserttitle}\\[10pt]
+{\normalsize\color{umgray}\insertsubtitle}\\[16pt]
+{\small\color{umdark}\teamauthors}\\[8pt]
+{\small\color{umorange}\insertinstitute}\\[8pt]
+{\footnotesize\color{umgray}\insertdate}\\[12pt]
+{\color{umorange}\rule{0.42\textwidth}{2pt}}
+\end{center}
+\vfill
+\end{frame}
+
+% ============================================================
+% 2. Agenda
+% ============================================================
+\begin{frame}{Agenda}
+\small
+\begin{enumerate}
+\item Motivation recap
+\item Research questions
+\item Experimental design and methods
+\item Statistical analysis
+\item Results across RQ1--RQ5
+\item Limitations and contribution
+\end{enumerate}
+\end{frame}
+
+% ============================================================
+% 3. Motivation recap
+% ============================================================
+\section{Motivation}
+\begin{frame}{Motivation Recap}
+\small
+\begin{itemize}
+\item Steganalysis detectability depends on carrier-image statistics, not only on embedding logic \icite{(Petitcolas et al., 1999; Fridrich \& Kodovsky, 2012).}
+\item Photographic carriers dominate benchmarks, yet diffusion outputs are now everywhere and carry distinct statistical traces \icite{(Corvi et al., 2023).}
+\item Closest prior work studies AI carriers under adaptive embedding and reports $P_E$, not AUC \icite{(M\'ereur et al., 2024).}
+\end{itemize}
+\vspace{0.1cm}
+\begin{alertblock}{Core question}
+Do detectors validated on photographs remain equally effective when the carrier is ML-generated, under identical embedding settings?
+\end{alertblock}
+\end{frame}
+
+% ============================================================
+% 4. Research Questions
+% ============================================================
+\section{Research Questions}
+\begin{frame}{Research Questions}
+\scriptsize
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{RQ1 (Primary, confirmatory)}
+Does carrier source (real vs.\ pooled ML) affect detectability under matched embedding settings?
+\end{block}
+\begin{block}{RQ2 (Primary, confirmatory)}
+Within ML carriers, does the choice of generator (SDXL vs.\ FLUX) change detectability?
+\end{block}
+\begin{block}{RQ3 (Exploratory)}
+Does payload size change the detectability gap between real and ML carriers?
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{RQ4 (Exploratory)}
+Do the spatial (LSB+PNG) and frequency (DCT-LSB+JPEG) branches show different carrier-source effects?
+\end{block}
+\begin{block}{RQ5 (Verification)}
+Does AES-256-CBC payload encryption affect detectability? Expected null result.
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 5. Experimental Design  (NEW: caption-matched diagram)
+% ============================================================
+\section{Experimental Design}
+\begin{frame}{Caption-Matched Carriers, $3 \times 2 \times 3 \times 2$ Factorial}
+\small
+\begin{columns}[T]
+\begin{column}{0.46\textwidth}
+\vspace{-0.05cm}
+\begin{center}
+\begin{tikzpicture}[node distance=0.45cm and 0.25cm]
+% Caption at top
+\node[capbox] (cap) {``a brown cat on a wooden chair''};
+
+% Three source nodes
+\node[srcbox, below=0.6cm of cap, xshift=-2.0cm] (real) {real};
+\node[srcbox, below=0.6cm of cap]                (mla)  {SDXL};
+\node[srcbox, below=0.6cm of cap, xshift= 2.0cm] (mlb)  {FLUX};
+
+% Arrows from caption
+\draw[parrow] (cap.south) -- (real.north);
+\draw[parrow] (cap.south) -- (mla.north);
+\draw[parrow] (cap.south) -- (mlb.north);
+
+% Under each source: 12-condition grid (3 payload x 2 method x 2 enc -> 2 rows x 6 cols)
+\foreach \xc/\src in {-2.0/real, 0/mla, 2.0/mlb} {
+  \foreach \r in {0,1} {
+    \foreach \c in {0,1,2,3,4,5} {
+      \pgfmathsetmacro{\xx}{\xc - 1.1 + 0.44*\c}
+      \pgfmathsetmacro{\yy}{-1.95 - 0.36*\r}
+      \node[condcell] at (\xx,\yy) {};
+    }
+  }
+}
+% Label below conditions
+\node[font=\scriptsize\color{umgray}] at (-2.0,-2.95) {12 stego};
+\node[font=\scriptsize\color{umgray}] at ( 0   ,-2.95) {12 stego};
+\node[font=\scriptsize\color{umgray}] at ( 2.0 ,-2.95) {12 stego};
+\end{tikzpicture}
+\end{center}
+\end{column}
+\begin{column}{0.50\textwidth}
+\begin{block}{Per-group recipe}
+\begin{itemize}
+\item Three caption-matched covers per group
+\item 2 methods $\times$ 3 payloads $\times$ 2 encryption = \textbf{12 stego per source}
+\item Per group: \textbf{3 cover} + \textbf{36 stego} = 39 images
+\end{itemize}
+\end{block}
+\begin{block}{Datasets (1{,}000 groups)}
+\begin{itemize}
+\item Real: COCO + Flickr30k captions
+\item ML-A: SDXL 1.0; ML-B: FLUX.1-schnell
+\item Grayscale 512$\times$512, dual storage: PNG (spatial) + JPEG Q=95 (frequency)
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 6. Embedding Methods  (NEW: LSB bit illustration + DCT 8x8)
+% ============================================================
+\begin{frame}{Embedding Methods}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\begin{block}{Spatial: LSB substitution}
+Replace the least-significant bit of each pixel, $k\!=\!1$, row-major. Lossless PNG storage required.
+\end{block}
+\vspace{-0.05cm}
+\begin{center}
+\begin{tikzpicture}[node distance=0.06cm]
+% cover byte
+\node[font=\scriptsize\color{umgray}] (lblc) at (0,0.55) {cover pixel};
+\node[bitcell] (b7) at (0   ,0)   {1};
+\node[bitcell] (b6) at (0.42,0)   {0};
+\node[bitcell] (b5) at (0.84,0)   {1};
+\node[bitcell] (b4) at (1.26,0)   {1};
+\node[bitcell] (b3) at (1.68,0)   {0};
+\node[bitcell] (b2) at (2.10,0)   {1};
+\node[bitcell] (b1) at (2.52,0)   {0};
+\node[bitlsb]  (b0) at (2.94,0)   {0};
+
+% arrow + payload bit
+\node[font=\scriptsize\color{umorange}\bfseries] at (3.65,0.0) {$\Rightarrow$};
+\node[font=\scriptsize\color{umorange}\bfseries] at (3.65,0.4) {bit=1};
+
+% stego byte
+\node[bitcell] at (4.30,0) {1};
+\node[bitcell] at (4.72,0) {0};
+\node[bitcell] at (5.14,0) {1};
+\node[bitcell] at (5.56,0) {1};
+\node[bitcell] at (5.98,0) {0};
+\node[bitcell] at (6.40,0) {1};
+\node[bitcell] at (6.82,0) {0};
+\node[bitlsb]  at (7.24,0) {1};
+\node[font=\scriptsize\color{umgray}] at (5.77,0.55) {stego pixel};
+\end{tikzpicture}
+\end{center}
+\vspace{-0.1cm}
+{\scriptsize\color{umgray}One pixel \textendash\ one payload bit. Detected by RS, $\chi^2$, Sample Pairs.}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Frequency: DCT-LSB (JSteg-style)}
+Flip the LSB of \emph{non-zero} quantised AC coefficients in each $8\!\times\!8$ block. Skip DC and $|c|\!=\!1$ (Westfeld-pair stable). JPEG Q=95.
+\end{block}
+\vspace{-0.05cm}
+\begin{center}
+\begin{tikzpicture}
+% 8x8 DCT block: corner = DC (skip, grey), some |c|=1 cells grey, others orange
+\foreach \r in {0,...,7} {
+  \foreach \c in {0,...,7} {
+    \pgfmathsetmacro{\xx}{0.40*\c}
+    \pgfmathsetmacro{\yy}{-0.40*\r}
+    % skip top-left (DC) and a band of unity-magnitude coefficients (mid-high frequency)
+    \ifnum\r=0
+      \ifnum\c=0
+        \node[dctskip] at (\xx,\yy) {DC};
+      \else
+        \ifnum\c<3 \node[dctused] at (\xx,\yy) {}; \else \node[dctskip] at (\xx,\yy) {}; \fi
+      \fi
+    \else
+      \pgfmathsetmacro{\rr}{\r+\c}
+      \ifnum\r>4 \node[dctskip] at (\xx,\yy) {}; \else
+        \ifnum\c>4 \node[dctskip] at (\xx,\yy) {}; \else
+          \node[dctused] at (\xx,\yy) {};
+        \fi
+      \fi
+    \fi
+  }
+}
+% Legend
+\node[font=\tiny\color{umorange}\bfseries] at (3.6, 0.40) {used (non-zero AC)};
+\node[font=\tiny\color{umgray}]            at (3.6,-0.05) {skip (DC, $|c|\!=\!1$)};
+\end{tikzpicture}
+\end{center}
+\vspace{-0.1cm}
+{\scriptsize\color{umgray}Detected by $\chi^2$-DCT and Calibration $\chi^2$.}
+\end{column}
+\end{columns}
+\vspace{0.05cm}
+\begin{exampleblock}{Why classical, not adaptive (HILL / UNIWARD / MiPOD)}
+Adaptive schemes adapt to image content, conflating embedding evasion with carrier statistics. Classical fixed-position embedding isolates the carrier-source signal we want to measure.
+\end{exampleblock}
+\end{frame}
+
+% ============================================================
+% 7. Detector Choices and Mechanisms (NEW: chi^2 PoV histogram)
+% ============================================================
+\begin{frame}{Detector Mechanisms}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.46\textwidth}
+\begin{block}{Pairs-of-Values intuition}
+$\chi^2$ tests the prediction that LSB embedding equalises the counts of value pairs $\{2k, 2k\!+\!1\}$. Bars within each pair converge in stego images.
+\end{block}
+\vspace{0.05cm}
+\begin{center}
+\begin{tikzpicture}[
+  bar/.style={draw=umdark, fill=umlight!50, line width=0.3pt},
+  barb/.style={draw=umdark, fill=umlight, line width=0.3pt},
+  barflat/.style={draw=umdark, fill=umorange!30, line width=0.3pt},
+  axisstyle/.style={->, thick, umdark}
+]
+% Cover histogram (uneven pairs)
+\begin{scope}[shift={(0,0)}]
+\foreach \i/\h in {0/1.20, 1/0.55, 2/1.05, 3/0.40, 4/0.90, 5/0.30, 6/0.75, 7/0.25} {
+  \pgfmathsetmacro{\xx}{0.27*\i}
+  \draw[bar] (\xx,0) rectangle (\xx+0.22,\h);
+}
+\draw[axisstyle] (0,-0.05) -- (2.30,-0.05);
+\node[font=\tiny\color{umdark}] at (1.10,-0.30) {bin value};
+\node[font=\scriptsize\bfseries\color{umdark}] at (1.10,1.55) {cover};
+\end{scope}
+% Stego histogram (pairs flattened)
+\begin{scope}[shift={(3.10,0)}]
+\foreach \i/\h in {0/0.85, 1/0.85, 2/0.72, 3/0.72, 4/0.60, 5/0.60, 6/0.50, 7/0.50} {
+  \pgfmathsetmacro{\xx}{0.27*\i}
+  \draw[barflat] (\xx,0) rectangle (\xx+0.22,\h);
+}
+\draw[axisstyle] (0,-0.05) -- (2.30,-0.05);
+\node[font=\tiny\color{umdark}] at (1.10,-0.30) {bin value};
+\node[font=\scriptsize\bfseries\color{umorange}] at (1.10,1.55) {stego};
+\end{scope}
+\end{tikzpicture}
+\end{center}
+\vspace{-0.05cm}
+{\scriptsize\color{umgray}$\chi^2$ score rises whenever paired bars are mismatched in the cover and equalise in the stego.}
+\end{column}
+\begin{column}{0.50\textwidth}
+\begin{block}{Spatial}
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{RS} \icite{(Fridrich 2001):} regular/singular pixel-group ratios
+\item \textbf{$\chi^2$} \icite{(Westfeld 1999):} PoV (left)
+\item \textbf{Sample Pairs} \icite{(Dumitrescu 2003):} traces on adjacent-pixel multisets
+\end{itemize}
+\end{block}
+\begin{block}{Frequency}
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{$\chi^2$-DCT} \icite{(Westfeld 1999):} PoV on AC coefficients
+\item \textbf{Calibration $\chi^2$} \icite{(Fridrich 2003):} non-block-aligned crop + recompress reference
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.05cm}
+\begin{alertblock}{Why training-free}
+No learned parameters. AUC differences between carrier groups reflect carrier statistics, not a training-set mismatch -- critical for an unbiased real-vs-ML comparison.
+\end{alertblock}
+\end{frame}
+
+% ============================================================
+% 8. Pipeline Structure  (NEW: 5-stage flow diagram)
+% ============================================================
+\section{Pipeline Structure}
+\begin{frame}{Pipeline Structure}
+\small
+\begin{center}
+\begin{tikzpicture}[node distance=0.45cm]
+\node[pstage] (data) {Data};
+\node[pstage, right=of data] (man)  {Manifests};
+\node[pstage, right=of man]  (emb)  {Embedding};
+\node[pstage, right=of emb]  (det)  {Detection};
+\node[pstage, right=of det]  (agg)  {Analysis};
+
+\draw[parrow] (data) -- (man);
+\draw[parrow] (man)  -- (emb);
+\draw[parrow] (emb)  -- (det);
+\draw[parrow] (det)  -- (agg);
+
+\node[pout, below=0.10cm of data] {real + ML\\covers};
+\node[pout, below=0.10cm of man]  {payloads,\\stego list, seeds};
+\node[pout, below=0.10cm of emb]  {stego images\\PSNR/SSIM};
+\node[pout, below=0.10cm of det]  {predictions.csv\\per (cover, stego)};
+\node[pout, below=0.10cm of agg]  {AUC, contrasts,\\figures, verdicts};
+\end{tikzpicture}
+\end{center}
+\vspace{0.1cm}
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Five sequential stages}
+\begin{itemize}
+\item Data and manifests are reproducible from seeds.
+\item Embedding writes one stego file per condition.
+\item Detection scores cover+stego pairs.
+\item Aggregation derives all RQ outputs.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Run isolation}
+\begin{itemize}
+\item Each run lives in \texttt{runs/<id>/}.
+\item Config frozen in \texttt{config.json}.
+\item Re-runs are idempotent: done work is skipped.
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 9. Web Platform
+% ============================================================
+\section{Web Platform}
+\begin{frame}{Web Platform and Live Monitoring}
+\small
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Architecture}
+\begin{itemize}
+\item Local Python HTTP server (stdlib only)
+\item Single-page browser client, no build step
+\item Endpoints: list / launch / preview / kill / detail
+\item Launch spawns the runner as a subprocess
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Live observability}
+\begin{itemize}
+\item Subprocess stdout via Server-Sent Events
+\item Browser terminal panel shows progress live
+\item Preview validates config before any compute
+\item Run-detail surfaces metrics, figures, gallery
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.05cm}
+{\scriptsize\color{umgray}Power estimate in the drawer: Hanley--McNeil computed live in JavaScript, colour-coded against the proposal threshold $\delta\!=\!0.05$.}
+\end{frame}
+
+% ============================================================
+% 10. Statistical Analysis  (NEW: paired DeLong sketch)
+% ============================================================
+\section{Statistical Analysis}
+\begin{frame}{Statistical Analysis}
+\footnotesize
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\begin{block}{Tests}
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item DeLong paired ROC test for correlated AUCs \icite{(DeLong 1988)}
+\item Bonferroni--Holm correction across the confirmatory family
+\item 95\% CIs for exploratory comparisons (RQ3, RQ4)
+\item Equivalence margin $\pm 0.025$ AUC for RQ5
+\end{itemize}
+\end{block}
+\begin{block}{Power (Hanley--McNeil)}
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item $\alpha = 0.05$, target power $0.80$
+\item Confirmatory family size: 15 strata per RQ
+\item Min detectable $\delta_\text{AUC}$ at N=1000: RQ1 $\approx 0.040$, RQ2 $\approx 0.047$
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{center}
+\begin{tikzpicture}[
+  axarrow/.style={->, thick, umdark},
+  rocA/.style={very thick, umlight},
+  rocB/.style={very thick, umorange},
+  diag/.style={dashed, umgray, line width=0.3pt}
+]
+% axes
+\draw[axarrow] (0,0) -- (3.6,0)  node[right, font=\tiny\color{umgray}] {FPR};
+\draw[axarrow] (0,0) -- (0,2.6)  node[above, font=\tiny\color{umgray}] {TPR};
+\draw[diag] (0,0) -- (2.4,2.4);
+% Curve A: high AUC
+\draw[rocA] plot[smooth, tension=0.6] coordinates {(0,0) (0.15,0.95) (0.4,1.55) (0.85,1.95) (1.5,2.25) (2.4,2.4)};
+\node[font=\scriptsize\color{umlight}\bfseries] at (1.85,2.30) {AUC$_A$};
+% Curve B: lower AUC (different carrier)
+\draw[rocB] plot[smooth, tension=0.6] coordinates {(0,0) (0.30,0.55) (0.7,1.10) (1.20,1.60) (1.80,2.05) (2.4,2.4)};
+\node[font=\scriptsize\color{umorange}\bfseries] at (1.30,1.20) {AUC$_B$};
+% Delta label
+\node[font=\tiny\color{umdark}] at (3.05,1.40) {paired};
+\node[font=\tiny\color{umdark}] at (3.05,1.20) {$\Delta_\text{AUC}$};
+\draw[<->, umdark] (2.55,1.15) -- (2.55,1.45);
+% Title
+\node[font=\scriptsize\bfseries\color{umdark}] at (1.30,2.85) {DeLong: same cover set, two scorings};
+\end{tikzpicture}
+\end{center}
+\vspace{0.05cm}
+{\scriptsize\color{umgray}Each $\Delta_\text{AUC}$ comes from a single stratum; Holm controls the family-wise error rate across 15 strata.}
+\end{column}
+\end{columns}
+\vspace{0.05cm}
+\begin{alertblock}{Pragmatic boundary}
+N=1000 brings the detectable $\delta_\text{min}$ for the primary (RQ1, RQ2) and verification (RQ5) questions below the proposal threshold of 0.05 AUC.
+\end{alertblock}
+\end{frame}
+
+% ============================================================
+% 11. Results: RQ1
+% ============================================================
+\section{Results}
+\begin{frame}{RQ1 -- Real vs.\ Pooled ML}
+\small
+\begin{block}{Test}
+Paired DeLong per stratum (detector $\times$ method $\times$ payload), Holm-adjusted across 15 strata.
+\end{block}
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Headline finding}
+\begin{itemize}
+\item Pooled $\Delta_\text{AUC}$: [\textit{to fill from} \texttt{exp1\_*\_contrasts.csv}]
+\item Significant strata (Holm $p\!<\!0.05$): [\textit{n / 15}]
+\item Verdict: [\textit{supported / mixed / not supported}]
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Interpretation}
+\begin{itemize}
+\item Direction of the effect, consistent across detectors or not.
+\item Where is the gap strongest -- spatial or frequency branch?
+\item Cite \texttt{exp1\_real\_vs\_pooled\_ml.png} forest.
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 12. Results: RQ2
+% ============================================================
+\begin{frame}{RQ2 -- SDXL vs.\ FLUX within ML}
+\small
+\begin{block}{Test}
+Paired DeLong, same 15-stratum family, Holm-adjusted. Caption-matched cover pairs across the two generators.
+\end{block}
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Headline finding}
+\begin{itemize}
+\item Pooled $\Delta_\text{AUC}$: [\textit{from} \texttt{exp2\_*\_contrasts.csv}]
+\item Significant strata: [\textit{n / 15}]
+\item Verdict: [\textit{supported / mixed / not supported}]
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Power gain at N=1000}
+At N=1000 the minimum detectable $\delta$ for RQ2 is $\approx 0.047$, below the proposal threshold. RQ2 is now adequately powered.
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 13. Results: RQ3 + RQ4
+% ============================================================
+\begin{frame}{RQ3 and RQ4 -- Exploratory}
+\small
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{RQ3: Payload interaction}
+\begin{itemize}
+\item Real-vs-ML gap by payload level (low / med / high).
+\item Trend: [\textit{increasing / non-monotonic / flat}]
+\item Cite \texttt{exp3a\_payload\_level\_auc.png} and the source$\times$payload heatmap.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{RQ4: Branch interaction}
+\begin{itemize}
+\item Spatial source gap minus frequency source gap, pooled per branch.
+\item Pooled $\Delta\Delta$: [\textit{from} \texttt{exp4\_*\_contrasts.csv}]
+\item Cite \texttt{exp4\_spatial\_vs\_frequency.png}.
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.1cm}
+\begin{exampleblock}{Reporting convention}
+RQ3 and RQ4 are exploratory: we report point estimates and 95\% CIs, no Holm correction, no significance verdict.
+\end{exampleblock}
+\end{frame}
+
+% ============================================================
+% 14. Results: RQ5
+% ============================================================
+\begin{frame}{RQ5 -- Encryption Invariance (verification)}
+\small
+\begin{block}{Test}
+Paired DeLong between plain and AES-256-CBC stego on shared cover groups. Equivalence margin $\pm 0.025$ AUC per stratum.
+\end{block}
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Headline finding}
+\begin{itemize}
+\item Strata within margin: [\textit{n / 45}]
+\item Pooled $\Delta_\text{AUC}$: [\textit{near zero, expected}]
+\item Verdict: encryption invariant / not supported
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Why the null matters}
+A non-null result would indicate the detectors are reacting to payload structure rather than the embedding distortion itself. The null is the proposal-aligned outcome.
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 15. Limitations
+% ============================================================
+\section{Limitations}
+\begin{frame}{Limitations}
+\small
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}
+\begin{block}{Acknowledged deviations}
+\begin{itemize}
+\item ml\_b: PixArt-$\alpha$ replaced with FLUX.1-schnell (PixArt unavailable on HF Inference API).
+\item Two DCT-branch detectors vs.\ three spatial; branch contrasts pool over detectors.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.49\textwidth}
+\begin{block}{Scope-bounded}
+\begin{itemize}
+\item Two generator families only -- cannot disentangle architecture from training data in RQ2.
+\item Grayscale only; no colour information.
+\item Classical detectors only; no learned baselines.
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% 16. Contribution
+% ============================================================
+\section{Contribution}
+\begin{frame}{Contribution and Minimum Deliverable}
+\small
+\begin{block}{What this study contributes}
+\begin{itemize}
+\item Caption-matched dataset across three carrier sources under identical embedding.
+\item Training-free AUC-based comparison with DeLong and Holm correction.
+\item Pre-computed RQ verdicts and power analysis as reproducible artefacts.
+\end{itemize}
+\end{block}
+\begin{block}{Minimum deliverable met}
+\begin{itemize}
+\item One encryption scheme (AES-256-CBC). \checkmark
+\item Two embedding approaches: spatial LSB and frequency DCT-LSB. \checkmark
+\item Defensible answers to RQ1 and RQ2. \checkmark
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ============================================================
+% 17. Closing
+% ============================================================
+\begin{frame}[plain]
+\vfill
+\begin{center}
+{\color{umorange}\rule{0.32\textwidth}{2pt}}\\[14pt]
+{\LARGE\bfseries\color{umdark}Thank you}\\[10pt]
+{\large\color{umgray}Questions and Discussion}\\[16pt]
+{\small\color{umgray}Code and run artefacts: \texttt{runs/<id>/}}\\[14pt]
+{\color{umorange}\rule{0.32\textwidth}{2pt}}
+\end{center}
+\vfill
+\end{frame}
+
+\end{document}

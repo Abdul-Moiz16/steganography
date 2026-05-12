@@ -127,7 +127,12 @@ def _list_runs() -> list[dict]:
         if meta and not config.get("profile"):
             config.setdefault("profile", meta.get("profile"))
         if meta:
-            for key in ("payload_mode", "hardcoded_payload_bytes", "hardcoded_payload_max_bytes"):
+            for key in (
+                "payload_mode", "hardcoded_payload_bytes", "hardcoded_payload_max_bytes",
+                "n_groups", "active_methods", "active_payload_levels",
+                "active_encryption", "active_detectors",
+                "engine", "jpeg_quality", "include_bd_sens_auxiliary",
+            ):
                 if key in meta:
                     config.setdefault(key, meta.get(key))
         # Last resort: parse profile from run ID (format: {profile}_{timestamp}_p{port}).
@@ -186,7 +191,12 @@ def _get_run_detail(run_id: str) -> dict:
     if meta and not config.get("profile"):
         config.setdefault("profile", meta.get("profile"))
     if meta:
-        for key in ("payload_mode", "hardcoded_payload_bytes", "hardcoded_payload_max_bytes"):
+        for key in (
+            "payload_mode", "hardcoded_payload_bytes", "hardcoded_payload_max_bytes",
+            "n_groups", "active_methods", "active_payload_levels",
+            "active_encryption", "active_detectors",
+            "engine", "jpeg_quality", "include_bd_sens_auxiliary",
+        ):
             if key in meta:
                 config.setdefault(key, meta.get(key))
     # Last resort: parse profile from run ID (format: {profile}_{timestamp}_p{port}).

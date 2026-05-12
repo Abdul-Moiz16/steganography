@@ -1,0 +1,16 @@
+rq,label,detector,method,payload_level,source,pilot_n_per_group,observed_diff,observed_se,n_tests_assumed,n_for_observed_80,n_for_observed_90,n_for_target_diff_80,target_diff_assumed
+RQ1,real vs pooled ML,chi_square_spatial,lsb,low,,40,0.04218749999999993,0.07307629265180375,9,1569,1973,1117,0.05
+RQ1,real vs pooled ML,rs,lsb,low,,40,-0.015000000000000013,0.00945637757934173,9,208,262,19,0.05
+RQ1,real vs pooled ML,sample_pairs,lsb,low,,40,-0.032500000000000084,0.023003622903070436,9,262,330,111,0.05
+RQ2,SDXL vs PixArt-α,chi_square_spatial,lsb,low,,40,-0.05125000000000002,0.0865835708641642,9,1492,1877,1568,0.05
+RQ2,SDXL vs PixArt-α,rs,lsb,low,,40,0.0,0.0,9,,,,0.05
+RQ2,SDXL vs PixArt-α,sample_pairs,lsb,low,,40,0.0,0.0,9,,,,0.05
+RQ5,plain vs encrypted,chi_square_spatial,lsb,low,ml_a,20,-1.1102230246251565e-16,0.008885233166386626,18,,,10,0.05
+RQ5,plain vs encrypted,chi_square_spatial,lsb,low,ml_b,20,0.0050000000000000044,0.007947194142390434,18,743,923,8,0.05
+RQ5,plain vs encrypted,chi_square_spatial,lsb,low,real,20,0.0050000000000000044,0.007071067811865331,18,588,731,6,0.05
+RQ5,plain vs encrypted,rs,lsb,low,ml_a,20,0.0,0.0,18,,,,0.05
+RQ5,plain vs encrypted,rs,lsb,low,ml_b,20,0.0,0.0,18,,,,0.05
+RQ5,plain vs encrypted,rs,lsb,low,real,20,0.0,0.005129891760425774,18,,,4,0.05
+RQ5,plain vs encrypted,sample_pairs,lsb,low,ml_a,20,0.0,0.0,18,,,,0.05
+RQ5,plain vs encrypted,sample_pairs,lsb,low,ml_b,20,0.0,0.0,18,,,,0.05
+RQ5,plain vs encrypted,sample_pairs,lsb,low,real,20,0.0,0.0,18,,,,0.05
