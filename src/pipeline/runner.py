@@ -89,6 +89,137 @@ _PREDICTIONS_FIELDNAMES = [
     "payload_level", "encryption", "label", "score",
 ]
 
+_QUALITY_FIELDNAMES = [
+    "group_id", "source", "method", "payload_level", "encryption",
+    "psnr", "ssim", "fsim",
+]
+
+
+def _embed_one_task(task: dict) -> dict | None:
+    """Worker entry: embed one row + compute PSNR/SSIM/FSIM.
+
+    Side-effect: writes the stego image to disk at the requested path.
+    Returns a quality-metrics dict (one row of quality_metrics_raw.csv) or
+    None on failure. Stateless and picklable.
+    """
+    from io import BytesIO
+    from PIL import Image as _PIL_Image
+
+    row = task["row"]
+    project_root = Path(task["project_root"])
+
+    def _resolve(rel_or_abs: str) -> Path:
+        p = Path(rel_or_abs)
+        return p if p.is_absolute() else (project_root / p)
+
+    payload_path = _resolve(row["payload_path"])
+    cover_path = _resolve(row["cover_path"])
+    stego_path = _resolve(row["stego_path"])
+    stego_path.parent.mkdir(parents=True, exist_ok=True)
+
+    method = row["method"]
+    if method not in ("lsb", "dct"):
+        raise ValueError(f"Unknown method: {method}")
+
+    payload_bytes = payload_path.read_bytes()
+    params = json.loads(row["embed_params"])
+    fill_rate = float(params["fill_rate"])
+
+    if method == "lsb":
+        cover_image = load_image(cover_path)
+        stego = embed_lsb(
+            cover_image=cover_image,
+            payload_bytes=payload_bytes,
+            fill_rate=fill_rate,
+            bit_depth=int(params["bit_depth"]),
+        )
+        save_png(stego, stego_path)
+        cover_for_quality = cover_image
+        stego_for_quality = stego
+    elif method == "dct":
+        cover_jpeg_bytes = load_bytes(cover_path)
+        capacity_bytes = dct_payload_capacity_bytes(cover_jpeg_bytes, fill_rate)
+        # The DCT branch slices the payload down to capacity at embedding
+        # time; replicate that here so the worker is fully stateless.
+        truncated_payload = payload_bytes[:capacity_bytes]
+        stego_bytes = embed_dct_lsb_jpeg(
+            cover_jpeg_bytes=cover_jpeg_bytes,
+            payload_bytes=truncated_payload,
+            fill_rate=fill_rate,
+            jpeg_quality=int(params["jpeg_quality"]),
+        )
+        save_bytes(stego_bytes, stego_path)
+        try:
+            cover_for_quality = _PIL_Image.open(BytesIO(cover_jpeg_bytes)).convert("L")
+            stego_for_quality = _PIL_Image.open(BytesIO(stego_bytes)).convert("L")
+        except Exception:
+            cover_for_quality = None
+            stego_for_quality = None
+    else:
+        raise ValueError(f"Unknown method: {method}")
+
+    if not task.get("compute_quality", True) or cover_for_quality is None:
+        return {
+            "group_id": row["group_id"],
+            "source": row["source"],
+            "method": method,
+            "payload_level": row["payload_level"],
+            "encryption": row["encryption"],
+            "psnr": "",
+            "ssim": "",
+            "fsim": "",
+        }
+
+    try:
+        p = float(_compute_psnr(cover_for_quality, stego_for_quality))
+    except Exception:
+        p = None
+    try:
+        s = float(_compute_ssim(cover_for_quality, stego_for_quality))
+    except Exception:
+        s = None
+    f = _compute_fsim_safe(cover_for_quality, stego_for_quality)
+
+    return {
+        "group_id": row["group_id"],
+        "source": row["source"],
+        "method": method,
+        "payload_level": row["payload_level"],
+        "encryption": row["encryption"],
+        "psnr": "" if p is None else p,
+        "ssim": "" if s is None else s,
+        "fsim": "" if f is None else f,
+    }
+
+
+def _load_existing_quality_keys(path: Path) -> set[tuple]:
+    """Parse an existing quality_metrics_raw.csv and return completed keys.
+
+    Same tolerance pattern as _load_existing_prediction_keys: missing file,
+    empty file, foreign header, truncated last line all handled.
+    """
+    if not path.exists() or path.stat().st_size == 0:
+        return set()
+    keys: set[tuple] = set()
+    with path.open(newline="") as f:
+        reader = csv.reader(f)
+        try:
+            header = next(reader)
+        except StopIteration:
+            return set()
+        if header != _QUALITY_FIELDNAMES:
+            return set()
+        for row in reader:
+            if len(row) != len(_QUALITY_FIELDNAMES):
+                continue
+            try:
+                keys.add((
+                    int(row[0]), row[1], row[2], row[3], row[4],
+                ))
+            except (ValueError, IndexError):
+                continue
+    return keys
+
 
 def _score_path(detector: str, path: Path, jpeg_quality: int) -> float:
     """Stateless detector dispatch used by both sequential and parallel paths."""
@@ -448,12 +579,25 @@ class PipelineRunner:
         stego_manifest_path: Path,
         execute: bool = False,
         quality_metrics_path: Path | None = None,
+        *,
+        n_workers: int | None = None,
     ) -> int:
         """Create stego artifacts from manifest rows.
 
         With ``execute=False`` this is a dry-run counter only.
-        When *quality_metrics_path* is provided and *execute* is True, PSNR and
-        SSIM are computed for each LSB pair and written to that path.
+        When *quality_metrics_path* is provided and *execute* is True, PSNR,
+        SSIM and FSIM are computed per cover/stego pair and appended to that
+        path incrementally so a partial run can resume.
+
+        Embedding work is dispatched to a multiprocessing pool. Workers are
+        stateless and picklable; they load the cover, embed, compute the
+        quality trio, save the stego image, and return one quality row.
+        On re-run, rows whose ``(group_id, source, method, payload_level,
+        encryption)`` key is already in the quality CSV are skipped.
+
+        FSIM uses ``torch + piq`` which is heavy to import; default
+        ``n_workers`` is intentionally modest (``cpu_count // 2``, capped at
+        6) so each worker amortises that startup cost over many rows.
         """
         from tqdm import tqdm
 
@@ -461,83 +605,99 @@ class PipelineRunner:
         if not execute:
             return len(rows)
 
-        quality_rows: list[dict] = []
-        _QUALITY_FIELDS = ["group_id", "source", "method", "payload_level", "encryption", "psnr", "ssim", "fsim"]
-
-        for row in tqdm(rows, desc="Embedding", unit="img"):
-            payload_bytes = self._resolve_manifest_path(row["payload_path"]).read_bytes()
-            params = json.loads(row["embed_params"])
-            method = row["method"]
-            stego_path = self._resolve_manifest_path(row["stego_path"])
-            stego_path.parent.mkdir(parents=True, exist_ok=True)
-            if method == "lsb":
-                cover_image = load_image(self._resolve_manifest_path(row["cover_path"]))
-                stego = embed_lsb(
-                    cover_image=cover_image,
-                    payload_bytes=payload_bytes,
-                    fill_rate=float(params["fill_rate"]),
-                    bit_depth=int(params["bit_depth"]),
-                )
-                save_png(stego, stego_path)
-                if quality_metrics_path is not None:
-                    psnr_val, ssim_val, fsim_val = self._compute_quality_pair(
-                        cover_image, stego
-                    )
-                    quality_rows.append({
-                        "group_id": row["group_id"],
-                        "source": row["source"],
-                        "method": method,
-                        "payload_level": row["payload_level"],
-                        "encryption": row["encryption"],
-                        "psnr": "" if psnr_val is None else psnr_val,
-                        "ssim": "" if ssim_val is None else ssim_val,
-                        "fsim": "" if fsim_val is None else fsim_val,
-                    })
-            elif method == "dct":
-                cover_jpeg_bytes = load_bytes(self._resolve_manifest_path(row["cover_path"]))
-                payload_bytes = self._payload_bytes_for_dct_row(
-                    cover_jpeg_bytes,
-                    payload_bytes,
-                    fill_rate=float(params["fill_rate"]),
-                )
-                stego_bytes = embed_dct_lsb_jpeg(
-                    cover_jpeg_bytes=cover_jpeg_bytes,
-                    payload_bytes=payload_bytes,
-                    fill_rate=float(params["fill_rate"]),
-                    jpeg_quality=int(params["jpeg_quality"]),
-                )
-                save_bytes(stego_bytes, stego_path)
-                if quality_metrics_path is not None:
-                    # Decode both JPEG byte streams to grayscale images for the
-                    # standard PSNR / SSIM / FSIM trio. The proposal asks for
-                    # the same quality trio across both branches so Exp 4 can
-                    # compare embedding fidelity, not just AUC.
-                    try:
-                        from io import BytesIO
-                        from PIL import Image as _PIL_Image
-                        cover_img = _PIL_Image.open(BytesIO(cover_jpeg_bytes)).convert("L")
-                        stego_img = _PIL_Image.open(BytesIO(stego_bytes)).convert("L")
-                        psnr_val, ssim_val, fsim_val = self._compute_quality_pair(
-                            cover_img, stego_img
-                        )
-                    except Exception:
-                        psnr_val = ssim_val = fsim_val = None
-                    quality_rows.append({
-                        "group_id": row["group_id"],
-                        "source": row["source"],
-                        "method": method,
-                        "payload_level": row["payload_level"],
-                        "encryption": row["encryption"],
-                        "psnr": "" if psnr_val is None else psnr_val,
-                        "ssim": "" if ssim_val is None else ssim_val,
-                        "fsim": "" if fsim_val is None else fsim_val,
-                    })
-            else:
-                raise ValueError(f"Unknown method: {method}")
-
-        if quality_metrics_path is not None and quality_rows:
+        emit_quality = quality_metrics_path is not None
+        if emit_quality:
             quality_metrics_path.parent.mkdir(parents=True, exist_ok=True)
-            write_rows_csv(quality_metrics_path, quality_rows, fieldnames=_QUALITY_FIELDS)
+
+        # Resume: drop rows whose quality entry is already on disk.
+        done_keys: set[tuple] = (
+            _load_existing_quality_keys(quality_metrics_path) if emit_quality else set()
+        )
+
+        def _row_key(row: dict) -> tuple:
+            return (
+                int(row["group_id"]), row["source"], row["method"],
+                row["payload_level"], row["encryption"],
+            )
+
+        pending_rows = [r for r in rows if not (emit_quality and _row_key(r) in done_keys)]
+
+        if not pending_rows and not emit_quality:
+            return len(rows)
+        if not pending_rows:
+            return len(rows)
+
+        tasks = [
+            {
+                "row": row,
+                "project_root": str(self.config.project_root),
+                "compute_quality": emit_quality,
+            }
+            for row in pending_rows
+        ]
+
+        if n_workers is None:
+            n_workers = max(1, min(6, (os.cpu_count() or 2) // 2))
+        chunksize = max(1, len(tasks) // max(1, n_workers * 6))
+
+        file_needs_header = emit_quality and (
+            not quality_metrics_path.exists() or quality_metrics_path.stat().st_size == 0
+        )
+        if emit_quality and not file_needs_header and not done_keys:
+            # Foreign/corrupt header -- start fresh.
+            quality_metrics_path.unlink()
+            file_needs_header = True
+
+        if emit_quality:
+            fh = quality_metrics_path.open("a", newline="")
+            writer = csv.DictWriter(fh, fieldnames=_QUALITY_FIELDNAMES)
+            if file_needs_header:
+                writer.writeheader()
+                fh.flush()
+        else:
+            fh = None
+            writer = None
+
+        try:
+            if n_workers <= 1:
+                iterator = (
+                    _embed_one_task(t)
+                    for t in tqdm(tasks, desc="Embedding", unit="img")
+                )
+                for quality_row in iterator:
+                    if quality_row is None or writer is None:
+                        continue
+                    key = (int(quality_row["group_id"]), quality_row["source"],
+                           quality_row["method"], quality_row["payload_level"],
+                           quality_row["encryption"])
+                    if key in done_keys:
+                        continue
+                    writer.writerow(quality_row)
+                    done_keys.add(key)
+                    fh.flush()
+            else:
+                with _mp.Pool(processes=n_workers) as pool:
+                    iterator = pool.imap_unordered(
+                        _embed_one_task, tasks, chunksize=chunksize,
+                    )
+                    for quality_row in tqdm(
+                        iterator, total=len(tasks),
+                        desc=f"Embedding ({n_workers} workers)",
+                        unit="img",
+                    ):
+                        if quality_row is None or writer is None:
+                            continue
+                        key = (int(quality_row["group_id"]), quality_row["source"],
+                               quality_row["method"], quality_row["payload_level"],
+                               quality_row["encryption"])
+                        if key in done_keys:
+                            continue
+                        writer.writerow(quality_row)
+                        done_keys.add(key)
+                        fh.flush()
+        finally:
+            if fh is not None:
+                fh.close()
 
         return len(rows)
 

@@ -18,8 +18,10 @@ import argparse
 import gc
 import hashlib
 import json
+import os
 import random
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -450,6 +452,60 @@ def generate_ml_covers_from_prompts(
         except Exception as exc:  # noqa: BLE001 — we record and continue
             return None, f"{type(exc).__name__}: {str(exc)[:200]}"
 
+    # Concurrency only helps for I/O-bound backends (HF inference_api). Local
+    # diffusers pipelines share GPU state and are not thread-safe; the stub
+    # generator is trivially safe. Default 4 concurrent requests for the API
+    # path; can be overridden via the ML_GEN_CONCURRENCY env var.
+    if engine == "diffusers":
+        gen_concurrency = 1
+    else:
+        try:
+            gen_concurrency = max(1, int(os.environ.get("ML_GEN_CONCURRENCY", "4")))
+        except ValueError:
+            gen_concurrency = 4
+
+    def _run_prompts(
+        prompts: list[dict],
+        source: str,
+        generator,
+        desc: str,
+    ) -> tuple[list[dict], list[dict]]:
+        """Generate one image per prompt, returning (produced_rows, failures)."""
+        produced: list[dict] = []
+        failures: list[dict] = []
+        if gen_concurrency <= 1:
+            for row in tqdm(prompts, desc=desc, unit="img"):
+                manifest_row, err = _attempt_one(row, source, generator)
+                if manifest_row is not None:
+                    produced.append(manifest_row)
+                else:
+                    failures.append({"prompt_row": row, "error": err})
+                    print(f"  [warn] {source} group {row['group_id']} failed after retries: {err}")
+            return produced, failures
+
+        # Parallel path. HF InferenceClient is thread-safe; httpx releases the
+        # GIL during the HTTP call so multiple threads make real progress.
+        with ThreadPoolExecutor(max_workers=gen_concurrency) as pool:
+            futures = {
+                pool.submit(_attempt_one, row, source, generator): row
+                for row in prompts
+            }
+            for fut in tqdm(
+                as_completed(futures), total=len(futures),
+                desc=f"{desc} ({gen_concurrency} threads)", unit="img",
+            ):
+                row = futures[fut]
+                try:
+                    manifest_row, err = fut.result()
+                except Exception as exc:  # noqa: BLE001 -- recorded as failure
+                    manifest_row, err = None, f"{type(exc).__name__}: {str(exc)[:200]}"
+                if manifest_row is not None:
+                    produced.append(manifest_row)
+                else:
+                    failures.append({"prompt_row": row, "error": err})
+                    print(f"  [warn] {source} group {row['group_id']} failed after retries: {err}")
+        return produced, failures
+
     all_failures: list[dict[str, object]] = []
 
     for source in ("ml_a", "ml_b"):
@@ -459,17 +515,11 @@ def generate_ml_covers_from_prompts(
             ml_a_model_id=ml_a_model_id,
             ml_b_model_id=ml_b_model_id,
         )
-        produced_rows: list[dict] = []
-        failed_rows: list[dict] = []
 
         # Pass 1: every prompt.
-        for row in tqdm(prompt_rows, desc=f"Generating {source}", unit="img"):
-            manifest_row, err = _attempt_one(row, source, generator)
-            if manifest_row is not None:
-                produced_rows.append(manifest_row)
-            else:
-                failed_rows.append({"prompt_row": row, "error": err})
-                print(f"  [warn] {source} group {row['group_id']} failed after retries: {err}")
+        produced_rows, failed_rows = _run_prompts(
+            prompt_rows, source, generator, f"Generating {source}",
+        )
 
         # Pass 2: re-attempt anything that failed (transient backend recovery).
         if failed_rows:
@@ -478,13 +528,11 @@ def generate_ml_covers_from_prompts(
                 f"after a 30s breather ..."
             )
             _time.sleep(30)
-            still_failed: list[dict] = []
-            for entry in failed_rows:
-                manifest_row, err = _attempt_one(entry["prompt_row"], source, generator)
-                if manifest_row is not None:
-                    produced_rows.append(manifest_row)
-                else:
-                    still_failed.append({"prompt_row": entry["prompt_row"], "error": err})
+            retry_rows = [entry["prompt_row"] for entry in failed_rows]
+            retry_produced, still_failed = _run_prompts(
+                retry_rows, source, generator, f"Retrying {source}",
+            )
+            produced_rows.extend(retry_produced)
             failed_rows = still_failed
 
         # Record any permanent failures so the user can target a follow-up rescue.
