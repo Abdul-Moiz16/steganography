@@ -76,6 +76,26 @@ def test_png_analyze_returns_three_spatial_scores() -> None:
         assert isinstance(s.score, float)
 
 
+def test_rs_score_is_normalised_by_image_size() -> None:
+    """RS in the toolbox is divided by total 2x2-group count so the
+    score is image-size-invariant; the pipeline's raw value scales with
+    the number of groups, but the toolbox display needs a number a user
+    can interpret without knowing the resolution. We exercise the
+    invariant: the same Bernoulli-pixel content at two resolutions
+    should give comparable RS rates (within an order of magnitude),
+    even though the underlying raw counts differ by 4x.
+    """
+    small = analyze(_make_png_bytes(size=(128, 128)), "cover.png")
+    large = analyze(_make_png_bytes(size=(256, 256)), "cover.png")
+    rs_small = next(s.score for s in small.scores if s.detector == "RS Analysis")
+    rs_large = next(s.score for s in large.scores if s.detector == "RS Analysis")
+    # Both should be in the same broad band; if normalisation were missing,
+    # the larger image would have ~4x the raw count.
+    assert 0.0 <= rs_small <= 2.0
+    assert 0.0 <= rs_large <= 2.0
+    assert abs(rs_small - rs_large) < 0.2
+
+
 # ── JPEG path (DCT-LSB / JSteg) ───────────────────────────────────────────────
 
 def test_jpeg_encode_decode_roundtrip() -> None:

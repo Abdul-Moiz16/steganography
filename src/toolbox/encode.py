@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import secrets
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,6 +13,19 @@ from src.embedding.lsb import embed_lsb
 SUPPORTED_FORMATS = (".png", ".jpg", ".jpeg")
 HEADER_BYTES = 4  # 4-byte big-endian length prefix; matches src/toolbox/decode.py.
 DCT_JPEG_QUALITY = 95  # re-saves the stego at the same Q the pipeline uses.
+
+# Target fill rates for the demo. Real user messages are tiny (kilobits at
+# most) and would touch < 1% of the LSB plane -- far below the detection
+# threshold of the classical detectors in this study. We pad the embedded
+# payload with random bytes to reach a clearly-detectable fill rate; the
+# 4-byte length header in the embedded payload lets the decoder return
+# only the user's message, so the padding is invisible to the user but
+# present to the detector. Without this pad, "encode -> analyze" demos
+# always show "Cover-like" even on a legitimate stego.
+DEMO_FILL_RATE_PNG = 0.25   # 25% of LSB plane
+DEMO_FILL_RATE_JPEG = 0.50  # 50% of eligible non-zero AC coefficients
+                            # DCT detectors are less sensitive than spatial ones;
+                            # we pad more aggressively so the demo lights them up.
 
 @dataclass
 class StegOutput:
@@ -30,10 +44,20 @@ def encode(image_bytes: bytes, filename: str, message: str) -> StegOutput:
         return _encode_jpeg(image_bytes, payload)
 
 def _encode_png(image_bytes: bytes, payload: bytes) -> StegOutput:
+    """Spatial LSB embedding via src.embedding.lsb.embed_lsb.
+
+    Pads the payload with random bytes to reach DEMO_FILL_RATE_PNG so
+    classical detectors can see the embedding during demos; the 4-byte
+    length header in ``payload`` keeps decode message-only.
+    """
     image = Image.open(io.BytesIO(image_bytes))
     total_pixels = image.width * image.height
-    fill_rate = _compute_fill_rate(len(payload), total_pixels)
-    stego = embed_lsb(image, payload, fill_rate)
+    target_bytes = max(len(payload), int(total_pixels * DEMO_FILL_RATE_PNG / 8))
+    if target_bytes > total_pixels // 8:
+        target_bytes = total_pixels // 8  # never exceed cover capacity
+    padded = _pad_with_random(payload, target_bytes)
+    fill_rate = _compute_fill_rate(len(padded), total_pixels)
+    stego = embed_lsb(image, padded, fill_rate)
     buf = io.BytesIO()
     stego.save(buf, format="PNG")
     return StegOutput(image_bytes=buf.getvalue(), format="png")
@@ -42,11 +66,10 @@ def _encode_png(image_bytes: bytes, payload: bytes) -> StegOutput:
 def _encode_jpeg(image_bytes: bytes, payload: bytes) -> StegOutput:
     """JSteg-style DCT-LSB embedding via src.embedding.dct.embed_dct_lsb_jpeg.
 
-    Always embeds at fill_rate=1.0 (use the full eligible-coefficient
-    pool); the embedder only writes the first len(payload)*8 positions
-    and leaves the rest untouched, so the decoder reads at fill_rate=1.0
-    too. The 4-byte big-endian length prefix in ``payload`` lets the
-    decoder know how many bytes to extract.
+    Pads the payload with random bytes to reach DEMO_FILL_RATE_JPEG of the
+    eligible AC-coefficient pool, so the frequency-branch detectors can
+    see the embedding during demos. The 4-byte length header in ``payload``
+    means the decoder still returns only the user's message.
     """
     capacity_full = dct_payload_capacity_bytes(image_bytes, fill_rate=1.0)
     if len(payload) > capacity_full:
@@ -54,10 +77,25 @@ def _encode_jpeg(image_bytes: bytes, payload: bytes) -> StegOutput:
             f"Payload too large for JPEG cover: needs {len(payload)} bytes, "
             f"DCT capacity is {capacity_full} bytes at 100% fill."
         )
+    target_bytes = max(len(payload), int(capacity_full * DEMO_FILL_RATE_JPEG))
+    target_bytes = min(target_bytes, capacity_full)
+    padded = _pad_with_random(payload, target_bytes)
     stego_bytes = embed_dct_lsb_jpeg(
-        image_bytes, payload, fill_rate=1.0, jpeg_quality=DCT_JPEG_QUALITY,
+        image_bytes, padded, fill_rate=1.0, jpeg_quality=DCT_JPEG_QUALITY,
     )
     return StegOutput(image_bytes=stego_bytes, format="jpeg")
+
+
+def _pad_with_random(payload: bytes, target_bytes: int) -> bytes:
+    """Append cryptographically-random bytes so ``len(result) == target_bytes``.
+
+    No-op when ``target_bytes <= len(payload)``. The random padding lives
+    after the user's message; the decoder reads the length header and
+    returns only the message bytes, so the padding is invisible.
+    """
+    if target_bytes <= len(payload):
+        return payload
+    return payload + secrets.token_bytes(target_bytes - len(payload))
 
 def _compute_fill_rate(payload_bytes: int, total_pixels: int, bit_depth: int = 1) -> float: # returns fill rate needed to fit payload in image
     bits_needed = payload_bytes * 8

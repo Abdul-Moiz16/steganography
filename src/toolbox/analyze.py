@@ -32,22 +32,36 @@ def analyze(image_bytes: bytes,filename: str) -> AnalyzeResult:
 
 
 def _analyze_png(image_bytes: bytes) -> AnalyzeResult:
-    # create a AnalyzeResult object with all the scores for the corresponding embedding method
     img = Image.open(io.BytesIO(image_bytes))
 
-    #Run through test
     chi_score = chi_square_spatial_score(img)
-    rs_score = rs_analysis_score(img)
+    rs_score = _normalised_rs(img)
     sp_score = sample_pairs_score(img)
 
-    #Save the score
     score_list = [
         DetectorScore(detector="Chi-Square (Spatial)", score=chi_score),
         DetectorScore(detector="RS Analysis", score=rs_score),
-        DetectorScore(detector="Sample Pairs", score=sp_score)
-    ]    
-    
+        DetectorScore(detector="Sample Pairs", score=sp_score),
+    ]
     return AnalyzeResult(scores=score_list, format="png")
+
+
+def _normalised_rs(image: Image.Image) -> float:
+    """Image-size-invariant RS rate.
+
+    The pipeline's :func:`rs_analysis_score` returns the raw mask-
+    disagreement count ``|R_m - R_-m| + |S_m - S_-m|``, which scales
+    with the number of 2x2 pixel groups in the image. AUC-based pipeline
+    comparisons don't care about that scaling (ranks are preserved), but
+    a single-image toolbox readout needs a number that doesn't depend on
+    cover size. We normalise by the total 2x2 group count so the result
+    is roughly a per-group disagreement rate in [0, 2].
+    """
+    raw = rs_analysis_score(image)
+    img = image.convert("L")
+    w, h = img.size
+    total_groups = max(1, (h // 2) * (w // 2))
+    return raw / total_groups
 
 def _analyze_jpeg(image_bytes: bytes) -> AnalyzeResult:
     """Frequency-branch detectors: chi^2-DCT + Calibration chi^2.

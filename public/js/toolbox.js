@@ -1,3 +1,43 @@
+// Per-detector interpretation thresholds.
+//
+// Different detectors use different score conventions, so a unified percent
+// bar is meaningless. We map each detector's raw score to a 3-level
+// "Cover-like / Suspect / Likely stego" verdict using thresholds picked
+// from the empirical distribution observed in the pipeline runs.
+const DETECTOR_INTERPRETERS = {
+    'Chi-Square (Spatial)': (s) => {
+        // -chi_stat/df: close to 0 = balanced PoVs (stego); very negative = unbalanced (cover).
+        if (s > -0.1) return { level: 'high', label: 'Likely stego' };
+        if (s > -2.0) return { level: 'moderate', label: 'Suspect' };
+        return { level: 'low', label: 'Cover-like' };
+    },
+    'Chi-Square (DCT)': (s) => {
+        if (s > -0.1) return { level: 'high', label: 'Likely stego' };
+        if (s > -2.0) return { level: 'moderate', label: 'Suspect' };
+        return { level: 'low', label: 'Cover-like' };
+    },
+    'Calibration Chi-Square': (s) => {
+        // Raw chi-square distance: larger = more divergent from cover-like.
+        if (s > 30) return { level: 'high', label: 'Likely stego' };
+        if (s > 8)  return { level: 'moderate', label: 'Suspect' };
+        return { level: 'low', label: 'Cover-like' };
+    },
+    'RS Analysis': (s) => {
+        // Toolbox returns the raw count normalised by total 2x2 groups
+        // (see src/toolbox/analyze.py::_normalised_rs); roughly 0..2.
+        if (s > 0.15)  return { level: 'high', label: 'Likely stego' };
+        if (s > 0.05) return { level: 'moderate', label: 'Suspect' };
+        return { level: 'low', label: 'Cover-like' };
+    },
+    'Sample Pairs': (s) => {
+        if (s > 0.2)  return { level: 'high', label: 'Likely stego' };
+        if (s > 0.05) return { level: 'moderate', label: 'Suspect' };
+        return { level: 'low', label: 'Cover-like' };
+    },
+};
+
+const _DEFAULT_INTERPRET = () => ({ level: 'moderate', label: '—' });
+
 class ToolboxApp {
     constructor() {
         this._state = { encode: null, decode: null, analyze: null };
@@ -7,6 +47,7 @@ class ToolboxApp {
             this._state[tab] = file;
             document.getElementById(`btn-${tab}`).disabled = !file;
             this._clearResult(tab);
+            this._refreshMethodHint(tab, file);
         });
     }
 
@@ -89,19 +130,23 @@ class ToolboxApp {
         document.getElementById('result-analyze-label').textContent =
             `Detector scores — ${data.format.toUpperCase()}`;
         document.getElementById('scores-list').innerHTML = data.scores.map(s => {
-            const pct = Math.min(100, Math.round(s.score * 100));
-            let cls;
-            if (pct >= 67)      cls = 'high';
-            else if (pct >= 34) cls = 'moderate';
-            else                cls = 'low';
+            const interp = (DETECTOR_INTERPRETERS[s.detector] || _DEFAULT_INTERPRET)(s.score);
             return `<div class="score-row">
                 <div class="score-name">${fmtDetector(s.detector)}</div>
-                <div class="score-bar-wrap">
-                    <div class="score-bar ${cls}" style="width:${pct}%"></div>
-                </div>
-                <div class="score-label ${cls}">${pct}%</div>
+                <div class="score-value">${s.score.toFixed(4)}</div>
+                <div class="score-label ${interp.level}">${interp.label}</div>
             </div>`;
         }).join('');
+    }
+
+    _refreshMethodHint(tab, file) {
+        if (tab !== 'encode') return;
+        const hint = document.getElementById('encode-method-hint');
+        if (!hint) return;
+        if (!file) { hint.textContent = ''; hint.style.display = 'none'; return; }
+        const method = file.format === 'png' ? 'spatial LSB (k=1, row-major)' : 'DCT-LSB (JSteg-style, JPEG Q=95)';
+        hint.textContent = `Embedding method: ${method}`;
+        hint.style.display = 'block';
     }
 
     _showError(tab, message) {
