@@ -29,6 +29,8 @@ tests/output/
 # Heavy runs (regenerable; too large for git)
 runs/prototype_full_20260512_010050_p8765/
 runs/prototype_full_20260512_113925_p8765/
+runs/prototype_full_20260512_154340_p8765/
+runs/prototype_full_20260513_005357_p8765/
 
 # Claude Code local session state
 .claude/

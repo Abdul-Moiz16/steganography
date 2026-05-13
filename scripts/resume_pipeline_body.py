@@ -40,7 +40,7 @@ def _load_config_snapshot(run_dir: Path):
     snap = json.loads(snap_path.read_text())
 
     project_root = Path.cwd().resolve()
-    return PipelineConfig(
+    kwargs = dict(
         project_root=project_root,
         image_size=tuple(snap.get("image_size", [512, 512])),
         n_groups=snap["n_groups"],
@@ -56,6 +56,11 @@ def _load_config_snapshot(run_dir: Path):
         active_methods=tuple(snap.get("active_methods", ["lsb", "dct"])),
         active_payload_levels=tuple(snap.get("active_payload_levels", ["low", "medium", "high"])),
     )
+    if snap.get("active_detectors"):
+        kwargs["active_detectors"] = tuple(snap["active_detectors"])
+    if snap.get("active_encryption"):
+        kwargs["active_encryption"] = tuple(snap["active_encryption"])
+    return PipelineConfig(**kwargs)
 
 
 def resume(run_dir: Path) -> None:

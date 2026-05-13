@@ -78,7 +78,7 @@ def test_prototype_full_cardinality_and_detector_coverage(tmp_path: Path) -> Non
     assert len(lsb_rows) == 1800
     assert len(dct_rows) == 1800
 
-    # All 5 detectors must be reachable (3 spatial + 2 frequency).
+    # All 6 detectors must be reachable (3 spatial + 3 frequency).
     assert runner._detectors_for_method("lsb") == [
         "rs",
         "chi_square_spatial",
@@ -87,6 +87,7 @@ def test_prototype_full_cardinality_and_detector_coverage(tmp_path: Path) -> Non
     assert runner._detectors_for_method("dct") == [
         "chi_square_dct",
         "calibration_chi_square",
+        "chi_square_dct_tiled",
     ]
 
 

@@ -39,6 +39,12 @@ EQUIVALENCE_MARGIN = 0.025   # RQ5: encryption is "invariant" if |ΔAUC|<=0.025
 CI_Z = 1.96                  # 95% CI in Wald form
 MIN_PAIRS_CONFIRMATORY = 20  # mirrors PipelineConfig.MIN_N_GROUPS_CONFIRMATORY
 
+# Pre-registered minimum practically meaningful ΔAUC. Strata that reach
+# statistical significance but |diff| < PROPOSAL_DELTA_MIN are flagged as
+# trivial; verdicts require at least one stratum that is both statistically
+# significant AND practically relevant in the same direction.
+PROPOSAL_DELTA_MIN = 0.05
+
 
 # ── Generic helpers ──────────────────────────────────────────────────────────
 
@@ -94,15 +100,19 @@ def _verdict_from_holm_family(
     rows: list[dict],
     *,
     alpha: float = 0.05,
+    delta_min: float = PROPOSAL_DELTA_MIN,
 ) -> dict:
-    """Classify a confirmatory family (RQ1, RQ2) where Holm-adjusted p<alpha
-    matters. Direction consistency informs whether the verdict is unified
-    or mixed.
+    """Classify a confirmatory family (RQ1, RQ2) using both statistical
+    significance (Holm-adjusted p<alpha) AND practical relevance
+    (|diff| >= delta_min). Verdicts require at least one stratum that
+    passes both gates in a consistent direction.
     """
     n_strata = len(rows)
     n_underpowered = 0
     n_significant_pos = 0
     n_significant_neg = 0
+    n_practical_pos = 0
+    n_practical_neg = 0
     for r in rows:
         n_a = _maybe_float(r.get("n_pos_a")) or 0
         n_b = _maybe_float(r.get("n_pos_b")) or 0
@@ -115,10 +125,16 @@ def _verdict_from_holm_family(
         if p_holm <= alpha:
             if diff > 0:
                 n_significant_pos += 1
+                if diff >= delta_min:
+                    n_practical_pos += 1
             elif diff < 0:
                 n_significant_neg += 1
+                if -diff >= delta_min:
+                    n_practical_neg += 1
 
     n_significant = n_significant_pos + n_significant_neg
+    n_practical = n_practical_pos + n_practical_neg
+    n_trivial = n_significant - n_practical
     pooled = _pooled_meta(rows) or {}
 
     if n_strata == 0:
@@ -127,6 +143,10 @@ def _verdict_from_holm_family(
         verdict = "inconclusive_underpowered"
     elif n_significant == 0:
         verdict = "not_supported"
+    elif n_practical == 0:
+        verdict = "trivial"
+    elif n_practical_pos > 0 and n_practical_neg > 0:
+        verdict = "mixed"
     elif n_significant_pos > 0 and n_significant_neg > 0:
         verdict = "mixed"
     else:
@@ -137,21 +157,35 @@ def _verdict_from_holm_family(
         "n_significant_holm_0_05": n_significant,
         "n_significant_positive": n_significant_pos,
         "n_significant_negative": n_significant_neg,
+        "n_practical_holm_0_05": n_practical,
+        "n_practical_positive": n_practical_pos,
+        "n_practical_negative": n_practical_neg,
+        "n_significant_trivial": n_trivial,
+        "delta_min": delta_min,
         "n_underpowered_strata": n_underpowered,
         "verdict": verdict,
         **pooled,
     }
 
 
-def _verdict_from_ci_family(rows: list[dict], *, alpha: float = 0.05) -> dict:
+def _verdict_from_ci_family(
+    rows: list[dict],
+    *,
+    alpha: float = 0.05,
+    delta_min: float = PROPOSAL_DELTA_MIN,
+) -> dict:
     """Classify an exploratory family (RQ4) where the 95% CI excluding zero
-    is the de-facto significance criterion. RQ3's payload-interaction table
-    is treated separately by ``_verdict_for_rq3`` because its rows are
-    per-(source × payload) AUCs rather than contrasts.
+    is the de-facto significance criterion. Like the Holm family, the
+    verdict requires at least one stratum that is both significant AND
+    practically relevant (|diff| >= delta_min) in a consistent direction.
+    RQ3 uses ``_verdict_for_rq3`` instead because its rows are per-
+    (source × payload) AUCs rather than contrasts.
     """
     n_strata = len(rows)
     n_significant_pos = 0
     n_significant_neg = 0
+    n_practical_pos = 0
+    n_practical_neg = 0
     for r in rows:
         diff = _maybe_float(r.get("diff"))
         lo = _maybe_float(r.get("ci_lo"))
@@ -160,16 +194,26 @@ def _verdict_from_ci_family(rows: list[dict], *, alpha: float = 0.05) -> dict:
             continue
         if lo > 0:
             n_significant_pos += 1
+            if diff >= delta_min:
+                n_practical_pos += 1
         elif hi < 0:
             n_significant_neg += 1
+            if -diff >= delta_min:
+                n_practical_neg += 1
 
     n_significant = n_significant_pos + n_significant_neg
+    n_practical = n_practical_pos + n_practical_neg
+    n_trivial = n_significant - n_practical
     pooled = _pooled_meta(rows) or {}
 
     if n_strata == 0:
         verdict = "no_data"
     elif n_significant == 0:
         verdict = "not_supported"
+    elif n_practical == 0:
+        verdict = "trivial"
+    elif n_practical_pos > 0 and n_practical_neg > 0:
+        verdict = "mixed"
     elif n_significant_pos > 0 and n_significant_neg > 0:
         verdict = "mixed"
     else:
@@ -180,6 +224,11 @@ def _verdict_from_ci_family(rows: list[dict], *, alpha: float = 0.05) -> dict:
         "n_significant_ci_excludes_0": n_significant,
         "n_significant_positive": n_significant_pos,
         "n_significant_negative": n_significant_neg,
+        "n_practical_ci_excludes_0": n_practical,
+        "n_practical_positive": n_practical_pos,
+        "n_practical_negative": n_practical_neg,
+        "n_significant_trivial": n_trivial,
+        "delta_min": delta_min,
         "verdict": verdict,
         **pooled,
     }
@@ -328,6 +377,7 @@ def compute_rq_verdicts(metrics_dir: Path) -> dict:
 
 _VERDICT_GLYPH = {
     "supported": "✔  supported",
+    "trivial": "≈  trivial (significant but |Δ| < δ_min)",
     "mixed": "✖  mixed",
     "not_supported": "—  not supported",
     "inconclusive_underpowered": "?  underpowered",
@@ -365,12 +415,26 @@ def render_markdown(verdicts: dict) -> str:
                 f"{v['n_significant_holm_0_05']} / {v.get('n_strata', 0)}  "
                 f"(+ {v.get('n_significant_positive', 0)}, − {v.get('n_significant_negative', 0)})"
             )
+            if "n_practical_holm_0_05" in v:
+                lines.append(
+                    f"- **Practical relevance (|Δ| ≥ {v.get('delta_min', PROPOSAL_DELTA_MIN):.3f}) among significant:** "
+                    f"{v['n_practical_holm_0_05']} / {v['n_significant_holm_0_05']}  "
+                    f"(+ {v.get('n_practical_positive', 0)}, − {v.get('n_practical_negative', 0)};  "
+                    f"trivial: {v.get('n_significant_trivial', 0)})"
+                )
         if "n_significant_ci_excludes_0" in v:
             lines.append(
                 f"- **Strata with 95% CI excluding 0:** "
                 f"{v['n_significant_ci_excludes_0']} / {v.get('n_strata', 0)}  "
                 f"(+ {v.get('n_significant_positive', 0)}, − {v.get('n_significant_negative', 0)})"
             )
+            if "n_practical_ci_excludes_0" in v:
+                lines.append(
+                    f"- **Practical relevance (|Δ| ≥ {v.get('delta_min', PROPOSAL_DELTA_MIN):.3f}) among significant:** "
+                    f"{v['n_practical_ci_excludes_0']} / {v['n_significant_ci_excludes_0']}  "
+                    f"(+ {v.get('n_practical_positive', 0)}, − {v.get('n_practical_negative', 0)};  "
+                    f"trivial: {v.get('n_significant_trivial', 0)})"
+                )
         if "n_within_margin" in v:
             lines.append(
                 f"- **Strata within ±{v['margin']:.3f} AUC margin:** "

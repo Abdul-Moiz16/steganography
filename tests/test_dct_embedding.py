@@ -25,7 +25,7 @@ from src.embedding.jpeg_dct import (
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "dct"
 EXPECTED_FIXTURE_SHA256 = {
     "cover_q95.jpg": "a1cdd92231bcadee84e6031a939237e6abfb263fc313381c14a4cf6ac9f60394",
-    "chi_square_dct_scores.csv": "775be28d9a163c0e47a738f566522bcc062a3c6946942e81a970093c016cf121",
+    "chi_square_dct_scores.csv": "ccc15fa456cbdeaf395d889abe1d09198dd574bf14c472155d3b05afb20549dc",
     "eligible_positions.csv": "237ad38a4f19a48d09dca3efa9f0463143aee00b5e0deefb65ade9f03cfb78b3",
     "matlab_jsteg_a53c.jpg": "d273c52f3058ec191bdcde763c50eb35e8fedb9321cbca8f1cddeda4dac89ac5",
     "payload_a53c.bin": "904c198ec5d08ad024c83b9c1e8b5c28ab4a6b8b2bd6ffc7e0debc65f3ce724a",

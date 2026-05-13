@@ -45,13 +45,15 @@ def test_chi_square_spatial_returns_float() -> None:
     img = Image.new("L", (64, 64), color=128)
     score = chi_square_spatial_score(img)
     assert isinstance(score, float)
-    assert 0.0 <= score <= 1.0
+    # Score is -chi_stat / df: <= 0 always; 0 only on perfectly balanced PoVs.
+    assert score <= 0.0
 
 
 def test_chi_square_dct_returns_float() -> None:
     score = chi_square_dct_score(_make_jpeg_bytes())
     assert isinstance(score, float)
-    assert 0.0 <= score <= 1.0
+    # Score is -chi_stat / df: <= 0 always.
+    assert score <= 0.0
 
 
 def test_calibration_chi_square_returns_float() -> None:

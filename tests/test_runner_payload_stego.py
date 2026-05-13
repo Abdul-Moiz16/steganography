@@ -33,7 +33,7 @@ def test_build_payload_manifest_cardinality_and_fields(
     encrypted_rows = [r for r in rows if r["encryption"] == "encrypted"]
     assert all(r["aes_key_id"] == "aes256cbc-v1" for r in encrypted_rows)
     assert all(len(r["aes_iv"]) == 32 for r in rows)
-    assert {r["fill_rate"] for r in rows} == {"0.25", "0.5", "0.75"}
+    assert {r["fill_rate"] for r in rows} == {"0.05", "0.15", "0.3"}
     assert {r["bit_depth"] for r in rows} == {"1"}
 
     sample = rows[0]
@@ -66,6 +66,10 @@ def test_build_payload_manifest_hardcoded_payload_repeats_text(project_root: Pat
         project_root=project_root,
         n_groups=1,
         image_size=(32, 32),
+        # Override the lower default fill rates so the 32x32 fixture still
+        # offers a non-trivial plaintext capacity (otherwise low=0.05 leaves
+        # < 16 bytes of stream room after AES overhead).
+        payload_fill_rates={"low": 0.25, "medium": 0.5, "high": 0.75},
         active_payload_levels=("low",),
         payload_mode=PAYLOAD_MODE_HARDCODED,
         hardcoded_payload_text="AB",

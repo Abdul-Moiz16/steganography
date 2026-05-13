@@ -94,7 +94,9 @@ def test_run_detector_stage_dry_run_and_compute_metrics(tmp_path: Path) -> None:
     )
 
     pred_rows = read_rows_csv(pred_path)
-    assert len(pred_rows) == 16
+    # 2 lsb rows * 3 spatial detectors * 2 score rows (cover+stego) +
+    # 1 dct row * 3 frequency detectors * 2 score rows = 12 + 6 = 18.
+    assert len(pred_rows) == 18
     assert all(r["score"] == "" for r in pred_rows)
 
 

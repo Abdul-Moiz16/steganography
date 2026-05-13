@@ -14,7 +14,6 @@ Reference
 from __future__ import annotations
 
 import numpy as np
-from scipy.stats import chi2
 
 from src.embedding.jpeg_dct import luminance_coefficients, read_dct_jpeg
 
@@ -34,12 +33,14 @@ def chi_square_dct_score(jpeg_bytes: bytes) -> float:
       embedder leaves them untouched (they would otherwise contribute a
       large natural-imbalance chi-square term that drowns out the
       embedding-induced flattening).
-    - Score follows the spatial-domain detector convention: return the
-      survival probability chi2.sf(chi_stat, df). A natural cover gives a
-      large chi_stat -> tiny survival probability -> score near 0; a
-      randomly-embedded stego image flattens the pairs -> small chi_stat
-      -> survival probability near 1. Larger score = stronger stego
-      evidence.
+    - Score is ``-chi_stat / df``: the Westfeld 1999 test statistic
+      preserved as a rank-monotonic, underflow-free score (the
+      ``chi2.sf(chi_stat, df)`` p-value used in older code saturates to
+      0.0 on natural cover images whose chi_stat exceeds the float64
+      representable range, losing ROC AUC rank information). Higher
+      score = stronger stego evidence: cover images have unbalanced
+      pairs (large chi_stat -> very negative score); randomly embedded
+      stego images flatten the pairs (small chi_stat -> score near 0).
     """
     ac_values = _get_ac_coefficients(jpeg_bytes)
     frequencies = _count_ac_frequencies(ac_values)
@@ -62,7 +63,7 @@ def chi_square_dct_score(jpeg_bytes: bytes) -> float:
     if pair_count <= 1:
         return 0.0
 
-    return float(chi2.sf(chi_stat, df=pair_count - 1))
+    return -float(chi_stat) / (pair_count - 1)
 
 
 _AC_MASK_8x8: np.ndarray | None = None

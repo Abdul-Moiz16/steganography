@@ -29,7 +29,11 @@ AES_CBC_BLOCK_BYTES = 16
 
 # Detector registries (mirror src/detection/statistical.py).
 SPATIAL_DETECTORS: tuple[str, ...] = ("rs", "chi_square_spatial", "sample_pairs")
-DCT_DETECTORS: tuple[str, ...] = ("chi_square_dct", "calibration_chi_square")
+DCT_DETECTORS: tuple[str, ...] = (
+    "chi_square_dct",
+    "calibration_chi_square",
+    "chi_square_dct_tiled",
+)
 ALL_DETECTORS: tuple[str, ...] = SPATIAL_DETECTORS + DCT_DETECTORS
 
 ALL_METHODS: tuple[str, ...] = ("lsb", "dct")
@@ -68,7 +72,7 @@ class PipelineConfig:
     auxiliary_bd_sens_bit_depth: int = 2
     include_bd_sens_auxiliary: bool = False
     payload_fill_rates: dict[str, float] = field(
-        default_factory=lambda: {"low": 0.25, "medium": 0.50, "high": 0.75}
+        default_factory=lambda: {"low": 0.05, "medium": 0.15, "high": 0.30}
     )
     # Profile-scoped constraints. Defaults keep the full proposal set active
     # so existing code and tests that construct PipelineConfig directly are
@@ -104,14 +108,18 @@ class PipelineConfig:
     def spatial_payload_bits(self, payload_level: str, *, bit_depth: int | None = None) -> int:
         """Return the nominal spatial payload size in bits for one payload level.
 
-        The proposal matches the three primary conditions by fill rate.
-        For spatial LSB replacement, that becomes:
-        - low:  0.25 bpp
-        - medium: 0.50 bpp
-        - high: 0.75 bpp
+        The three primary conditions are matched by LSB fill rate. The
+        defaults target operationally realistic embedding densities and
+        keep the strong detectors (RS, Sample Pairs) below saturation so
+        the carrier-source signal can show up across the whole detector
+        family:
+
+        - low:    0.05 bpp
+        - medium: 0.15 bpp
+        - high:   0.30 bpp
 
         ``BD-Sens`` is not part of the main manifest by default; callers can
-        request it explicitly by passing ``bit_depth=2`` and a 75% fill level.
+        request it explicitly by passing ``bit_depth=2``.
         """
         fill_rate = self.payload_fill_rates[payload_level]
         resolved_bit_depth = bit_depth or self.primary_lsb_bit_depth

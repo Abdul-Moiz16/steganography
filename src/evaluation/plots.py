@@ -2361,6 +2361,7 @@ _RQ_SUMMARY_SPECS = (
 
 _VERDICT_GLYPH_FIG = {
     "supported": ("[ supported ]", THEME["sig"]),
+    "trivial": ("[ trivial ]", THEME["accent"]),
     "mixed": ("[ mixed ]", THEME["accent"]),
     "not_supported": ("[ not supported ]", THEME["muted"]),
     "inconclusive_underpowered": ("[ underpowered ]", THEME["muted"]),

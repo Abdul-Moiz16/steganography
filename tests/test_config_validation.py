@@ -171,4 +171,4 @@ def test_constants_align_with_contracts() -> None:
     assert set(ALL_METHODS) == set(METHODS)
     assert set(ALL_PAYLOAD_LEVELS) == set(PAYLOAD_LEVELS)
     assert set(ALL_ENCRYPTIONS) == set(ENCRYPTION_STATES)
-    assert len(ALL_DETECTORS) == 5
+    assert len(ALL_DETECTORS) == 6

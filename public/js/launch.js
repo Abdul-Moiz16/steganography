@@ -33,6 +33,7 @@ const ADVANCED_DEFAULTS = {
         chi_square_spatial: true,
         sample_pairs: true,
         chi_square_dct: true,
+        chi_square_dct_tiled: true,
         calibration_chi_square: true,
     },
     include_bd_sens: false,
@@ -48,6 +49,7 @@ const ADV_DETECTOR_LABELS = {
     chi_square_spatial: 'Chi-Square (spatial)',
     sample_pairs: 'Sample Pairs (spatial)',
     chi_square_dct: 'Chi-Square (DCT)',
+    chi_square_dct_tiled: 'Tiled Chi-Square (DCT)',
     calibration_chi_square: 'Calibration Chi-Square (DCT)',
 };
 
@@ -65,7 +67,7 @@ function getAdvancedState() {
 // advanced-section checkboxes / inputs change.
 
 const _SPATIAL_DETECTORS = ['rs', 'chi_square_spatial', 'sample_pairs'];
-const _DCT_DETECTORS = ['chi_square_dct', 'calibration_chi_square'];
+const _DCT_DETECTORS = ['chi_square_dct', 'calibration_chi_square', 'chi_square_dct_tiled'];
 const _POWER_TARGET_AUC = 0.85;
 const _POWER_LEVEL = 0.80;
 const _ALPHA = 0.05;
@@ -328,9 +330,9 @@ function renderLaunchDrawer() {
                     ${checkbox('adv-method-dct', 'DCT-LSB (JPEG)', adv.methods.dct)}
 
                     <div class="lp-field-label">Payload levels</div>
-                    ${checkbox('adv-level-low',    'Low (0.25 bpp)',    adv.payload_levels.low)}
-                    ${checkbox('adv-level-medium', 'Medium (0.50 bpp)', adv.payload_levels.medium)}
-                    ${checkbox('adv-level-high',   'High (0.75 bpp)',   adv.payload_levels.high)}
+                    ${checkbox('adv-level-low',    'Low (0.05 bpp)',    adv.payload_levels.low)}
+                    ${checkbox('adv-level-medium', 'Medium (0.15 bpp)', adv.payload_levels.medium)}
+                    ${checkbox('adv-level-high',   'High (0.30 bpp)',   adv.payload_levels.high)}
 
                     <div class="lp-field-label">Encryption arms</div>
                     ${checkbox('adv-enc-plain',     'Plain',         adv.encryption.plain)}

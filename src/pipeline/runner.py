@@ -42,6 +42,7 @@ from src.data.manifests import (
 from src.detection.statistical import (
     calibration_chi_square_score,
     chi_square_dct_score,
+    chi_square_dct_tiled_score,
     chi_square_spatial_score,
     rs_analysis_score,
     sample_pairs_score,
@@ -231,6 +232,8 @@ def _score_path(detector: str, path: Path, jpeg_quality: int) -> float:
         return float(sample_pairs_score(load_image(path)))
     if detector == "chi_square_dct":
         return float(chi_square_dct_score(load_bytes(path)))
+    if detector == "chi_square_dct_tiled":
+        return float(chi_square_dct_tiled_score(load_bytes(path)))
     if detector == "calibration_chi_square":
         return float(calibration_chi_square_score(load_bytes(path), jpeg_quality=jpeg_quality))
     raise ValueError(f"Unknown detector: {detector}")
@@ -366,7 +369,11 @@ class PipelineRunner:
         if method == "lsb":
             branch_detectors = ("rs", "chi_square_spatial", "sample_pairs")
         elif method == "dct":
-            branch_detectors = ("chi_square_dct", "calibration_chi_square")
+            branch_detectors = (
+                "chi_square_dct",
+                "calibration_chi_square",
+                "chi_square_dct_tiled",
+            )
         else:
             raise ValueError(f"Unknown method: {method}")
         active = set(self.config.active_detectors)
@@ -1255,6 +1262,8 @@ class PipelineRunner:
             return float(sample_pairs_score(load_image(path)))
         if detector == "chi_square_dct":
             return float(chi_square_dct_score(load_bytes(path)))
+        if detector == "chi_square_dct_tiled":
+            return float(chi_square_dct_tiled_score(load_bytes(path)))
         if detector == "calibration_chi_square":
             return float(calibration_chi_square_score(
                 load_bytes(path),

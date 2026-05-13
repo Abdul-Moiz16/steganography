@@ -153,3 +153,87 @@ def test_markdown_includes_all_rqs(tmp_path: Path) -> None:
     md = render_markdown(data)
     for rq in ("RQ1", "RQ2", "RQ3", "RQ4", "RQ5"):
         assert f"## {rq}" in md
+
+
+# ── practical-significance gate (δ_min = 0.05 from the proposal) ──────────────
+
+def test_rq1_trivial_when_significant_but_below_delta_min(tmp_path: Path) -> None:
+    """Effect is statistically significant after Holm but |Δ| < 0.05, which
+    is the pre-registered minimum practically meaningful gap. The verdict
+    must be 'trivial' (not 'supported') in that case."""
+    metrics_dir = _empty_metrics(tmp_path)
+    _write_csv(metrics_dir / "exp1_rq1_real_vs_pooled_ml_contrasts.csv", [
+        {"detector": "rs", "method": "lsb", "payload_level": "low",
+         "diff": 0.01, "se": 0.001, "p": 0.0001, "p_holm": 0.0001,
+         "n_pos_a": 500, "n_neg_a": 500, "n_pos_b": 1000, "n_neg_b": 1000},
+        {"detector": "rs", "method": "lsb", "payload_level": "medium",
+         "diff": 0.02, "se": 0.001, "p": 0.0001, "p_holm": 0.0003,
+         "n_pos_a": 500, "n_neg_a": 500, "n_pos_b": 1000, "n_neg_b": 1000},
+    ])
+    rq1 = compute_rq_verdicts(metrics_dir)["verdicts"]["RQ1"]
+    assert rq1["verdict"] == "trivial"
+    assert rq1["n_significant_holm_0_05"] == 2
+    assert rq1["n_practical_holm_0_05"] == 0
+    assert rq1["n_significant_trivial"] == 2
+
+
+def test_rq1_supported_requires_practical_relevance(tmp_path: Path) -> None:
+    """Mix of trivial-significant and one practically-relevant stratum:
+    the verdict should still be 'supported' because at least one stratum
+    clears both gates in the same direction."""
+    metrics_dir = _empty_metrics(tmp_path)
+    _write_csv(metrics_dir / "exp1_rq1_real_vs_pooled_ml_contrasts.csv", [
+        {"detector": "rs", "method": "lsb", "payload_level": "low",
+         "diff": 0.01, "se": 0.001, "p": 0.0001, "p_holm": 0.0001,
+         "n_pos_a": 500, "n_neg_a": 500, "n_pos_b": 1000, "n_neg_b": 1000},
+        {"detector": "rs", "method": "lsb", "payload_level": "medium",
+         "diff": 0.07, "se": 0.005, "p": 0.0001, "p_holm": 0.0001,
+         "n_pos_a": 500, "n_neg_a": 500, "n_pos_b": 1000, "n_neg_b": 1000},
+    ])
+    rq1 = compute_rq_verdicts(metrics_dir)["verdicts"]["RQ1"]
+    assert rq1["verdict"] == "supported"
+    assert rq1["n_practical_holm_0_05"] == 1
+    assert rq1["n_practical_positive"] == 1
+
+
+def test_rq1_mixed_when_practical_effects_in_opposite_directions(tmp_path: Path) -> None:
+    """Two practically-relevant significant effects in opposite directions
+    triggers 'mixed' rather than 'supported'."""
+    metrics_dir = _empty_metrics(tmp_path)
+    _write_csv(metrics_dir / "exp1_rq1_real_vs_pooled_ml_contrasts.csv", [
+        {"detector": "rs", "method": "lsb", "payload_level": "low",
+         "diff": 0.10, "se": 0.01, "p": 0.0001, "p_holm": 0.0001,
+         "n_pos_a": 500, "n_neg_a": 500, "n_pos_b": 1000, "n_neg_b": 1000},
+        {"detector": "calibration_chi_square", "method": "dct", "payload_level": "high",
+         "diff": -0.09, "se": 0.01, "p": 0.0001, "p_holm": 0.0001,
+         "n_pos_a": 500, "n_neg_a": 500, "n_pos_b": 1000, "n_neg_b": 1000},
+    ])
+    rq1 = compute_rq_verdicts(metrics_dir)["verdicts"]["RQ1"]
+    assert rq1["verdict"] == "mixed"
+
+
+def test_rq4_trivial_when_ci_excludes_zero_but_diff_below_delta_min(tmp_path: Path) -> None:
+    """RQ4 exploratory family: CI excludes zero (significant) but the
+    effect itself is < 0.05 AUC, so the verdict should be 'trivial'."""
+    metrics_dir = _empty_metrics(tmp_path)
+    _write_csv(metrics_dir / "exp4_rq4_spatial_vs_frequency_contrasts.csv", [
+        {"detector": "rs", "payload_level": "low",
+         "diff": 0.005, "se": 0.001, "ci_lo": 0.003, "ci_hi": 0.007,
+         "z": 5.0, "p": 0.0001},
+    ])
+    rq4 = compute_rq_verdicts(metrics_dir)["verdicts"]["RQ4"]
+    assert rq4["verdict"] == "trivial"
+    assert rq4["n_significant_ci_excludes_0"] == 1
+    assert rq4["n_practical_ci_excludes_0"] == 0
+
+
+def test_markdown_includes_practical_relevance_line(tmp_path: Path) -> None:
+    metrics_dir = _empty_metrics(tmp_path)
+    _write_csv(metrics_dir / "exp1_rq1_real_vs_pooled_ml_contrasts.csv", [
+        {"detector": "rs", "method": "lsb", "payload_level": "low",
+         "diff": 0.08, "se": 0.01, "p": 0.0001, "p_holm": 0.0001,
+         "n_pos_a": 500, "n_neg_a": 500, "n_pos_b": 1000, "n_neg_b": 1000},
+    ])
+    data = compute_rq_verdicts(metrics_dir)
+    md = render_markdown(data)
+    assert "Practical relevance" in md

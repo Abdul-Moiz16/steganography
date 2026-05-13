@@ -186,7 +186,10 @@ def test_chi_square_dct_frequency_matches_legacy(jpeg_bytes: bytes) -> None:
 
 def test_chi_square_dct_score_in_range(jpeg_bytes: bytes) -> None:
     score = chi_square_dct_score(jpeg_bytes)
-    assert 0.0 <= score <= 1.0
+    # Score is -chi_stat / df: always <= 0; finite; rank-monotonic with the p-value.
+    assert isinstance(score, float)
+    assert score <= 0.0
+    assert score > -1e12  # sanity bound — natural images give chi_stat / df ~ O(10^2..10^6)
 
 
 # ── Phase 3: resume key parser ──────────────────────────────────────────────

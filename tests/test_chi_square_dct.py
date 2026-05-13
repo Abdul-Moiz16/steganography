@@ -70,9 +70,10 @@ def _independent_chi_square_score(jpeg_bytes: bytes) -> float:
     Pairs of values that swap under the magnitude-LSB embedding rule used in
     this study are (2k, 2k+1) for k>=1 on the positive side and
     (-(2k+1), -2k) for k>=1 on the negative side. Coefficients with |c| <= 1
-    are skipped because the embedder leaves them untouched. The score is the
-    survival probability of the chi-square statistic under the
-    "pairs-balanced" hypothesis: large for stego, small for cover.
+    are skipped because the embedder leaves them untouched. The reported
+    score is ``-chi_stat / df`` (rank-monotonic with the p-value but
+    underflow-free on extreme chi_stat) -- larger (less negative) for
+    stego, more negative for cover.
     """
     coeffs = luminance_coefficients(read_dct_jpeg(jpeg_bytes))
     ac_values = []
@@ -114,7 +115,7 @@ def _independent_chi_square_score(jpeg_bytes: bytes) -> float:
 
     if pair_count <= 1:
         return 0.0
-    return float(chi2.sf(chi2_stat, df=pair_count - 1))
+    return -float(chi2_stat) / (pair_count - 1)
 
 
 def _read_matlab_score_fixture() -> dict[str, dict[str, float]]:
@@ -222,8 +223,8 @@ def test_dct_chi_square_handles_multiple_sizes_qualities_and_payload_rates(
 
     assert np.isfinite(cover_score)
     assert np.isfinite(stego_score)
-    assert 0.0 <= cover_score <= 1.0
-    assert 0.0 <= stego_score <= 1.0
+    assert cover_score <= 0.0
+    assert stego_score <= 0.0
     assert stego_score >= cover_score - 0.05
 
 
@@ -255,7 +256,7 @@ def test_dct_chi_square_returns_finite_deterministic_probability() -> None:
 
     assert isinstance(score_a, float)
     assert np.isfinite(score_a)
-    assert 0.0 <= score_a <= 1.0
+    assert score_a <= 0.0
     assert score_a == score_b
 
 
@@ -291,7 +292,7 @@ def test_dct_chi_square_handles_tiny_jpeg() -> None:
 
     assert isinstance(score, float)
     assert np.isfinite(score)
-    assert 0.0 <= score <= 1.0
+    assert score <= 0.0
 
 
 def test_dct_chi_square_rejects_malformed_jpeg_bytes() -> None:
@@ -313,7 +314,7 @@ def test_dct_chi_square_handles_color_subsampled_jpeg() -> None:
     score = chi_square_dct_score(color_jpeg)
     assert isinstance(score, float)
     assert np.isfinite(score)
-    assert 0.0 <= score <= 1.0
+    assert score <= 0.0
 
 
 def test_dct_chi_square_increases_for_high_payload_jsteg_fixture() -> None:
