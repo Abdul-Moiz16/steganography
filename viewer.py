@@ -11,6 +11,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import base64
 import csv
 import json
 import os
@@ -385,6 +386,8 @@ class Handler(BaseHTTPRequestHandler):
         # Serve index.html for root
         if p in ("/", "/index.html"):
             self._serve_static(PUBLIC_DIR / "index.html")
+        elif p == "/toolbox":
+            self._serve_static(PUBLIC_DIR / "toolbox.html")
         # Serve static files from /public/
         elif p.startswith("/public/"):
             rel = p[len("/public/"):]
@@ -422,8 +425,65 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path.startswith("/api/pipeline/kill/"):
             job_id = self.path[len("/api/pipeline/kill/"):]
             self._kill_job(job_id)
+        elif self.path == "/api/toolbox/encode":
+            self._toolbox_encode()
+        elif self.path == "/api/toolbox/decode":
+            self._toolbox_decode()
+        elif self.path == "/api/toolbox/analyze":
+            self._toolbox_analyze()
         else:
             self._err(404, "not found")
+
+    # ── Toolbox endpoints (standalone encode / decode / analyze) ─────────────
+    def _toolbox_encode(self):
+        try:
+            from src.toolbox.encode import encode as toolbox_encode_fn
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n))
+            image_bytes = base64.b64decode(body["image_b64"])
+            filename = body.get("filename", "upload")
+            message = body.get("message", "")
+            if not message:
+                return self._err(400, "missing field: message")
+            result = toolbox_encode_fn(image_bytes, filename, message)
+            self._json({
+                "status": "ok",
+                "image_b64": base64.b64encode(result.image_bytes).decode(),
+                "format": result.format,
+            })
+        except Exception as exc:
+            self._err(500, str(exc))
+
+    def _toolbox_decode(self):
+        try:
+            from src.toolbox.decode import decode as toolbox_decode_fn
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n))
+            image_bytes = base64.b64decode(body["image_b64"])
+            filename = body.get("filename", "upload")
+            result = toolbox_decode_fn(image_bytes, filename)
+            self._json({"status": "ok", "message": result.message})
+        except Exception as exc:
+            self._err(500, str(exc))
+
+    def _toolbox_analyze(self):
+        try:
+            from src.toolbox.analyze import analyze as toolbox_analyze_fn
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n))
+            image_bytes = base64.b64decode(body["image_b64"])
+            filename = body.get("filename", "upload")
+            result = toolbox_analyze_fn(image_bytes, filename)
+            self._json({
+                "status": "ok",
+                "format": result.format,
+                "scores": [
+                    {"detector": s.detector, "score": s.score}
+                    for s in result.scores
+                ],
+            })
+        except Exception as exc:
+            self._err(500, str(exc))
 
     def do_DELETE(self):
         parsed = urlparse(self.path)
