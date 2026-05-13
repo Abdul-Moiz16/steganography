@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toolbox — Stego Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/public/css/variables.css">
+    <link rel="stylesheet" href="/public/css/reset.css">
+    <link rel="stylesheet" href="/public/css/topbar.css">
+    <link rel="stylesheet" href="/public/css/buttons.css">
+    <link rel="stylesheet" href="/public/css/cards.css">
+    <link rel="stylesheet" href="/public/css/dialogs.css">
+    <link rel="stylesheet" href="/public/css/toolbox.css">
+</head>
+<body>
+    <!-- Top Nav -->
+    <nav class="topbar" id="topbar">
+        <div class="topbar-left">
+            <img class="topbar-logo" src="/public/logo.png" alt="UM" width="26" height="26">
+            <span class="topbar-brand">Stego Explorer</span>
+            <div class="topbar-nav">
+                <a class="topbar-link" href="/">Runs</a>
+                <a class="topbar-link" href="/?page=proposal">Proposal</a>
+                <a class="topbar-link active" href="/toolbox">Toolbox</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <main class="toolbox-main">
+        <!-- Header -->
+        <div class="toolbox-header">
+            <div class="toolbox-title">Steganography Toolbox</div>
+            <div class="toolbox-subtitle">Encode, decode, or analyze a single image interactively.</div>
+        </div>
+
+        <!-- Panel Tabs -->
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tab-encode" onclick="toolbox.setTab('encode')">
+                <span class="material-symbols-outlined">lock</span> Encode
+            </button>
+            <button class="tab-btn" id="tab-decode" onclick="toolbox.setTab('decode')">
+                <span class="material-symbols-outlined">lock_open</span> Decode
+            </button>
+            <button class="tab-btn" id="tab-analyze" onclick="toolbox.setTab('analyze')">
+                <span class="material-symbols-outlined">search</span> Analyze
+            </button>
+        </div>
+
+        <!-- Encode panel -->
+        <div class="panel active" id="panel-encode">
+            <div class="card">
+                <div class="card-title">Image</div>
+                <upload-zone tab="encode" label="Drop image here or click to browse"></upload-zone>
+            </div>
+
+            <div class="card">
+                <label class="card-title" for="encode-message">Message</label>
+                <textarea id="encode-message" placeholder="Enter the text you want to hide…"></textarea>
+                <div class="actions">
+                    <button class="btn btn-primary" id="btn-encode" onclick="toolbox.submit('encode')" disabled>
+                        <span class="material-symbols-outlined">lock</span> Encode
+                    </button>
+                    <div class="spinner" id="spinner-encode"></div>
+                </div>
+            </div>
+
+            <div class="result-card" id="result-encode">
+                <div class="result-label" id="result-encode-label"></div>
+                <img class="result-image" id="result-encode-img" src="" alt="Stego output" style="display:none">
+                <div id="result-encode-text" style="font-size:13px;color:var(--secondary-dim);"></div>
+                <div class="actions" id="result-encode-actions" style="display:none;margin-top:12px;">
+                    <a class="btn btn-primary btn-sm" id="download-link" download="stego.png">
+                        <span class="material-symbols-outlined">download</span> Download
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decode panel -->
+        <div class="panel" id="panel-decode">
+            <div class="card">
+                <div class="card-title">Stego Image</div>
+                <upload-zone tab="decode" label="Drop stego image here or click to browse"></upload-zone>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" id="btn-decode" onclick="toolbox.submit('decode')" disabled>
+                    <span class="material-symbols-outlined">lock_open</span> Decode
+                </button>
+                <div class="spinner" id="spinner-decode"></div>
+            </div>
+
+            <div class="result-card" id="result-decode">
+                <div class="result-label" id="result-decode-label"></div>
+                <div class="text-display" id="result-decode-text"></div>
+                <div class="actions" id="result-decode-copy" style="display:none;margin-top:10px;">
+                    <button class="btn btn-ghost btn-sm" onclick="toolbox.copyMessage()">
+                        <span class="material-symbols-outlined">content_copy</span> Copy
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analyze panel -->
+        <div class="panel" id="panel-analyze">
+            <div class="card">
+                <div class="card-title">Image</div>
+                <upload-zone tab="analyze" label="Drop image here or click to browse"></upload-zone>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" id="btn-analyze" onclick="toolbox.submit('analyze')" disabled>
+                    <span class="material-symbols-outlined">search</span> Analyze
+                </button>
+                <div class="spinner" id="spinner-analyze"></div>
+            </div>
+
+            <div class="result-card" id="result-analyze">
+                <div class="result-label" id="result-analyze-label"></div>
+                <div class="scores-list" id="scores-list"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/public/components/upload-zone.js"></script>
+    <script src="/public/js/utils.js"></script>
+    <script src="/public/js/toolbox.js"></script>
+</body>
+</html>

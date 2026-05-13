@@ -1,0 +1,68 @@
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
+
+html, body { 
+  height: 100%; 
+  background: var(--surface); 
+  font-family: var(--body);
+  overflow: hidden; 
+}
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: #3c3c3c;
+  color: var(--surface-cont);
+  font-size: 12px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+#toolbar button {
+  background: var(--secondary-dim);
+  color: var(--surface-cont);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#toolbar button:hover    { background: #777; }
+#toolbar button:disabled { opacity: 0.4; cursor: default; }
+
+#page-info  { min-width: 80px; text-align: center; }
+#zoom-label { min-width: 50px; text-align: right; }
+
+#scroll-area {
+  height: calc(100vh - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  gap: 12px;
+}
+
+.pdf-page {
+  background: var(--surface-cont);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  display: block;
+}
+
+#loading {
+  margin-top: 60px;
+  color: var(--secondary-dim);
+  font-size: 14px;
+}
+
+#error {
+  margin-top: 60px;
+  color: var(--error);
+  font-size: 14px;
+}
