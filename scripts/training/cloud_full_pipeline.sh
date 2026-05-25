@@ -3,10 +3,15 @@
 #
 # Stages (each is idempotent / resumable on re-run):
 #   1. Install Python deps
-#   2. Download real covers (HF datasets, ~15 min)
-#   3. Generate ML covers (diffusers on the local GPU, ~3h)
-#   4. Embed LSB+DCT stegos (CPU multiprocessing, ~1.5h on 16 cores)
-#   5. Train SRNet on LSB/{low,medium,high} (~10-15h GPU)
+#   2. (optional) Fetch the test-run real-cover manifest for caption exclusion
+#   3. Download real covers (HF datasets, ~15 min)
+#   4. Generate ML covers (diffusers on the local GPU, ~3h)
+#   5. Embed LSB+DCT stegos (CPU multiprocessing, ~1.5h on 16 cores)
+#   6. Train SRNet on LSB/{low,medium,high} (~10-15h GPU)
+#   7. Package a deliverables tarball for one-command scp back to laptop
+#
+# All output is also `tee`'d to logs/<run-id>/pipeline.log so a tmux
+# disconnect or browser timeout cannot lose training history.
 #
 # Designed to be re-run safely after a Vast.ai pre-emption: every stage
 # checks for prior work on disk and skips what's already done.
@@ -15,74 +20,142 @@
 #   cd /workspace/m2-2-steg
 #   bash scripts/training/cloud_full_pipeline.sh \
 #       --n-groups 3500 \
-#       --run-id training_v1 \
-#       --exclude-from runs/prototype_full_20260513_005357_p8765
+#       --run-id training_v1
 #
-# Re-running after a pre-emption: same command. Existing files trigger
-# the skip-* flags automatically.
+# To enable caption exclusion against the held-out test run, pass:
+#       --exclude-manifest-url <https://path/to/raw_cover_index_real.csv>
+# or, after manually rsync'ing the manifest to the instance:
+#       --exclude-manifest-path runs/prototype_full_<id>/manifests/raw_cover_index_real.csv
 
 set -euo pipefail
 
 # ---------------- Arg parsing ----------------
 N_GROUPS=3500
 RUN_ID="training_v1"
-EXCLUDE_FROM=""
+EXCLUDE_PATH=""
+EXCLUDE_URL=""
 SEED=4242
 EPOCHS=60
 BATCH_SIZE=16
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --n-groups) N_GROUPS="$2"; shift 2 ;;
-        --run-id) RUN_ID="$2"; shift 2 ;;
-        --exclude-from) EXCLUDE_FROM="$2"; shift 2 ;;
-        --seed) SEED="$2"; shift 2 ;;
-        --epochs) EPOCHS="$2"; shift 2 ;;
-        --batch-size) BATCH_SIZE="$2"; shift 2 ;;
+        --n-groups)                  N_GROUPS="$2"; shift 2 ;;
+        --run-id)                    RUN_ID="$2"; shift 2 ;;
+        --exclude-manifest-path)     EXCLUDE_PATH="$2"; shift 2 ;;
+        --exclude-manifest-url)      EXCLUDE_URL="$2"; shift 2 ;;
+        --seed)                      SEED="$2"; shift 2 ;;
+        --epochs)                    EPOCHS="$2"; shift 2 ;;
+        --batch-size)                BATCH_SIZE="$2"; shift 2 ;;
         *) echo "unknown arg: $1" >&2; exit 2 ;;
     esac
 done
 
 RUN_DIR="runs/$RUN_ID"
-mkdir -p "$RUN_DIR" models
+LOG_DIR="logs/$RUN_ID"
+mkdir -p "$RUN_DIR" "$LOG_DIR" models
+LOG_FILE="$LOG_DIR/pipeline.log"
 
-echo "[cloud] === Stage 0: install Python deps ==="
-if ! python -c "import torch, diffusers" 2>/dev/null; then
+# Redirect all subsequent stdout/stderr to a tee'd log file.
+# Use process substitution so we still see output in tmux AND archive it.
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "============================================================"
+echo "[cloud] cloud_full_pipeline.sh starting at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo "[cloud]   N_GROUPS    = $N_GROUPS"
+echo "[cloud]   RUN_ID      = $RUN_ID"
+echo "[cloud]   SEED        = $SEED"
+echo "[cloud]   EPOCHS      = $EPOCHS"
+echo "[cloud]   BATCH_SIZE  = $BATCH_SIZE"
+echo "[cloud]   EXCLUDE_URL  = ${EXCLUDE_URL:-<none>}"
+echo "[cloud]   EXCLUDE_PATH = ${EXCLUDE_PATH:-<none>}"
+echo "[cloud]   git HEAD    = $(git rev-parse --short HEAD 2>/dev/null || echo '<not a git checkout>')"
+echo "[cloud]   git branch  = $(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '<unknown>')"
+echo "============================================================"
+echo
+
+# ---------------- Stage 1: install deps ----------------
+echo "[cloud] === Stage 1: install Python deps ==="
+if ! python -c "import torch, diffusers, sklearn" 2>/dev/null; then
     pip install -q -r requirements.txt -r requirements_learned.txt
+else
+    echo "  (already installed, skipping)"
 fi
 
 # Verify GPU is visible to torch
 python - <<'PY'
 import torch
-assert torch.cuda.is_available(), "CUDA not available on this instance"
-print(f"  GPU: {torch.cuda.get_device_name(0)}, VRAM: {torch.cuda.get_device_properties(0).total_memory/1e9:.1f} GB")
+assert torch.cuda.is_available(), "CUDA not available on this instance -- abort and re-rent a GPU instance"
+print(f"  GPU         : {torch.cuda.get_device_name(0)}")
+print(f"  VRAM        : {torch.cuda.get_device_properties(0).total_memory/1e9:.1f} GB")
+print(f"  torch       : {torch.__version__}")
+import diffusers
+print(f"  diffusers   : {diffusers.__version__}")
 PY
-
-# ---------------- Stages 1-3: data assembly ----------------
 echo
-echo "[cloud] === Stages 1-3: training-data assembly ==="
+
+# ---------------- Stage 2 (optional): fetch caption-exclusion manifest ----------------
 EXCLUDE_ARG=""
-if [[ -n "$EXCLUDE_FROM" ]]; then
-    EXCLUDE_ARG="--exclude-captions-from $EXCLUDE_FROM"
+if [[ -n "$EXCLUDE_URL" ]]; then
+    EXCLUDE_PATH="$LOG_DIR/excluded_real_index.csv"
+    echo "[cloud] === Stage 2: fetch caption-exclusion manifest ==="
+    echo "[cloud]   downloading $EXCLUDE_URL -> $EXCLUDE_PATH"
+    curl -sSL -o "$EXCLUDE_PATH" "$EXCLUDE_URL"
+    echo "[cloud]   fetched $(wc -l < "$EXCLUDE_PATH") rows"
+    echo
+fi
+if [[ -n "$EXCLUDE_PATH" ]]; then
+    # generate_training_set.py wants a RUN dir, not a manifest path, so we
+    # synthesise a minimal run-dir with just the manifest the exclusion
+    # logic reads.
+    SYNTH_RUN="$LOG_DIR/excluded_synth_run"
+    mkdir -p "$SYNTH_RUN/manifests"
+    cp "$EXCLUDE_PATH" "$SYNTH_RUN/manifests/raw_cover_index_real.csv"
+    EXCLUDE_ARG="--exclude-captions-from $SYNTH_RUN"
+    echo "[cloud] caption exclusion ENABLED via $EXCLUDE_PATH"
+    echo
 fi
 
+# ---------------- Stages 3-5: data assembly ----------------
+echo "[cloud] === Stages 3-5: training-data assembly ==="
 # generate_training_set.py is itself idempotent: each sub-stage checks
-# whether its output already exists and skips if so. We pass --ml-engine
-# diffusers to keep everything on-instance.
+# whether its output already exists and skips if so.
 python scripts/training/generate_training_set.py \
     --n-groups "$N_GROUPS" \
     --out-run "$RUN_DIR" \
     --seed "$SEED" \
     --ml-engine diffusers \
     $EXCLUDE_ARG
-
-# ---------------- Stage 4: SRNet training (3 cells) ----------------
 echo
-echo "[cloud] === Stage 4: SRNet training (LSB / {low,medium,high}) ==="
+
+# Sanity-check: enumerate cover groups across all 6 (method, payload)
+# cells and verify counts match expectations. Bails out early before
+# we start a 12-hour training run if the data is malformed.
+python - <<PY
+from pathlib import Path
+from src.detection_learned.data import enumerate_cover_groups
+run = Path("$RUN_DIR")
+expected_min = int($N_GROUPS * 0.9)   # allow up to 10% caption-exclusion loss
+for method, payload in [("lsb","low"),("lsb","medium"),("lsb","high"),
+                         ("dct","low"),("dct","medium"),("dct","high")]:
+    cgs = enumerate_cover_groups(run, method=method, payload_level=payload)
+    n_cov = len(cgs); n_ste = sum(len(c.stego_paths) for c in cgs)
+    # 3 sources per group, so n_cov should be ~3*N_groups
+    print(f"  {method:3s}/{payload:6s}: {n_cov:5d} cover-groups, {n_ste:5d} stegos")
+    assert n_cov >= expected_min * 3, f"only {n_cov} cover-groups in {method}/{payload}"
+print("  OK -- all 6 cells have the expected counts")
+PY
+echo
+
+# ---------------- Stage 6: SRNet training (3 cells) ----------------
+echo "[cloud] === Stage 6: SRNet training (LSB / {low,medium,high}) ==="
 for payload in low medium high; do
     MODEL_PATH="models/srnet_lsb_${payload}_v1.pt"
+    CELL_LOG="$LOG_DIR/train_srnet_lsb_${payload}.log"
     echo
     echo "[cloud] ----- cell: LSB / $payload -----"
+    echo "[cloud]   started: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "[cloud]   cell log: $CELL_LOG"
     python scripts/training/train_srnet.py \
         --training-run "$RUN_DIR" \
         --method lsb \
@@ -92,18 +165,140 @@ for payload in low medium high; do
         --device cuda \
         --out "$MODEL_PATH" \
         --resume "$MODEL_PATH" \
-        --seed "$SEED"
+        --seed "$SEED" 2>&1 | tee "$CELL_LOG"
+    echo "[cloud]   completed: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 done
+echo
 
+# ---------------- Stage 7: deliverables bundle ----------------
+echo "[cloud] === Stage 7: package deliverables ==="
+DELIV_DIR="deliverables/$RUN_ID"
+mkdir -p "$DELIV_DIR/models" "$DELIV_DIR/manifests" "$DELIV_DIR/logs"
+
+# Copy the small high-value artefacts. We deliberately do NOT bundle the
+# full training-run directory (~30 GB); the manifests carry enough info
+# to regenerate it.
+cp models/srnet_lsb_*.pt              "$DELIV_DIR/models/" 2>/dev/null || true
+cp models/srnet_lsb_*.summary.json    "$DELIV_DIR/models/" 2>/dev/null || true
+cp "$RUN_DIR/.meta.json"              "$DELIV_DIR/training_run_meta.json" 2>/dev/null || true
+cp -r "$RUN_DIR/manifests/"           "$DELIV_DIR/manifests/" 2>/dev/null || true
+cp "$LOG_FILE"                        "$DELIV_DIR/logs/pipeline.log"
+cp "$LOG_DIR"/train_srnet_*.log       "$DELIV_DIR/logs/" 2>/dev/null || true
+
+# Self-describing README so a future reader (or reviewer) understands
+# what each file is for without rooting around in the codebase.
+cat > "$DELIV_DIR/README.md" <<EOF
+# SRNet training run: $RUN_ID
+
+Generated by \`scripts/training/cloud_full_pipeline.sh\` at $(date -u +%Y-%m-%dT%H:%M:%SZ).
+
+## Contents
+
+- \`summary.json\` -- per-cell val-AUC, epoch counts, training-run hashes.
+  Inspectable without PyTorch.
+- \`training_run_meta.json\` -- config used to assemble the training set
+  (n_groups, seed, ml_engine, caption-exclusion source).
+- \`models/srnet_lsb_<payload>_v1.pt\` -- PyTorch state dicts plus full
+  training state (optimiser + scheduler + history). Load with
+  \`torch.load()\`.
+- \`models/srnet_lsb_<payload>_v1.summary.json\` -- same metadata as
+  the .pt but without the model weights, for quick inspection.
+- \`manifests/\` -- COPY of the training run's manifests, providing
+  full provenance: which captions were used, which ML model IDs and
+  seeds, what payload bits and AES IVs, where every cover and stego
+  came from.
+- \`logs/pipeline.log\` -- full stdout from the cloud pipeline script.
+- \`logs/train_srnet_lsb_<payload>.log\` -- per-cell training log
+  (epoch-by-epoch train/val loss and val-AUC).
+
+## How to apply these checkpoints to a held-out test run
+
+On your laptop, in the project root:
+
+\`\`\`bash
+python scripts/inference/apply_srnet_to_run.py \\
+    --run runs/<test-run-id> \\
+    --models $RUN_ID/models/srnet_lsb_low_v1.pt \\
+             $RUN_ID/models/srnet_lsb_medium_v1.pt \\
+             $RUN_ID/models/srnet_lsb_high_v1.pt \\
+    --out runs/<test-run-id>/predictions_srnet.csv
+\`\`\`
+
+The apply script enforces a leakage guard: if the checkpoint's
+\`training_run_hash\` matches the test run's manifest hash, the script
+refuses to run. So you cannot accidentally evaluate on the same data
+the model was trained on.
+
+## What is **not** in this bundle (intentionally)
+
+- The full training run directory (~30 GB of images + stegos).
+  Regenerable from the manifests + seeds in this bundle. If you want
+  it back, re-run \`scripts/training/generate_training_set.py\` with
+  the same seed.
+- The PyTorch checkpoint optimiser/scheduler state suffices for resume
+  but is large; consider stripping it from the .pt before long-term
+  archival if you only need inference.
+EOF
+
+# Aggregate summary across all 3 cells for one-glance inspection.
+python - <<PY
+import json, os, glob
+from pathlib import Path
+
+deliv = Path("$DELIV_DIR")
+summary = {
+    "run_id": "$RUN_ID",
+    "n_groups_requested": $N_GROUPS,
+    "seed": $SEED,
+    "epochs": $EPOCHS,
+    "batch_size": $BATCH_SIZE,
+    "cells": {},
+}
+for js in sorted(glob.glob(str(deliv / "models" / "*.summary.json"))):
+    s = json.loads(Path(js).read_text())
+    cfg = s["config"]
+    cell = f"{cfg['method']}_{cfg['payload']}"
+    summary["cells"][cell] = {
+        "best_val_auc": s["best_val_auc"],
+        "epochs_completed": s["epochs_completed"],
+        "training_run_hash": s["training_run_hash"],
+        "checkpoint_size_bytes": Path(s["checkpoint_path"]).stat().st_size
+            if Path(s["checkpoint_path"]).exists() else None,
+    }
+(deliv / "summary.json").write_text(json.dumps(summary, indent=2))
+print("[cloud]   wrote", deliv / "summary.json")
+print(json.dumps(summary, indent=2))
+PY
+
+# Create a single tarball for one-command scp.
+TARBALL="deliverables_${RUN_ID}.tar.gz"
+tar -czf "$TARBALL" -C deliverables "$RUN_ID"
+SZ=$(du -h "$TARBALL" | cut -f1)
+echo "[cloud]   tarball: $TARBALL ($SZ)"
 echo
-echo "[cloud] === ALL STAGES COMPLETE ==="
-echo "[cloud] Checkpoints saved in models/"
-ls -lh models/srnet_lsb_*.pt
+
+# ---------------- Final report ----------------
+echo "============================================================"
+echo "[cloud] ALL STAGES COMPLETE at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo "============================================================"
 echo
-echo "Next step from your laptop:"
-echo "    scp -P <port> 'root@<host>:/workspace/m2-2-steg/models/srnet_lsb_*.pt' models/"
+echo "To retrieve everything from your laptop (single command):"
+echo
+echo "    scp -P <port> root@<host>:/workspace/m2-2-steg/$TARBALL ."
+echo "    tar -xzf $(basename "$TARBALL")"
+echo
+echo "The tarball contains:"
+echo "    $RUN_ID/summary.json                  # at-a-glance per-cell val-AUCs"
+echo "    $RUN_ID/models/srnet_lsb_*.pt         # 3 PyTorch checkpoints"
+echo "    $RUN_ID/models/srnet_lsb_*.summary.json  # torch-free metadata"
+echo "    $RUN_ID/manifests/                    # full provenance (which captions, which seeds)"
+echo "    $RUN_ID/logs/pipeline.log             # full stdout from this run"
+echo "    $RUN_ID/logs/train_srnet_*.log        # per-cell training curves"
+echo
 echo "Then run inference locally:"
 echo "    python scripts/inference/apply_srnet_to_run.py \\"
 echo "        --run runs/prototype_full_20260513_005357_p8765 \\"
-echo "        --models models/srnet_lsb_*.pt \\"
+echo "        --models $RUN_ID/models/srnet_lsb_*.pt \\"
 echo "        --out runs/prototype_full_20260513_005357_p8765/predictions_srnet.csv"
+echo
+echo "When you are done, REMEMBER to terminate the cloud instance."

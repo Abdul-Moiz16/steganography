@@ -155,6 +155,9 @@ def main() -> None:
         print(f"[train-srnet] --resume {args.resume} not found, starting from scratch")
 
     # ---------------- Training loop ----------------
+    SANITY_EPOCH = 15
+    SANITY_THRESHOLD = 0.55
+    sanity_warned = False
     for epoch in range(start_epoch, args.epochs + 1):
         train_loss = _train_one_epoch(model, train_loader, opt, loss_fn, device)
         val_loss, val_auc = _validate(model, val_loader, loss_fn, device)
@@ -172,6 +175,22 @@ def main() -> None:
                           history, training_run=args.training_run)
         print(f"epoch {epoch:3d}  train {train_loss:.4f}  val {val_loss:.4f}  "
               f"val-AUC {val_auc:.4f}{' *' if improved else ''}")
+
+        # Sanity warning: if we are well past the warm-up but the model is
+        # still essentially random, something is wrong (label-flip bug,
+        # broken DataLoader, etc.) and the user should investigate rather
+        # than burn 5+ more GPU hours. We log a one-time WARNING but do
+        # NOT abort -- the user might still want the partial checkpoint
+        # for debugging.
+        if epoch >= SANITY_EPOCH and best_val_auc < SANITY_THRESHOLD and not sanity_warned:
+            print(f"")
+            print(f"!!! WARNING !!!  best val-AUC after {epoch} epochs is {best_val_auc:.4f}")
+            print(f"    < {SANITY_THRESHOLD} threshold -- the model has barely beaten random.")
+            print(f"    This usually indicates a data bug. Investigate before letting")
+            print(f"    training run for {args.epochs - epoch} more epochs.")
+            print(f"    (Continuing anyway; abort with C-c if you suspect a bug.)")
+            print(f"")
+            sanity_warned = True
 
     print(f"[train-srnet] DONE — best val AUC {best_val_auc:.4f} saved to {args.out}")
 
@@ -237,28 +256,49 @@ def _save_checkpoint(path: Path, model, opt, sched, args, best_val_auc: float,
 
     Atomic write via tmp + rename so a pre-emption mid-write cannot leave
     a half-written checkpoint that would fail to resume.
+
+    Also writes a sibling ``<checkpoint>.summary.json`` that mirrors the
+    metadata in a torch-free format so the deliverable bundle is
+    inspectable without loading PyTorch.
     """
     import os
     import torch
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(path.suffix + ".tmp")
+    config = {
+        "method": args.method,
+        "payload": args.payload,
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "lr": args.lr,
+        "seed": args.seed,
+    }
+    training_run_hash = _hash_training_run(training_run)
     torch.save({
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": opt.state_dict(),
         "scheduler_state_dict": sched.state_dict(),
-        "config": {
-            "method": args.method,
-            "payload": args.payload,
-            "epochs": args.epochs,
-            "batch_size": args.batch_size,
-            "lr": args.lr,
-            "seed": args.seed,
-        },
+        "config": config,
         "val_auc": best_val_auc,          # BEST val-AUC seen so far
         "history": history,                # full per-epoch log
-        "training_run_hash": _hash_training_run(training_run),
+        "training_run_hash": training_run_hash,
     }, tmp_path)
     os.replace(tmp_path, path)             # atomic on POSIX
+
+    # Sibling JSON summary -- inspectable without torch
+    summary = {
+        "checkpoint_path": str(path),
+        "config": config,
+        "training_run_hash": training_run_hash,
+        "training_run_dir": str(training_run),
+        "best_val_auc": float(best_val_auc),
+        "epochs_completed": history[-1]["epoch"] if history else 0,
+        "history": history,
+    }
+    summary_path = path.with_suffix(".summary.json")
+    summary_tmp = summary_path.with_suffix(".tmp")
+    summary_tmp.write_text(json.dumps(summary, indent=2))
+    os.replace(summary_tmp, summary_path)
 
 
 def _hash_training_run(training_run: Path) -> str:

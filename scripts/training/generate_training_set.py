@@ -104,6 +104,29 @@ def main() -> None:
     print(f"[training-set] project_root={project_root}")
     print(f"[training-set] run_dir={run_dir}")
 
+    # Write a top-level .meta.json mirroring the main pipeline's
+    # convention. This captures the configuration used to assemble
+    # the training set so post-hoc analysis can verify reproducibility
+    # without re-deriving anything from the manifests.
+    import json as _json
+    from datetime import datetime as _dt
+    meta = {
+        "purpose": "SRNet / DCTR learned-baseline training set",
+        "created_utc": _dt.utcnow().isoformat() + "Z",
+        "n_groups_requested": args.n_groups,
+        "seed": args.seed,
+        "ml_engine": args.ml_engine,
+        "coco_fraction": args.coco_fraction,
+        "excluded_captions_from": (str(args.exclude_captions_from)
+                                    if args.exclude_captions_from else None),
+        "skip_stages": {
+            "real": args.skip_real,
+            "ml": args.skip_ml,
+            "embed": args.skip_embed,
+        },
+    }
+    (run_dir / ".meta.json").write_text(_json.dumps(meta, indent=2))
+
     # Caption exclusion -----------------------------------------------------
     excluded: set[str] = set()
     if args.exclude_captions_from is not None:
@@ -112,6 +135,15 @@ def main() -> None:
             excl_run = project_root / excl_run
         excluded = load_excluded_caption_ids(excl_run)
         print(f"[training-set] excluding {len(excluded)} caption_ids from {excl_run.name}")
+        # Archive the excluded list under manifests/ for full provenance.
+        excl_archive = run_dir / "manifests" / "excluded_caption_ids.txt"
+        excl_archive.parent.mkdir(parents=True, exist_ok=True)
+        excl_archive.write_text(
+            f"# {len(excluded)} caption_ids excluded from this training set\n"
+            f"# Source: {excl_run}\n"
+            f"# Reason: prevent train/test leakage at the caption level\n"
+            + "\n".join(sorted(excluded))
+        )
 
     # Real-cover download ---------------------------------------------------
     if not args.skip_real:
