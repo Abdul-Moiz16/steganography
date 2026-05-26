@@ -74,13 +74,21 @@ detect_stage() {
         echo "7/7 packaging deliverables"; return
     fi
 
+    # 6b/7 DCTR training (after SRNet finishes)
+    if echo "$recent" | grep -qiE "\[train-dctr\] DONE|train_dctr.*completed"; then
+        echo "6b/7 dctr done -> packaging next"; return
+    fi
+    if echo "$recent" | grep -qiE "\[train-dctr\]|=== Stage 6b|fitting BaggingClassifier|extracting (TRAIN|VAL) features"; then
+        echo "6b/7 training dctr (cpu)"; return
+    fi
+
     # 6/7 srnet training
     local epoch
     epoch=$(echo "$recent" | grep -oE "epoch [0-9]+/[0-9]+" | tail -1)
     if [[ -n "$epoch" ]]; then
         echo "6/7 training srnet ($epoch)"; return
     fi
-    if echo "$recent" | grep -qiE "\[srnet\]|=== Stage 6|train_srnet\.py|training.*srnet"; then
+    if echo "$recent" | grep -qiE "\[srnet\]|=== Stage 6:|train_srnet\.py|training.*srnet"; then
         echo "6/7 srnet warmup"; return
     fi
 
