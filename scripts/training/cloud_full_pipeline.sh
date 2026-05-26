@@ -86,6 +86,23 @@ echo
 
 # ---------------- Stage 1: install deps ----------------
 echo "[cloud] === Stage 1: install Python deps ==="
+
+# Auto-activate the cloud venv if it exists and is not already active.
+# Vast.ai's PyTorch image ships a venv at /venv/main; without it, the
+# `python` binary may not exist on PATH and we exit 127 before any work.
+if [[ -z "${VIRTUAL_ENV:-}" ]] && [[ -f /venv/main/bin/activate ]]; then
+    echo "  [cloud] activating /venv/main"
+    # shellcheck disable=SC1091
+    source /venv/main/bin/activate
+fi
+echo "  [cloud] python: $(command -v python || echo MISSING)"
+echo "  [cloud] VIRTUAL_ENV: ${VIRTUAL_ENV:-<none>}"
+
+if ! command -v python >/dev/null 2>&1; then
+    echo "  [cloud] FATAL: no python on PATH. Activate your venv before running this script." >&2
+    exit 1
+fi
+
 if ! python -c "import torch, diffusers, sklearn" 2>/dev/null; then
     pip install -q -r requirements.txt -r requirements_learned.txt
 else
