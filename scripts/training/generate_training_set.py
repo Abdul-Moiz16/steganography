@@ -148,7 +148,13 @@ def main() -> None:
     # Real-cover download ---------------------------------------------------
     if not args.skip_real:
         # Overshoot the target to leave room for caption-exclusion pruning.
-        overshoot = int(args.n_groups * 1.25)
+        # In practice with a 3000-caption test set we observe ~36% of our
+        # random caption pool also lives in the test set (same source corpus:
+        # COCO+Flickr30K validation). To end up with target_n covers after
+        # exclusion we therefore need overshoot >= target_n / (1 - 0.36) ~=
+        # 1.56x. Use 1.75x for headroom against caption-corpus drift and
+        # occasional QC failures.
+        overshoot = int(args.n_groups * 1.75) if excluded else int(args.n_groups * 1.10)
         coco_target = int(overshoot * args.coco_fraction)
         flickr_target = overshoot - coco_target
         print(f"[training-set] downloading real covers (coco={coco_target}, flickr={flickr_target}, overshoot {overshoot})")
@@ -211,32 +217,81 @@ def _count_rows(csv_path: Path) -> int:
 
 
 def _prune_excluded_real_covers(run_dir: Path, excluded: set[str], target_n: int) -> None:
-    """Drop rows whose caption_id is in the excluded set, then truncate to target_n.
+    """Drop rows whose caption_id is in the excluded set from ALL real-cover
+    manifests, then truncate to target_n. Rewrites the manifests in-place,
+    unlinks orphaned image files, and aborts if we cannot hit target_n
+    (otherwise the embedding stage will fail with a confusing group_id
+    mismatch downstream).
 
-    Rewrites the real-cover manifests in-place and unlinks the orphaned image files.
+    Bug history: earlier versions of this function only pruned
+    raw_cover_index_real.csv, leaving covers_real.csv and
+    generation_prompts.csv with the full 3750-row overshoot. ML cover
+    generation then read from the un-pruned prompts manifest and produced
+    ml_a / ml_b covers for ~1080 test-set captions, causing both
+    train/test leakage AND a downstream merge_covers_master failure due
+    to mismatched group_id sets (3750 real vs 3000 ml). Both manifests
+    are now pruned in lockstep.
     """
-    real_index = run_dir / "manifests" / "raw_cover_index_real.csv"
+    manifest_paths = [
+        run_dir / "manifests" / "raw_cover_index_real.csv",
+        run_dir / "manifests" / "covers_real.csv",
+        run_dir / "manifests" / "generation_prompts.csv",
+    ]
+    real_index = manifest_paths[0]
     if not real_index.exists():
         return
+
+    # Decide which group_ids survive based on the canonical raw index.
     with real_index.open() as fh:
         rows = list(csv.DictReader(fh))
-        fieldnames = list(rows[0].keys()) if rows else []
-    kept = [r for r in rows if r.get("caption_id", "").strip() not in excluded][:target_n]
-    dropped = [r for r in rows if r not in kept]
-    print(f"[training-set] excluded {len(rows)-len(kept)} rows by caption, keeping {len(kept)}")
-    # Rewrite manifest
-    with real_index.open("w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=fieldnames)
-        w.writeheader()
-        w.writerows(kept)
-    # Unlink orphaned image files
-    for row in dropped:
+    total = len(rows)
+    kept_rows = [r for r in rows if r.get("caption_id", "").strip() not in excluded][:target_n]
+    kept_gids = {int(r["group_id"]) for r in kept_rows}
+
+    print(
+        f"[training-set] excluded {total - len(kept_rows)} rows by caption "
+        f"({len(excluded)} caption_ids on excl list, {total} downloaded); "
+        f"keeping {len(kept_rows)} (target {target_n})"
+    )
+    if len(kept_rows) < target_n:
+        raise RuntimeError(
+            f"After caption exclusion only {len(kept_rows)} of {total} downloaded "
+            f"covers survive, but we need {target_n}. Bump the overshoot factor in "
+            f"the download stage (currently 1.75x) or shrink --n-groups."
+        )
+
+    # Prune every real-cover manifest to the same kept group_id set so the
+    # downstream merge_covers_master ids_real == ids_ml_a == ids_ml_b check
+    # holds. Preserve each manifest's own ordering and column set.
+    for mpath in manifest_paths:
+        if not mpath.exists():
+            continue
+        with mpath.open() as fh:
+            all_rows = list(csv.DictReader(fh))
+            fieldnames = list(all_rows[0].keys()) if all_rows else []
+        kept = [r for r in all_rows if _row_gid(r) in kept_gids]
+        with mpath.open("w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=fieldnames)
+            w.writeheader()
+            w.writerows(kept)
+
+    # Unlink orphaned image files (use the canonical raw-index dropped set).
+    dropped_rows = [r for r in rows if _row_gid(r) not in kept_gids]
+    for row in dropped_rows:
         img_path = row.get("raw_image_path")
         if img_path:
             p = (Path(img_path) if Path(img_path).is_absolute()
                  else run_dir.parent.parent / img_path)
             if p.exists():
                 p.unlink()
+
+
+def _row_gid(row: dict) -> int:
+    """Robust int(group_id) accessor for csv.DictReader rows."""
+    try:
+        return int(row.get("group_id", ""))
+    except (ValueError, TypeError):
+        return -1
 
 
 def _embed_training_stegos(run_dir: Path, *, seed: int) -> None:
