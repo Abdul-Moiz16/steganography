@@ -56,76 +56,112 @@ notify() {
       || echo "[$(date -u +%H:%M:%SZ)] notify FAILED: $title"
 }
 
-# Detect which pipeline stage we are in by scanning the most recent log lines.
-# Returns a short stage label like "4/7 ml gen". Falls back to "?/7" if unclear.
-# Ordering matters: we walk the markers latest-stage-first and return the first
-# one that matches, so we always report the FURTHEST progress observed.
+# Detect which pipeline stage we are in by scanning the ENTIRE log file
+# for definitive `=== Stage N: ===` banners emitted by cloud_full_pipeline.sh.
+# These banners are unique and unambiguous; using them avoids two bugs in
+# the previous detection logic:
+#   (a) false-match on `inference_api` in the boot banner (which says
+#       "ML_ENGINE = inference_api") triggering Stage 4 at startup
+#   (b) tail-window scrolling: once banners scroll past the recent-N
+#       window, the stage falls back to "?/7 starting up" even though
+#       the pipeline is happily in the middle of stage 3
+# We scan the whole log (typically <50 MB even after 13h) and find the
+# highest banner that has appeared.
 detect_stage() {
     local log="$1"
     [[ ! -f "$log" ]] && echo "?/7 no log" && return
 
-    # Look at recent log (training stage may print thousands of lines, so cap)
-    local recent
-    recent=$(tail -n 800 "$log" 2>/dev/null)
+    # Highest stage banner seen so far -- order matters (largest first).
+    local seen_stage7=0  seen_stage6b=0  seen_stage6=0
+    local seen_stage35=0  seen_stage1=0
 
-    # 7/7 deliverables packaged (also handled as a terminal state above, but
-    # we still set the label in case we get here before the file check fires)
-    if echo "$recent" | grep -qiE "deliverables.*tar\.gz|tarball.*ready|=== Stage 7"; then
+    grep -q "=== Stage 7:"   "$log" 2>/dev/null && seen_stage7=1
+    grep -q "=== Stage 6b:"  "$log" 2>/dev/null && seen_stage6b=1
+    grep -q "=== Stage 6:"   "$log" 2>/dev/null && seen_stage6=1
+    grep -q "=== Stages 3-5:" "$log" 2>/dev/null && seen_stage35=1
+    grep -q "=== Stage 1:"   "$log" 2>/dev/null && seen_stage1=1
+
+    if (( seen_stage7 == 1 )); then
         echo "7/7 packaging deliverables"; return
     fi
 
-    # 6b/7 DCTR training (after SRNet finishes)
-    if echo "$recent" | grep -qiE "\[train-dctr\] DONE|train_dctr.*completed"; then
-        echo "6b/7 dctr done -> packaging next"; return
-    fi
-    if echo "$recent" | grep -qiE "\[train-dctr\]|=== Stage 6b|fitting BaggingClassifier|extracting (TRAIN|VAL) features"; then
-        echo "6b/7 training dctr (cpu)"; return
+    if (( seen_stage6b == 1 )); then
+        # DCTR sub-progress
+        if grep -q "\[train-dctr\] DONE" "$log" 2>/dev/null; then
+            local cells_done
+            cells_done=$(grep -c "\[train-dctr\] DONE" "$log" 2>/dev/null || echo 0)
+            echo "6b/7 dctr cell $cells_done/3 done"; return
+        fi
+        if grep -q "fitting BaggingClassifier" "$log" 2>/dev/null; then
+            echo "6b/7 fitting dctr ensemble"; return
+        fi
+        if grep -qE "extracting (TRAIN|VAL) features" "$log" 2>/dev/null; then
+            echo "6b/7 dctr feature extraction"; return
+        fi
+        echo "6b/7 dctr training started"; return
     fi
 
-    # 6/7 srnet training
-    local epoch
-    epoch=$(echo "$recent" | grep -oE "epoch [0-9]+/[0-9]+" | tail -1)
-    if [[ -n "$epoch" ]]; then
-        echo "6/7 training srnet ($epoch)"; return
-    fi
-    if echo "$recent" | grep -qiE "\[srnet\]|=== Stage 6:|train_srnet\.py|training.*srnet"; then
+    if (( seen_stage6 == 1 )); then
+        # SRNet sub-progress: find the LAST `epoch N/M` printed and the
+        # current cell label.
+        local last_epoch
+        last_epoch=$(grep -oE "epoch [0-9]+/[0-9]+" "$log" 2>/dev/null | tail -1)
+        # Detect which cell we're on by counting "cell: LSB" banners
+        local cells_started
+        cells_started=$(grep -c "\-\-\-\-\- cell: LSB" "$log" 2>/dev/null || echo 0)
+        if [[ -n "$last_epoch" ]]; then
+            echo "6/7 srnet cell $cells_started/3 ($last_epoch)"; return
+        fi
         echo "6/7 srnet warmup"; return
     fi
 
-    # 5/7 embedding
-    if echo "$recent" | grep -qiE "embedding complete|embed.*complete|stego_manifest.*written"; then
-        echo "5/7 embedding done -> training next"; return
-    fi
-    if echo "$recent" | grep -qiE "\[embed|embedding stegos|run_embedding_stage|build_stego_manifest"; then
-        echo "5/7 embedding lsb+dct stegos"; return
+    if (( seen_stage35 == 1 )); then
+        # Data assembly sub-progress (Stages 3, 4, 5 share one banner)
+        if grep -qE "embedding complete|stego_manifest.*written" "$log" 2>/dev/null; then
+            echo "5/7 embedding done -> training next"; return
+        fi
+        if grep -qE "\[embed|embedding stegos|run_embedding_stage|build_stego_manifest" "$log" 2>/dev/null; then
+            # Try to parse tqdm progress out
+            local emb_pct
+            emb_pct=$(grep -oE "[0-9]+%\|[^|]*\| *[0-9]+/[0-9]+" "$log" 2>/dev/null | tail -1)
+            if [[ -n "$emb_pct" ]]; then
+                echo "5/7 embedding ($emb_pct)"
+            else
+                echo "5/7 embedding lsb+dct stegos"
+            fi
+            return
+        fi
+        if grep -qE "ml covers complete|ml.cover.*done|generate_ml_covers.*done" "$log" 2>/dev/null; then
+            echo "4/7 ml covers done -> embedding next"; return
+        fi
+        if grep -qE "generating ml covers|generate_ml_covers" "$log" 2>/dev/null; then
+            local mlpct
+            mlpct=$(grep -oE "[0-9]+%\|[^|]*\| *[0-9]+/[0-9]+" "$log" 2>/dev/null | tail -1)
+            if [[ -n "$mlpct" ]]; then
+                echo "4/7 ml gen ($mlpct)"
+            else
+                echo "4/7 generating ml covers (hf inference)"
+            fi
+            return
+        fi
+        if grep -qE "real covers complete|covers_real\.csv.*written" "$log" 2>/dev/null; then
+            echo "3/7 real covers done -> ml gen next"; return
+        fi
+        if grep -q "downloading real covers" "$log" 2>/dev/null; then
+            # Pull tqdm progress out of the tail (last progress bar)
+            local pct
+            pct=$(grep -oE "[0-9]+%\|[^|]*\| *[0-9]+/[0-9]+" "$log" 2>/dev/null | tail -1)
+            if [[ -n "$pct" ]]; then
+                echo "3/7 real cover dl ($pct)"
+            else
+                echo "3/7 downloading real covers"
+            fi
+            return
+        fi
+        echo "3/7 data assembly"; return
     fi
 
-    # 4/7 ml cover generation via HF Inference API
-    if echo "$recent" | grep -qiE "ml covers complete|ml.cover.*done|generate_ml_covers.*done"; then
-        echo "4/7 ml covers done -> embedding next"; return
-    fi
-    if echo "$recent" | grep -qiE "generating ml|generate_ml_covers|inference[_ ]api|huggingface\.co/api/inference"; then
-        echo "4/7 generating ml covers (hf inference)"; return
-    fi
-
-    # 3/7 real cover download
-    if echo "$recent" | grep -qiE "real covers complete|download.*real.*done|covers_real\.csv.*written"; then
-        echo "3/7 real covers done -> ml gen next"; return
-    fi
-    if echo "$recent" | grep -qiE "downloading real covers|download_real_covers|datasets.hf.co"; then
-        echo "3/7 downloading real covers"; return
-    fi
-
-    # 2/7 caption exclusion / data assembly start
-    if echo "$recent" | grep -qiE "Stages 3-5|training-data assembly|generate_training_set"; then
-        echo "2/7 data assembly starting"; return
-    fi
-    if echo "$recent" | grep -qiE "caption exclusion|excluding.*caption_ids|=== Stage 2"; then
-        echo "2/7 caption exclusion configured"; return
-    fi
-
-    # 1/7 install deps
-    if echo "$recent" | grep -qiE "Stage 1: install|GPU.*RTX|torch.*\+cu"; then
+    if (( seen_stage1 == 1 )); then
         echo "1/7 deps + gpu check"; return
     fi
 
