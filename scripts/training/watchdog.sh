@@ -116,11 +116,14 @@ detect_stage() {
     fi
 
     if (( seen_stage35 == 1 )); then
-        # Data assembly sub-progress (Stages 3, 4, 5 share one banner)
-        if grep -qE "embedding complete|stego_manifest.*written" "$log" 2>/dev/null; then
+        # Data assembly sub-progress (Stages 3, 4, 5 share one banner).
+        # All sub-stage matches use -i so we tolerate "Generating ML covers"
+        # vs "generating ml covers" -- the upstream Python code uses the
+        # former in its progress prints, the latter in some banner lines.
+        if grep -qiE "embedding complete|stego_manifest.*written" "$log" 2>/dev/null; then
             echo "5/7 embedding done -> training next"; return
         fi
-        if grep -qE "\[embed|embedding stegos|run_embedding_stage|build_stego_manifest" "$log" 2>/dev/null; then
+        if grep -qiE "\[embed|embedding stegos|run_embedding_stage|build_stego_manifest" "$log" 2>/dev/null; then
             # Try to parse tqdm progress out
             local emb_pct
             emb_pct=$(grep -oE "[0-9]+%\|[^|]*\| *[0-9]+/[0-9]+" "$log" 2>/dev/null | tail -1)
@@ -131,23 +134,34 @@ detect_stage() {
             fi
             return
         fi
-        if grep -qE "ml covers complete|ml.cover.*done|generate_ml_covers.*done" "$log" 2>/dev/null; then
+        if grep -qiE "ml covers complete|ml.cover.*done|generate_ml_covers.*done" "$log" 2>/dev/null; then
             echo "4/7 ml covers done -> embedding next"; return
         fi
-        if grep -qE "generating ml covers|generate_ml_covers" "$log" 2>/dev/null; then
+        # Match both "[training-set] generating ML covers" and the per-thread
+        # tqdm bar "Generating ml_a (4 threads):" / "Generating ml_b ...".
+        if grep -qiE "generating ml( covers| _?a| _?b)|generate_ml_covers" "$log" 2>/dev/null; then
             local mlpct
             mlpct=$(grep -oE "[0-9]+%\|[^|]*\| *[0-9]+/[0-9]+" "$log" 2>/dev/null | tail -1)
-            if [[ -n "$mlpct" ]]; then
-                echo "4/7 ml gen ($mlpct)"
+            # Distinguish ml_a from ml_b for nicer labels
+            local mlsrc
+            if grep -qiE "Generating ml_b" "$log" 2>/dev/null; then
+                mlsrc="ml_b (FLUX)"
+            elif grep -qiE "Generating ml_a" "$log" 2>/dev/null; then
+                mlsrc="ml_a (SDXL)"
             else
-                echo "4/7 generating ml covers (hf inference)"
+                mlsrc="ml gen"
+            fi
+            if [[ -n "$mlpct" ]]; then
+                echo "4/7 $mlsrc ($mlpct)"
+            else
+                echo "4/7 $mlsrc starting"
             fi
             return
         fi
-        if grep -qE "real covers complete|covers_real\.csv.*written" "$log" 2>/dev/null; then
+        if grep -qiE "real covers complete|covers_real\.csv.*written|reached target after" "$log" 2>/dev/null; then
             echo "3/7 real covers done -> ml gen next"; return
         fi
-        if grep -q "downloading real covers" "$log" 2>/dev/null; then
+        if grep -qi "downloading real covers" "$log" 2>/dev/null; then
             # Pull tqdm progress out of the tail (last progress bar)
             local pct
             pct=$(grep -oE "[0-9]+%\|[^|]*\| *[0-9]+/[0-9]+" "$log" 2>/dev/null | tail -1)
