@@ -282,20 +282,27 @@ maybe a switch to a faster GPU mid-run.
 
 The all-in-one alternative if you don't want to dedicate any laptop
 time to training-data assembly. Single Vast.ai instance does the whole
-pipeline: real downloads, ML generation via diffusers on the local
-GPU, embedding via CPU multiprocessing, then SRNet training.
+pipeline: real downloads, ML generation (default: HF Inference API,
+matching the test run's distribution), embedding via CPU
+multiprocessing, then SRNet training.
 
-### Instance requirements (slightly stricter than Path A)
+### Instance requirements
 
 | Spec | Minimum | Why |
 |---|---|---|
-| GPU | RTX 3090 / 4090 (24 GB VRAM) | SDXL inference + SRNet training |
+| GPU | RTX 3090 / 4090 (24 GB VRAM) | SRNet training (no local SDXL needed in default config) |
 | vCPU | **16 cores** | Embedding multiprocessing benefits from cores; speeds up the embed step from ~2.5h to ~1.5h |
-| RAM | 32 GB | diffusers + dataloader workers + SDXL/FLUX weights |
-| Disk | 80 GB | SDXL+FLUX model weights (~15 GB) + dataset (~30 GB) + checkpoints (~5 GB) |
+| RAM | 32 GB | dataloader workers + checkpoint state |
+| Disk | **60 GB** | dataset (~30 GB) + checkpoints (~5 GB) + OS/pip cache (~15 GB) |
 
-On Vast.ai, the typical RTX 3090 instance with 16 vCPU rents for
-~$0.40-0.50/hr.
+ML cover generation by default uses the **HuggingFace Inference API**
+(same as the test run was generated with). That matches the test
+distribution exactly and avoids a ~30 GB SDXL+FLUX weights download.
+If you instead pass `--ml-engine diffusers` to the cloud script, the
+weights download locally and the disk requirement bumps to **100 GB**.
+
+On Vast.ai, the typical RTX 3090 instance with 16 vCPU + 60 GB rents
+for ~$0.40-0.45/hr.
 
 ### Recipe
 
@@ -314,7 +321,9 @@ git checkout srnet-dctr-baselines
 
 # 3. Run the all-in-one script
 #    - Downloads real covers (~15 min, HF datasets)
-#    - Generates ML covers via diffusers on the local GPU (~3h)
+#    - Generates ML covers via HF Inference API (~5h) -- same backend
+#      the test run used, no model-weight download
+#      (pass --ml-engine diffusers if you want local SDXL/FLUX instead)
 #    - Embeds 126,000 stegos (~1.5h on 16 cores)
 #    - Trains 3 SRNet cells (~10-15h GPU)
 bash scripts/training/cloud_full_pipeline.sh \
@@ -348,15 +357,21 @@ Every stage of `cloud_full_pipeline.sh` is idempotent:
 
 So a Vast.ai pre-emption mid-pipeline costs only the wasted time, no work. **Re-run the same `bash cloud_full_pipeline.sh` command** after re-provisioning, and it will pick up exactly where it left off.
 
-### Cost breakdown (Path B)
+### Cost breakdown (Path B, default = HF Inference API)
 
 | Step | Time | At $0.45/hr |
 |---|---|---|
-| Setup (apt, pip, weight downloads) | ~30 min | $0.25 |
+| Setup (apt, pip; no model download in default config) | ~10 min | $0.08 |
 | Real covers (HF datasets) | ~15 min | $0.10 |
-| ML covers (diffusers on GPU) | ~3 h | $1.35 |
+| ML covers (HF Inference API; GPU idle, mostly waiting) | ~5 h | $2.25 |
 | Embedding (CPU multiprocessing) | ~1.5 h | $0.70 |
 | SRNet training (3 cells) | ~10-15 h | $4.50-6.75 |
-| **Total** | **~15-20 h** | **~$7-9** |
+| **Total** | **~17-22 h** | **~$7-10** |
 
-Budget $10-12 to leave room for one re-provisioning after a pre-emption.
+Budget $12 to leave room for one re-provisioning after a pre-emption.
+
+If you instead use `--ml-engine diffusers` (saves ~2 h of API waiting
+but adds the weights download), the total drops slightly to ~$6-8 in
+exchange for a 100 GB disk requirement and a ~15 min initial model
+download. Worth it only if you're sensitive to wall-clock or worried
+about HF API rate-limits.

@@ -5,7 +5,9 @@
 #   1. Install Python deps
 #   2. (optional) Fetch the test-run real-cover manifest for caption exclusion
 #   3. Download real covers (HF datasets, ~15 min)
-#   4. Generate ML covers (diffusers on the local GPU, ~3h)
+#   4. Generate ML covers via HF Inference API (~5h, default), or via
+#      local diffusers on the GPU if --ml-engine diffusers (~3h, needs
+#      ~30 GB extra disk for SDXL+FLUX weights)
 #   5. Embed LSB+DCT stegos (CPU multiprocessing, ~1.5h on 16 cores)
 #   6. Train SRNet on LSB/{low,medium,high} (~10-15h GPU)
 #   7. Package a deliverables tarball for one-command scp back to laptop
@@ -37,6 +39,12 @@ EXCLUDE_URL=""
 SEED=4242
 EPOCHS=60
 BATCH_SIZE=16
+# inference_api is the default because it matches how the test run was
+# generated and saves a ~30 GB SDXL+FLUX weights download. Override with
+# --ml-engine diffusers if you want maximum throughput and don't care
+# about the slight inference-config drift between SDXL via HF API and
+# SDXL via local diffusers (different defaults for steps / scheduler).
+ML_ENGINE="inference_api"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -47,6 +55,7 @@ while [[ $# -gt 0 ]]; do
         --seed)                      SEED="$2"; shift 2 ;;
         --epochs)                    EPOCHS="$2"; shift 2 ;;
         --batch-size)                BATCH_SIZE="$2"; shift 2 ;;
+        --ml-engine)                 ML_ENGINE="$2"; shift 2 ;;
         *) echo "unknown arg: $1" >&2; exit 2 ;;
     esac
 done
@@ -67,6 +76,7 @@ echo "[cloud]   RUN_ID      = $RUN_ID"
 echo "[cloud]   SEED        = $SEED"
 echo "[cloud]   EPOCHS      = $EPOCHS"
 echo "[cloud]   BATCH_SIZE  = $BATCH_SIZE"
+echo "[cloud]   ML_ENGINE   = $ML_ENGINE"
 echo "[cloud]   EXCLUDE_URL  = ${EXCLUDE_URL:-<none>}"
 echo "[cloud]   EXCLUDE_PATH = ${EXCLUDE_PATH:-<none>}"
 echo "[cloud]   git HEAD    = $(git rev-parse --short HEAD 2>/dev/null || echo '<not a git checkout>')"
@@ -82,16 +92,19 @@ else
     echo "  (already installed, skipping)"
 fi
 
-# Verify GPU is visible to torch
+# Verify GPU is visible to torch (required for SRNet training only).
 python - <<'PY'
 import torch
 assert torch.cuda.is_available(), "CUDA not available on this instance -- abort and re-rent a GPU instance"
 print(f"  GPU         : {torch.cuda.get_device_name(0)}")
 print(f"  VRAM        : {torch.cuda.get_device_properties(0).total_memory/1e9:.1f} GB")
 print(f"  torch       : {torch.__version__}")
-import diffusers
-print(f"  diffusers   : {diffusers.__version__}")
 PY
+# If the user chose --ml-engine diffusers, sanity-check that the heavy
+# deps are present so we fail fast rather than mid-generation.
+if [[ "$ML_ENGINE" == "diffusers" ]]; then
+    python -c "import diffusers; print(f'  diffusers   : {diffusers.__version__}')"
+fi
 echo
 
 # ---------------- Stage 2 (optional): fetch caption-exclusion manifest ----------------
@@ -124,7 +137,7 @@ python scripts/training/generate_training_set.py \
     --n-groups "$N_GROUPS" \
     --out-run "$RUN_DIR" \
     --seed "$SEED" \
-    --ml-engine diffusers \
+    --ml-engine "$ML_ENGINE" \
     $EXCLUDE_ARG
 echo
 
