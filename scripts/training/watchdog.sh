@@ -17,10 +17,13 @@
 #   $2 = interval    minutes between heartbeats (default: 30)
 #
 # Behavior:
-#   - Sends one notification per interval with the latest log line.
-#   - Immediately notifies (high priority) if the pipeline process dies,
-#     the log file stops growing for >1 hour, or the deliverables tarball
-#     appears (= training complete).
+#   - Sends one notification per interval with the detected stage + last log line.
+#   - Sends a high-priority "STAGE" notification the moment we detect we
+#     have moved into a new pipeline stage (e.g. download -> ml gen -> embed
+#     -> train -> package). This is independent of the heartbeat interval.
+#   - Immediately notifies (urgent) if the pipeline process dies or the
+#     log file stops growing for >1 hour. Notifies (high) when the
+#     deliverables tarball appears (= training complete).
 #   - Exits on terminal states (DIED / DONE) so you don't get spammed.
 
 set -uo pipefail
@@ -53,15 +56,93 @@ notify() {
       || echo "[$(date -u +%H:%M:%SZ)] notify FAILED: $title"
 }
 
+# Detect which pipeline stage we are in by scanning the most recent log lines.
+# Returns a short stage label like "4/7 ml gen". Falls back to "?/7" if unclear.
+# Ordering matters: we walk the markers latest-stage-first and return the first
+# one that matches, so we always report the FURTHEST progress observed.
+detect_stage() {
+    local log="$1"
+    [[ ! -f "$log" ]] && echo "?/7 no log" && return
+
+    # Look at recent log (training stage may print thousands of lines, so cap)
+    local recent
+    recent=$(tail -n 800 "$log" 2>/dev/null)
+
+    # 7/7 deliverables packaged (also handled as a terminal state above, but
+    # we still set the label in case we get here before the file check fires)
+    if echo "$recent" | grep -qiE "deliverables.*tar\.gz|tarball.*ready|=== Stage 7"; then
+        echo "7/7 packaging deliverables"; return
+    fi
+
+    # 6/7 srnet training
+    local epoch
+    epoch=$(echo "$recent" | grep -oE "epoch [0-9]+/[0-9]+" | tail -1)
+    if [[ -n "$epoch" ]]; then
+        echo "6/7 training srnet ($epoch)"; return
+    fi
+    if echo "$recent" | grep -qiE "\[srnet\]|=== Stage 6|train_srnet\.py|training.*srnet"; then
+        echo "6/7 srnet warmup"; return
+    fi
+
+    # 5/7 embedding
+    if echo "$recent" | grep -qiE "embedding complete|embed.*complete|stego_manifest.*written"; then
+        echo "5/7 embedding done -> training next"; return
+    fi
+    if echo "$recent" | grep -qiE "\[embed|embedding stegos|run_embedding_stage|build_stego_manifest"; then
+        echo "5/7 embedding lsb+dct stegos"; return
+    fi
+
+    # 4/7 ml cover generation via HF Inference API
+    if echo "$recent" | grep -qiE "ml covers complete|ml.cover.*done|generate_ml_covers.*done"; then
+        echo "4/7 ml covers done -> embedding next"; return
+    fi
+    if echo "$recent" | grep -qiE "generating ml|generate_ml_covers|inference[_ ]api|huggingface\.co/api/inference"; then
+        echo "4/7 generating ml covers (hf inference)"; return
+    fi
+
+    # 3/7 real cover download
+    if echo "$recent" | grep -qiE "real covers complete|download.*real.*done|covers_real\.csv.*written"; then
+        echo "3/7 real covers done -> ml gen next"; return
+    fi
+    if echo "$recent" | grep -qiE "downloading real covers|download_real_covers|datasets.hf.co"; then
+        echo "3/7 downloading real covers"; return
+    fi
+
+    # 2/7 caption exclusion / data assembly start
+    if echo "$recent" | grep -qiE "Stages 3-5|training-data assembly|generate_training_set"; then
+        echo "2/7 data assembly starting"; return
+    fi
+    if echo "$recent" | grep -qiE "caption exclusion|excluding.*caption_ids|=== Stage 2"; then
+        echo "2/7 caption exclusion configured"; return
+    fi
+
+    # 1/7 install deps
+    if echo "$recent" | grep -qiE "Stage 1: install|GPU.*RTX|torch.*\+cu"; then
+        echo "1/7 deps + gpu check"; return
+    fi
+
+    echo "?/7 starting up"
+}
+
 last_log_size=0
 last_growth_at=$(date +%s)
+prev_stage=""
 
 echo "[watchdog] run_id=$RUN_ID interval=${INTERVAL_MIN}m topic=ntfy.sh/$NTFY_TOPIC"
 
-notify "watchdog ARMED" "Watching $RUN_ID every ${INTERVAL_MIN}m. Mute topic if noisy."
+notify "watchdog ARMED" "Watching $RUN_ID every ${INTERVAL_MIN}m. Stage transitions push instantly; heartbeats include current stage. Mute topic if noisy."
+
+# Detect initial stage so the first transition notification is meaningful
+prev_stage=$(detect_stage "$LOG_FILE")
+echo "[watchdog] initial stage: $prev_stage"
+
+# Poll every minute for stage transitions; emit heartbeat every INTERVAL_MIN.
+TICK_S=60
+INTERVAL_S=$(( INTERVAL_MIN * 60 ))
+last_heartbeat_at=$(date +%s)
 
 while true; do
-    sleep "${INTERVAL_MIN}m"
+    sleep "$TICK_S"
 
     now=$(date +%s)
 
@@ -77,29 +158,41 @@ while true; do
         pid=$(cat "$PID_FILE")
         if ! kill -0 "$pid" 2>/dev/null; then
             tail_lines=$(tail -n 5 "$LOG_FILE" 2>/dev/null | tr '\n' ' | ' | cut -c1-350)
-            notify "pipeline DIED" "$RUN_ID PID $pid not running. Tail: $tail_lines" urgent
+            notify "pipeline DIED" "$RUN_ID PID $pid not running. Last stage: $prev_stage. Tail: $tail_lines" urgent
             break
         fi
     fi
 
-    # Heartbeat: check log growth
-    if [[ -f "$LOG_FILE" ]]; then
-        cur_size=$(wc -c < "$LOG_FILE" 2>/dev/null || echo 0)
-        if (( cur_size > last_log_size )); then
-            last_log_size=$cur_size
-            last_growth_at=$now
-        fi
-        stalled_for=$(( now - last_growth_at ))
+    # Stage transition: check every minute, push instantly when detected
+    cur_stage=$(detect_stage "$LOG_FILE")
+    if [[ "$cur_stage" != "$prev_stage" ]]; then
+        last_line=$(tail -n 1 "$LOG_FILE" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' | cut -c1-180)
+        notify "STAGE: $cur_stage" "(was: $prev_stage) | $last_line" high
+        prev_stage="$cur_stage"
+    fi
 
-        last_line=$(tail -n 1 "$LOG_FILE" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' | cut -c1-220)
+    # Heartbeat (every INTERVAL_MIN): log-growth + stall check
+    if (( now - last_heartbeat_at >= INTERVAL_S )); then
+        last_heartbeat_at=$now
 
-        if (( stalled_for > STALL_THRESHOLD_S )); then
-            notify "pipeline STALLED" "$RUN_ID: no log growth for $((stalled_for/60))m. Last: $last_line" urgent
+        if [[ -f "$LOG_FILE" ]]; then
+            cur_size=$(wc -c < "$LOG_FILE" 2>/dev/null || echo 0)
+            if (( cur_size > last_log_size )); then
+                last_log_size=$cur_size
+                last_growth_at=$now
+            fi
+            stalled_for=$(( now - last_growth_at ))
+
+            last_line=$(tail -n 1 "$LOG_FILE" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' | cut -c1-200)
+
+            if (( stalled_for > STALL_THRESHOLD_S )); then
+                notify "pipeline STALLED" "$RUN_ID at $cur_stage: no log growth for $((stalled_for/60))m. Last: $last_line" urgent
+            else
+                notify "heartbeat: $cur_stage" "stalled=$((stalled_for/60))m | $last_line"
+            fi
         else
-            notify "training heartbeat" "stalled_for=$((stalled_for/60))m | $last_line"
+            notify "no log yet" "$LOG_FILE missing -- pipeline may not have created it yet"
         fi
-    else
-        notify "no log yet" "$LOG_FILE missing -- pipeline may not have created it yet"
     fi
 done
 
