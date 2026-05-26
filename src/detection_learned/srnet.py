@@ -103,7 +103,19 @@ class Type3Block(nn.Module):
 
 
 class Type4Block(nn.Module):
-    """Final residual block with global average pool. Layer 12."""
+    """Final residual block with global average pool. Layer 12 of SRNet.
+
+    Per Boroumand et al. 2019, Section II-A:
+      "The Type 4 layer differs from the Type 2 layer in that it
+       applies global average pooling at the end."
+    So Type 4 has the SAME residual structure as Type 2 (Conv-BN-ReLU
+    -> Conv-BN -> +residual -> ReLU), followed by a global average pool
+    to produce the 512-dim feature vector for the classifier head.
+
+    Earlier versions of this file omitted the residual connection; that
+    was a bug. Restoring the skip path makes the module faithful to the
+    paper.
+    """
 
     def __init__(self, in_ch: int, out_ch: int) -> None:
         super().__init__()
@@ -111,10 +123,22 @@ class Type4Block(nn.Module):
         self.bn1 = nn.BatchNorm2d(out_ch)
         self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_ch)
+        # Residual / shortcut path: 1x1 conv when channels change
+        # (always the case here: 256 -> 512). No spatial downsampling --
+        # downsampling has already happened in the four Type 3 blocks.
+        self.shortcut = (
+            nn.Sequential() if in_ch == out_ch
+            else nn.Sequential(
+                nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False),
+                nn.BatchNorm2d(out_ch),
+            )
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        residual = self.shortcut(x)
         out = F.relu(self.bn1(self.conv1(x)), inplace=True)
-        out = F.relu(self.bn2(self.conv2(out)), inplace=True)
+        out = self.bn2(self.conv2(out))
+        out = F.relu(out + residual, inplace=True)
         # Global average pool over (H, W) -> (B, C, 1, 1) -> (B, C)
         return out.mean(dim=(2, 3))
 
