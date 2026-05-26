@@ -147,28 +147,22 @@ def main() -> None:
 
     # Real-cover download ---------------------------------------------------
     if not args.skip_real:
-        # Overshoot the target to leave room for caption-exclusion pruning.
-        # In practice with a 3000-caption test set we observe ~36% of our
-        # random caption pool also lives in the test set (same source corpus:
-        # COCO+Flickr30K validation). To end up with target_n covers after
-        # exclusion we therefore need overshoot >= target_n / (1 - 0.36) ~=
-        # 1.56x. Use 1.75x for headroom against caption-corpus drift and
-        # occasional QC failures.
-        overshoot = int(args.n_groups * 1.75) if excluded else int(args.n_groups * 1.10)
-        coco_target = int(overshoot * args.coco_fraction)
-        flickr_target = overshoot - coco_target
-        print(f"[training-set] downloading real covers (coco={coco_target}, flickr={flickr_target}, overshoot {overshoot})")
-        download_real_covers(
+        # Caption-exclusion can drop a sizeable fraction of the downloaded
+        # pool (we observe ~36% overlap between a random caption sample and
+        # the 3000-caption test set, because both come from the same
+        # COCO+Flickr30K validation corpus). Rather than guess a single
+        # overshoot factor, we use a top-up loop: download an initial batch
+        # with a generous overshoot, prune by caption, and if we land short
+        # of target_n, download another batch with a fresh seed and merge
+        # it in. Repeat until we hit target_n or hit MAX_ATTEMPTS.
+        _download_real_covers_until_target(
             project_root=project_root,
-            seed=args.seed,
-            coco_target=coco_target,
-            flickr_target=flickr_target,
             run_dir=run_dir,
+            target_n=args.n_groups,
+            base_seed=args.seed,
+            coco_fraction=args.coco_fraction,
+            excluded=excluded,
         )
-        # Post-filter the run's manifests against the excluded set; covered separately
-        # because download_real_covers does not know about our exclusion list.
-        if excluded:
-            _prune_excluded_real_covers(run_dir, excluded, target_n=args.n_groups)
     else:
         print("[training-set] --skip-real: assuming real covers already in place")
 
@@ -216,21 +210,23 @@ def _count_rows(csv_path: Path) -> int:
         return max(0, sum(1 for _ in fh) - 1)
 
 
-def _prune_excluded_real_covers(run_dir: Path, excluded: set[str], target_n: int) -> None:
+def _prune_excluded_real_covers(
+    run_dir: Path,
+    excluded: set[str],
+    target_n: int,
+) -> int:
     """Drop rows whose caption_id is in the excluded set from ALL real-cover
     manifests, then truncate to target_n. Rewrites the manifests in-place,
-    unlinks orphaned image files, and aborts if we cannot hit target_n
-    (otherwise the embedding stage will fail with a confusing group_id
-    mismatch downstream).
+    unlinks orphaned image files, and returns the number of surviving rows
+    (caller decides whether shortfall is fatal or just needs a top-up).
 
     Bug history: earlier versions of this function only pruned
     raw_cover_index_real.csv, leaving covers_real.csv and
-    generation_prompts.csv with the full 3750-row overshoot. ML cover
+    generation_prompts.csv with the full overshoot intact. ML cover
     generation then read from the un-pruned prompts manifest and produced
     ml_a / ml_b covers for ~1080 test-set captions, causing both
     train/test leakage AND a downstream merge_covers_master failure due
-    to mismatched group_id sets (3750 real vs 3000 ml). Both manifests
-    are now pruned in lockstep.
+    to mismatched group_id sets. Both manifests are now pruned in lockstep.
     """
     manifest_paths = [
         run_dir / "manifests" / "raw_cover_index_real.csv",
@@ -239,7 +235,7 @@ def _prune_excluded_real_covers(run_dir: Path, excluded: set[str], target_n: int
     ]
     real_index = manifest_paths[0]
     if not real_index.exists():
-        return
+        return 0
 
     # Decide which group_ids survive based on the canonical raw index.
     with real_index.open() as fh:
@@ -253,12 +249,6 @@ def _prune_excluded_real_covers(run_dir: Path, excluded: set[str], target_n: int
         f"({len(excluded)} caption_ids on excl list, {total} downloaded); "
         f"keeping {len(kept_rows)} (target {target_n})"
     )
-    if len(kept_rows) < target_n:
-        raise RuntimeError(
-            f"After caption exclusion only {len(kept_rows)} of {total} downloaded "
-            f"covers survive, but we need {target_n}. Bump the overshoot factor in "
-            f"the download stage (currently 1.75x) or shrink --n-groups."
-        )
 
     # Prune every real-cover manifest to the same kept group_id set so the
     # downstream merge_covers_master ids_real == ids_ml_a == ids_ml_b check
@@ -285,6 +275,8 @@ def _prune_excluded_real_covers(run_dir: Path, excluded: set[str], target_n: int
             if p.exists():
                 p.unlink()
 
+    return len(kept_rows)
+
 
 def _row_gid(row: dict) -> int:
     """Robust int(group_id) accessor for csv.DictReader rows."""
@@ -292,6 +284,321 @@ def _row_gid(row: dict) -> int:
         return int(row.get("group_id", ""))
     except (ValueError, TypeError):
         return -1
+
+
+def _download_real_covers_until_target(
+    *,
+    project_root: Path,
+    run_dir: Path,
+    target_n: int,
+    base_seed: int,
+    coco_fraction: float,
+    excluded: set[str],
+) -> None:
+    """Download real covers, top-up the download with fresh seeds until we
+    have exactly ``target_n`` covers surviving caption-exclusion (or we hit
+    MAX_ATTEMPTS, in which case we abort loudly).
+
+    Strategy
+    --------
+    Attempt 1: pull an initial overshoot batch (1.75x when caption exclusion
+    is active, 1.10x otherwise). Caption-prune.
+    Attempt 2..N: if we are short by ``deficit``, pull another batch sized
+    to roughly ``deficit / (1 - observed_exclusion_rate)`` (with a generous
+    safety multiplier) using a fresh seed. Merge into the existing manifests
+    with collision-safe group_id renumbering. Caption-prune again.
+
+    We stop as soon as the surviving cover count reaches ``target_n`` and
+    truncate any overshoot via the standard prune-with-cap call.
+    """
+    from src.data.download_real_covers import download_real_covers
+
+    MAX_ATTEMPTS = 6
+    INITIAL_OVERSHOOT = 1.75 if excluded else 1.10
+    survivors = 0
+
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        if attempt == 1:
+            overshoot = int(target_n * INITIAL_OVERSHOOT)
+            coco_target = int(overshoot * coco_fraction)
+            flickr_target = overshoot - coco_target
+            print(
+                f"[training-set] download attempt 1/{MAX_ATTEMPTS} (initial): "
+                f"coco={coco_target}, flickr={flickr_target}, "
+                f"overshoot {overshoot} for target {target_n}"
+            )
+            download_real_covers(
+                project_root=project_root,
+                seed=base_seed,
+                coco_target=coco_target,
+                flickr_target=flickr_target,
+                run_dir=run_dir,
+            )
+        else:
+            deficit = target_n - survivors
+            # Estimate observed exclusion rate from the previous attempt to
+            # size the next batch. Fall back to a conservative 0.5 if we
+            # have no prior info.
+            exclusion_rate = _estimate_exclusion_rate(run_dir, excluded)
+            # 2.0x safety multiplier on top of the inverse-survival rate so
+            # that even an unlucky second batch lands us above target.
+            topup_n = max(50, int(deficit / max(0.05, 1.0 - exclusion_rate) * 2.0))
+            coco_target = int(topup_n * coco_fraction)
+            flickr_target = topup_n - coco_target
+            print(
+                f"[training-set] download attempt {attempt}/{MAX_ATTEMPTS} (topup): "
+                f"deficit={deficit}, est_excl={exclusion_rate:.2%}, "
+                f"requesting coco={coco_target}, flickr={flickr_target}, "
+                f"topup_n={topup_n}"
+            )
+            _topup_real_covers(
+                project_root=project_root,
+                run_dir=run_dir,
+                seed=base_seed + attempt * 1000,
+                coco_target=coco_target,
+                flickr_target=flickr_target,
+            )
+
+        # Prune + report
+        if excluded:
+            survivors = _prune_excluded_real_covers(run_dir, excluded, target_n=target_n)
+        else:
+            # No exclusion: just truncate to target_n
+            survivors = _truncate_real_covers(run_dir, target_n=target_n)
+
+        if survivors >= target_n:
+            print(
+                f"[training-set] reached target after {attempt} attempt(s): "
+                f"{survivors}/{target_n} survivors"
+            )
+            return
+
+    raise RuntimeError(
+        f"After {MAX_ATTEMPTS} download attempts only {survivors}/{target_n} "
+        f"covers survived caption exclusion. The COCO+Flickr30K pool may be "
+        f"exhausted at this exclusion rate -- consider reducing --n-groups or "
+        f"broadening the source corpus."
+    )
+
+
+def _estimate_exclusion_rate(run_dir: Path, excluded: set[str]) -> float:
+    """Estimate fraction of the downloaded raw pool that gets excluded."""
+    raw_idx = run_dir / "manifests" / "raw_cover_index_real.csv"
+    if not raw_idx.exists():
+        return 0.5  # conservative default
+    with raw_idx.open() as fh:
+        rows = list(csv.DictReader(fh))
+    if not rows:
+        return 0.5
+    n_excl = sum(1 for r in rows if r.get("caption_id", "").strip() in excluded)
+    return n_excl / len(rows)
+
+
+def _topup_real_covers(
+    *,
+    project_root: Path,
+    run_dir: Path,
+    seed: int,
+    coco_target: int,
+    flickr_target: int,
+) -> None:
+    """Download additional real covers and merge them into the run's
+    manifests. New rows are dedup'd by (orig_id, caption_id) against the
+    existing set and renumbered to avoid group_id collisions.
+
+    Implementation: download to a temp subdirectory, then merge.
+    """
+    import shutil
+    import tempfile
+    from src.data.download_real_covers import download_real_covers
+
+    manifests_dir = run_dir / "manifests"
+    covers_dir = run_dir / "covers" / "real"
+
+    # Read existing rows to know what we already have.
+    existing_raw = _read_csv_rows(manifests_dir / "raw_cover_index_real.csv")
+    existing_real = _read_csv_rows(manifests_dir / "covers_real.csv")
+    existing_prompts = _read_csv_rows(manifests_dir / "generation_prompts.csv")
+
+    existing_orig_ids = {r.get("orig_id") for r in existing_raw}
+    existing_caption_ids = {r.get("caption_id") for r in existing_raw}
+    current_max_gid = max((_row_gid(r) for r in existing_raw), default=0)
+
+    # Download topup into a temp subdirectory of the run (same filesystem
+    # so the eventual file moves are cheap).
+    tmp_run = run_dir / f"_topup_{seed}"
+    if tmp_run.exists():
+        shutil.rmtree(tmp_run)
+    tmp_run.mkdir(parents=True)
+    try:
+        download_real_covers(
+            project_root=project_root,
+            seed=seed,
+            coco_target=coco_target,
+            flickr_target=flickr_target,
+            run_dir=tmp_run,
+        )
+
+        # Read the temp manifests, drop duplicates (we'll get some across
+        # batches because download_real_covers is seed-deterministic but
+        # the pools overlap), and renumber group_ids to land after our
+        # current max.
+        tmp_raw = _read_csv_rows(tmp_run / "manifests" / "raw_cover_index_real.csv")
+        tmp_real = _read_csv_rows(tmp_run / "manifests" / "covers_real.csv")
+        tmp_prompts = _read_csv_rows(tmp_run / "manifests" / "generation_prompts.csv")
+
+        # Build a dedup mask + gid remap from the raw index.
+        keep_old_gids: list[int] = []
+        old_to_new: dict[int, int] = {}
+        next_gid = current_max_gid + 1
+        for r in tmp_raw:
+            if r.get("orig_id") in existing_orig_ids:
+                continue
+            if r.get("caption_id") in existing_caption_ids:
+                continue
+            old_gid = _row_gid(r)
+            old_to_new[old_gid] = next_gid
+            keep_old_gids.append(old_gid)
+            next_gid += 1
+            existing_orig_ids.add(r.get("orig_id"))
+            existing_caption_ids.add(r.get("caption_id"))
+
+        n_dedup = len(tmp_raw) - len(keep_old_gids)
+        print(
+            f"[training-set]   topup downloaded {len(tmp_raw)}, "
+            f"deduped {n_dedup}, kept {len(keep_old_gids)} new covers"
+        )
+
+        # Move dedup'd image files into the main covers/real dir, with
+        # filenames renamed to the new group_id.
+        for r in tmp_raw:
+            old_gid = _row_gid(r)
+            if old_gid not in old_to_new:
+                continue
+            new_gid = old_to_new[old_gid]
+            src_rel = r.get("raw_image_path") or ""
+            src_path = (Path(src_rel) if Path(src_rel).is_absolute()
+                        else project_root / src_rel)
+            if not src_path.exists():
+                continue
+            new_name = src_path.name.replace(
+                f"g{old_gid:04d}", f"g{new_gid:04d}", 1,
+            )
+            dst_path = covers_dir / new_name
+            shutil.move(str(src_path), str(dst_path))
+            # Update row path in-place (relative to project root).
+            try:
+                rel = dst_path.relative_to(project_root)
+            except ValueError:
+                rel = dst_path
+            r["raw_image_path"] = str(rel)
+
+        # Renumber all rows across the three manifests, then append.
+        def _renumber_and_filter(rows, also_rewrite_paths=False):
+            out = []
+            for r in rows:
+                old_gid = _row_gid(r)
+                if old_gid not in old_to_new:
+                    continue
+                r["group_id"] = str(old_to_new[old_gid])
+                out.append(r)
+            return out
+
+        new_raw = _renumber_and_filter(tmp_raw)
+        new_real = _renumber_and_filter(tmp_real)
+        new_prompts = _renumber_and_filter(tmp_prompts)
+
+        # Patch path columns in covers_real (spatial_path / frequency_path)
+        # and generation_prompts (real_spatial_path / real_frequency_path)
+        # so they reference the new filenames. Old filenames embed the old
+        # group_id like "g0123__src-real.png".
+        def _patch_paths(rows, columns):
+            for r in rows:
+                old_gid = _find_old_gid_for_new(r, old_to_new)
+                if old_gid is None:
+                    continue
+                for col in columns:
+                    val = r.get(col)
+                    if val:
+                        r[col] = val.replace(
+                            f"g{old_gid:04d}", f"g{old_to_new[old_gid]:04d}", 1,
+                        )
+
+        _patch_paths(new_real, ["spatial_path", "frequency_path"])
+        _patch_paths(new_prompts, ["real_spatial_path", "real_frequency_path"])
+
+        # Append to the run's manifests.
+        _append_rows(manifests_dir / "raw_cover_index_real.csv",
+                     existing_raw, new_raw)
+        _append_rows(manifests_dir / "covers_real.csv",
+                     existing_real, new_real)
+        _append_rows(manifests_dir / "generation_prompts.csv",
+                     existing_prompts, new_prompts)
+    finally:
+        # Clean up the temp subdir (its image files have already been moved
+        # out, but any leftover JSONs / partial files should be cleaned).
+        if tmp_run.exists():
+            shutil.rmtree(tmp_run, ignore_errors=True)
+
+
+def _find_old_gid_for_new(row: dict, old_to_new: dict[int, int]) -> int | None:
+    """Reverse-lookup an old gid given a row whose group_id is already new."""
+    try:
+        new_gid = int(row.get("group_id", ""))
+    except (ValueError, TypeError):
+        return None
+    for old, new in old_to_new.items():
+        if new == new_gid:
+            return old
+    return None
+
+
+def _read_csv_rows(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    with path.open() as fh:
+        return list(csv.DictReader(fh))
+
+
+def _append_rows(path: Path, existing: list[dict], new_rows: list[dict]) -> None:
+    """Rewrite ``path`` as ``existing + new_rows``, preserving the existing
+    header / column order. The two row sets should already share the same
+    schema (they came from the same ``download_real_covers`` writer).
+    """
+    if not (existing or new_rows):
+        return
+    fieldnames = list((existing or new_rows)[0].keys())
+    with path.open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=fieldnames)
+        w.writeheader()
+        w.writerows(existing)
+        w.writerows(new_rows)
+
+
+def _truncate_real_covers(run_dir: Path, target_n: int) -> int:
+    """Truncate all three real-cover manifests to the first ``target_n`` rows
+    (no caption exclusion needed). Used when ``excluded`` is empty.
+    """
+    manifest_paths = [
+        run_dir / "manifests" / "raw_cover_index_real.csv",
+        run_dir / "manifests" / "covers_real.csv",
+        run_dir / "manifests" / "generation_prompts.csv",
+    ]
+    n = 0
+    for mpath in manifest_paths:
+        if not mpath.exists():
+            continue
+        rows = _read_csv_rows(mpath)
+        if rows and len(rows) > target_n:
+            fieldnames = list(rows[0].keys())
+            with mpath.open("w", newline="") as fh:
+                w = csv.DictWriter(fh, fieldnames=fieldnames)
+                w.writeheader()
+                w.writerows(rows[:target_n])
+            n = target_n
+        else:
+            n = len(rows)
+    return n
 
 
 def _embed_training_stegos(run_dir: Path, *, seed: int) -> None:
