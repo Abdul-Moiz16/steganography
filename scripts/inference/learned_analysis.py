@@ -170,8 +170,8 @@ def _compare_verdicts(classical_verdicts: Path, learned_verdicts: Path) -> str:
         return f"(no classical verdicts found at {classical_verdicts})"
     if not learned_verdicts.exists():
         return f"(no learned verdicts found at {learned_verdicts})"
-    classical = json.loads(classical_verdicts.read_text())
-    learned = json.loads(learned_verdicts.read_text())
+    classical = json.loads(classical_verdicts.read_text()).get("verdicts", {})
+    learned = json.loads(learned_verdicts.read_text()).get("verdicts", {})
 
     lines: list[str] = []
     lines.append(f"{'RQ':<6}{'classical (Δ)':<24}{'learned (Δ)':<24}{'interpretation':<35}")
@@ -181,8 +181,15 @@ def _compare_verdicts(classical_verdicts: Path, learned_verdicts: Path) -> str:
         ld = learned.get(rq, {})
         cl_v = cl.get("verdict", "?")
         ld_v = ld.get("verdict", "?")
-        cl_eff = cl.get("pooled_effect")
-        ld_eff = ld.get("pooled_effect")
+        # Exploratory RQ3 uses mean_gap_by_payload (no scalar pooled effect);
+        # confirmatory RQ1/RQ2/RQ4/RQ5 expose pooled_diff.  Fall back to the
+        # high-payload gap for RQ3 so the direction label still works.
+        cl_eff = cl.get("pooled_diff")
+        ld_eff = ld.get("pooled_diff")
+        if cl_eff is None and "mean_gap_by_payload" in cl:
+            cl_eff = cl["mean_gap_by_payload"].get("high")
+        if ld_eff is None and "mean_gap_by_payload" in ld:
+            ld_eff = ld["mean_gap_by_payload"].get("high")
         direction = _direction_label(cl_eff, ld_eff)
         interp = _interpret(cl_v, ld_v, direction)
         cl_str = f"{cl_v} ({cl_eff:+.4f})" if cl_eff is not None else cl_v
@@ -245,17 +252,13 @@ def main() -> None:
     # ---------------- Compute metrics ----------------
     print()
     print("=== computing AUC / condition / source metrics ===")
-    # We need a PipelineRunner instance. Construct a minimal config; the
-    # analysis methods we call only need self.paths, which the runner sets
-    # up from the project root + a run dir. Override .paths to point at the
-    # shadow dir.
+    # We need a PipelineRunner instance to call compute_metrics_from_predictions
+    # and generate_metrics_figures.  Both methods accept explicit metrics_dir
+    # / figures_dir arguments and fall back to self.paths.* only when those
+    # are None, so we can leave runner.paths alone (it is a frozen dataclass
+    # and would refuse mutation anyway) and just pass the shadow dirs through.
     cfg = PipelineConfig(project_root=_PROJECT_ROOT, n_groups=0)
     runner = PipelineRunner(cfg)
-    # Re-target the runner's working paths to the shadow run dir.
-    runner.paths.run_dir = shadow
-    runner.paths.metrics_dir = shadow / "metrics"
-    runner.paths.figures_dir = shadow / "figures"
-    runner.paths.predictions_dir = shadow / "predictions"
 
     metrics_out = runner.compute_metrics_from_predictions(
         out_csv,
@@ -321,9 +324,9 @@ def main() -> None:
     det_csv = shadow / "metrics" / "detector_metrics.csv"
     with det_csv.open() as fh:
         rdr = csv.DictReader(fh)
-        print(f"{'detector':<8}{'n_samples':<12}{'AUC':<10}{'EER':<10}")
+        print(f"{'detector':<10}{'n_samples':<12}{'AUC':<10}{'EER':<10}")
         for r in rdr:
-            print(f"{r['detector']:<8}{r['n_samples']:<12}{float(r['roc_auc']):<10.4f}{float(r['eer']):<10.4f}")
+            print(f"{r['detector']:<10}{r['n_samples']:<12}{float(r['roc_auc']):<10.4f}{float(r['eer']):<10.4f}")
     print()
     print(f"Full Markdown verdicts: {rq_md}")
     print(f"  cat {rq_md}")
