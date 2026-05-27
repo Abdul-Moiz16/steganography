@@ -16,23 +16,29 @@ import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 from scipy import stats
 
-# Centralised palette and rcParams so every figure shares the same look, for future report
+# Centralised palette and rcParams so every figure shares the same look as
+# the report's TikZ figures.  Anchors are the four UM brand colours used in
+# docs/report/final_report_draft_v2.tex: umdark (deep navy), umorange (UM
+# accent orange), umlight (mid blue) and umgray (neutral).  The mapping
+# below follows the report's payload convention (low=umdark, medium=umlight,
+# high=umorange) so a reader who picks up the supplementary figures
+# recognises the colour grammar from the body figures.
 THEME = {
-    "real": "#5B8FB9",  # soft denim
-    "ml_a": "#E2A85F",  # soft amber
-    "ml_b": "#7FB29C",  # soft sage
-    "plain": "#7FB3D5",  # pastel sky
-    "encrypted": "#D88E8E",  # pastel rose
-    "lsb": "#A89CD3",  # pastel violet
-    "dct": "#E5B25D",  # pastel saffron
-    "neutral": "#8A8C91",  # slate
-    "accent": "#6B7FA0",  # academic muted blue
-    "sig": "#B5524F",  # crimson (sig. < 0.05)
-    "ns": "#6B7FA0",  # muted blue (n.s.)
-    "grid": "#D9D9D9",
-    "spine": "#4A4A4A",
-    "text": "#2B2B2B",
-    "muted": "#9A9A9A",
+    "real": "#001C3D",  # umdark   -- anchor source (matches "baseline" tone)
+    "ml_a": "#4A90C4",  # umlight  -- mid-tier ML source
+    "ml_b": "#E84E10",  # umorange -- vivid accent ML source
+    "plain": "#4A90C4",  # umlight
+    "encrypted": "#E84E10",  # umorange
+    "lsb": "#001C3D",  # umdark
+    "dct": "#E84E10",  # umorange
+    "neutral": "#6B7280",  # umgray
+    "accent": "#E84E10",  # umorange (significance / pooled highlights)
+    "sig": "#E84E10",  # umorange (sig. < 0.05)
+    "ns": "#6B7280",  # umgray (n.s.)
+    "grid": "#E5E7EB",  # umgray@20 -- light gridline
+    "spine": "#001C3D",  # umdark
+    "text": "#001C3D",  # umdark
+    "muted": "#6B7280",  # umgray
 }
 
 SOURCE_COLORS = {"real": THEME["real"], "ml_a": THEME["ml_a"], "ml_b": THEME["ml_b"]}
@@ -40,20 +46,36 @@ SOURCE_MARKERS = {"real": "o", "ml_a": "s", "ml_b": "^"}
 METHOD_COLORS = {"lsb": THEME["lsb"], "dct": THEME["dct"]}
 ENCRYPTION_COLORS = {"plain": THEME["plain"], "encrypted": THEME["encrypted"]}
 
-# Diverging colormap centred on 0 for Δ-AUC heatmaps.
+# Diverging colormap centred on 0 for Delta-AUC heatmaps.  Matches the
+# umlight->white->umorange axis used by the body figures.
 DIVERGING_CMAP = LinearSegmentedColormap.from_list(
-    "academic_diverging",
+    "report_diverging",
     [THEME["plain"], "#F4F4F4", THEME["encrypted"]],
     N=256,
 )
 
 
 def _apply_academic_style() -> None:
-    """Apply consistent academic styling to every figure in the module."""
+    """Apply consistent academic styling to every figure in the module.
+
+    Font stack prefers Latin Modern Roman (lmodern) so PNGs blend with the
+    report's pdflatex+lmodern body text; falls back to Computer Modern and
+    then DejaVu Serif if lmodern is not installed system-wide.  Math text
+    routes through the matching Computer Modern font set.
+    """
     plt.rcParams.update(
         {
             "font.family": "serif",
-            "font.serif": ["DejaVu Serif", "Times New Roman", "Times", "serif"],
+            "font.serif": [
+                "Latin Modern Roman",
+                "CMU Serif",
+                "Computer Modern Roman",
+                "DejaVu Serif",
+                "Times New Roman",
+                "Times",
+                "serif",
+            ],
+            "mathtext.fontset": "cm",
             "font.size": 10,
             "axes.titlesize": 11,
             "axes.titleweight": "bold",
