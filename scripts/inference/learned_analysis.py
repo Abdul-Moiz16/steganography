@@ -121,7 +121,51 @@ def _setup_shadow_run(test_run: Path, shadow_dir: Path) -> None:
 # Compare learned verdicts vs classical verdicts
 # ---------------------------------------------------------------------------
 
+_VERDICT_STRENGTH = {
+    "not_supported": 0,
+    "inconclusive_underpowered": 0,
+    "trivial": 0,
+    "mixed": 1,
+    "supported": 2,
+}
+
+
+def _direction_label(classical_effect: float | None, learned_effect: float | None) -> str:
+    """Return a short label for the direction of effect comparison."""
+    if classical_effect is None or learned_effect is None:
+        return "?"
+    cl_sign = 1 if classical_effect > 0 else (-1 if classical_effect < 0 else 0)
+    ld_sign = 1 if learned_effect > 0 else (-1 if learned_effect < 0 else 0)
+    if cl_sign == ld_sign:
+        return "same dir"
+    if cl_sign == 0 or ld_sign == 0:
+        return "near-zero"
+    return "OPPOSITE"
+
+
+def _interpret(classical_verdict: str, learned_verdict: str, direction: str) -> str:
+    """Three-way interpretation: corroborates / refines / contradicts."""
+    if classical_verdict == learned_verdict:
+        return "✅ CORROBORATES (same verdict, same direction)" if direction == "same dir" else "✅ CORROBORATES"
+    if direction == "OPPOSITE":
+        return "🚨 CONTRADICTS (opposite direction)"
+    # Different verdict, same direction
+    cl_s = _VERDICT_STRENGTH.get(classical_verdict, 0)
+    ld_s = _VERDICT_STRENGTH.get(learned_verdict, 0)
+    if ld_s > cl_s:
+        return "📈 REFINES (learned shows stronger effect, same direction)"
+    if ld_s < cl_s:
+        return "📉 REFINES (learned shows weaker effect, same direction)"
+    return "≈ MIXED CORROBORATION"
+
+
 def _compare_verdicts(classical_verdicts: Path, learned_verdicts: Path) -> str:
+    """Side-by-side verdict comparison with three-way interpretation.
+
+    Output includes pooled effect sizes from each analysis so the
+    "refines / corroborates / contradicts" judgment can be made on
+    direction + magnitude, not just verdict-string equality.
+    """
     if not classical_verdicts.exists():
         return f"(no classical verdicts found at {classical_verdicts})"
     if not learned_verdicts.exists():
@@ -130,13 +174,25 @@ def _compare_verdicts(classical_verdicts: Path, learned_verdicts: Path) -> str:
     learned = json.loads(learned_verdicts.read_text())
 
     lines: list[str] = []
-    lines.append(f"{'RQ':<6}{'classical':<25}{'learned':<25}{'concordance':<20}")
-    lines.append("-" * 76)
+    lines.append(f"{'RQ':<6}{'classical (Δ)':<24}{'learned (Δ)':<24}{'interpretation':<35}")
+    lines.append("-" * 89)
     for rq in ("RQ1", "RQ2", "RQ3", "RQ4", "RQ5"):
-        cl = classical.get(rq, {}).get("verdict", "?")
-        ld = learned.get(rq, {}).get("verdict", "?")
-        same = "✅ same" if cl == ld else "⚠️ different"
-        lines.append(f"{rq:<6}{cl:<25}{ld:<25}{same:<20}")
+        cl = classical.get(rq, {})
+        ld = learned.get(rq, {})
+        cl_v = cl.get("verdict", "?")
+        ld_v = ld.get("verdict", "?")
+        cl_eff = cl.get("pooled_effect")
+        ld_eff = ld.get("pooled_effect")
+        direction = _direction_label(cl_eff, ld_eff)
+        interp = _interpret(cl_v, ld_v, direction)
+        cl_str = f"{cl_v} ({cl_eff:+.4f})" if cl_eff is not None else cl_v
+        ld_str = f"{ld_v} ({ld_eff:+.4f})" if ld_eff is not None else ld_v
+        lines.append(f"{rq:<6}{cl_str:<24}{ld_str:<24}{interp:<35}")
+    lines.append("")
+    lines.append("Legend:")
+    lines.append("  CORROBORATES = same verdict, same direction (best academic outcome)")
+    lines.append("  REFINES      = same direction, different magnitude (publishable refinement)")
+    lines.append("  CONTRADICTS  = opposite direction (rare; needs investigation)")
     return "\n".join(lines)
 
 
