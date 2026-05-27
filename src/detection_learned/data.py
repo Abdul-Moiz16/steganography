@@ -256,7 +256,11 @@ def make_paired_dataset(cover_groups: list[CoverGroup], *, seed: int = 0):
 
         def __getitem__(self, idx: int):
             cg = self.cgs[idx]
-            rng = random.Random((self.seed, idx))
+            # Per-item RNG must be a supported seed type for Python 3.12+
+            # (random.Random no longer accepts tuples). Combine seed and idx
+            # into a deterministic string -- random hashes the string with
+            # SHA512 internally, so reproducibility across runs holds.
+            rng = random.Random(f"{self.seed}-{idx}")
             stego_path, enc = cg.sample_stego(rng)
             cover_t = _load_gray(cg.cover_path)
             stego_t = _load_gray(stego_path)
