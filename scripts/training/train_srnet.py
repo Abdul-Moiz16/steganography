@@ -103,12 +103,15 @@ def main() -> None:
           f"({args.batch_size//2} covers + {args.batch_size//2} stegos), 50/50 by construction")
 
     pin = (device.type == "cuda")
+    # D4 augmentation ON for training (paper-faithful), OFF for validation
+    # (deterministic AUC, no epoch-to-epoch fluctuation from random rotations).
     train_loader = make_balanced_pair_loader(
         train_groups, batch_size=args.batch_size, shuffle=True,
-        num_workers=2, pin_memory=pin, seed=args.seed)
+        num_workers=2, pin_memory=pin, seed=args.seed, augment=True)
     val_loader = make_balanced_pair_loader(
         val_groups, batch_size=args.batch_size, shuffle=False,
-        num_workers=2, pin_memory=pin, seed=args.seed + 1)
+        num_workers=2, pin_memory=pin, seed=args.seed + 1, augment=False)
+    print(f"[train-srnet] D4 augmentation: train=ON (8 orientations), val=OFF (deterministic)")
 
     # ---------------- Model + optimiser ----------------
     model = SRNet().to(device)

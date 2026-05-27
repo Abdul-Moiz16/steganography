@@ -220,7 +220,12 @@ def enumerate_samples(
 # PyTorch dataset + paired sampler (lazily imported to avoid hard torch dep)
 # ---------------------------------------------------------------------------
 
-def make_paired_dataset(cover_groups: list[CoverGroup], *, seed: int = 0):
+def make_paired_dataset(
+    cover_groups: list[CoverGroup],
+    *,
+    seed: int = 0,
+    augment: bool = False,
+):
     """Return a torch.utils.data.Dataset of cover-stego PAIRS.
 
     Each ``__getitem__(idx)`` returns ``(cover_tensor, stego_tensor,
@@ -234,6 +239,21 @@ def make_paired_dataset(cover_groups: list[CoverGroup], *, seed: int = 0):
     cover input and once as the paired stego's cover -- but in fact we
     only load it once, since cover and stego are decoded in the same
     ``__getitem__`` call).
+
+    D4 augmentation (when augment=True)
+    -----------------------------------
+    The Boroumand+2019 SRNet paper specifies random 8-orientation D4
+    augmentation (4 rotations x 2 horizontal flips) at training time --
+    this is "essential for convergence and generalization" per Section
+    II-B. We apply the SAME random transform to both the cover and the
+    paired stego on each draw, so the cover/stego pixel correspondence
+    is preserved. Per-draw RNG is seeded with (seed, idx) so different
+    epochs see different rotations of the same image (DataLoader's
+    shuffle perturbs idx order across epochs, mixing the augmentations).
+
+    Validation should use augment=False for deterministic, stable AUC
+    estimates that don't fluctuate epoch-to-epoch from augmentation
+    noise.
     """
     import torch
     import numpy as np
@@ -244,12 +264,20 @@ def make_paired_dataset(cover_groups: list[CoverGroup], *, seed: int = 0):
             arr = np.asarray(im.convert("L"), dtype="float32")
         return torch.from_numpy(arr)[None]  # (1, H, W)
 
+    def _apply_d4(t: torch.Tensor, k_rot: int, flip: bool) -> torch.Tensor:
+        # t: (1, H, W). torch.rot90 rotates CCW. k_rot in {0, 1, 2, 3}.
+        if k_rot:
+            t = torch.rot90(t, k=k_rot, dims=(1, 2))
+        if flip:
+            t = torch.flip(t, dims=(2,))  # horizontal flip
+        # Make contiguous so downstream conv/BN doesn't hit slow non-contig path.
+        return t.contiguous()
+
     class _PairDataset(torch.utils.data.Dataset):
-        def __init__(self, cgs: list[CoverGroup], seed: int) -> None:
+        def __init__(self, cgs: list[CoverGroup], seed: int, augment: bool) -> None:
             self.cgs = cgs
-            # Per-item RNG seeded deterministically by index keeps val
-            # reproducible; training overrides it via shuffle anyway.
             self.seed = seed
+            self.augment = augment
 
         def __len__(self) -> int:
             return len(self.cgs)
@@ -264,6 +292,17 @@ def make_paired_dataset(cover_groups: list[CoverGroup], *, seed: int = 0):
             stego_path, enc = cg.sample_stego(rng)
             cover_t = _load_gray(cg.cover_path)
             stego_t = _load_gray(stego_path)
+
+            if self.augment:
+                # D4 random transform: same (k_rot, flip) for both members
+                # of the pair to preserve the cover/stego pixel-level
+                # correspondence (the embedding is keyed to specific pixel
+                # positions, so rotating cover and stego independently
+                # would destroy that signal).
+                k_rot = rng.randint(0, 3)
+                flip = rng.random() < 0.5
+                cover_t = _apply_d4(cover_t, k_rot, flip)
+                stego_t = _apply_d4(stego_t, k_rot, flip)
             meta = {
                 "group_id": cg.group_id,
                 "source": cg.source,
@@ -271,7 +310,7 @@ def make_paired_dataset(cover_groups: list[CoverGroup], *, seed: int = 0):
             }
             return cover_t, stego_t, meta
 
-    return _PairDataset(cover_groups, seed=seed)
+    return _PairDataset(cover_groups, seed=seed, augment=augment)
 
 
 def make_balanced_pair_loader(
@@ -282,6 +321,7 @@ def make_balanced_pair_loader(
     num_workers: int = 2,
     pin_memory: bool = False,
     seed: int = 0,
+    augment: bool = False,
 ):
     """Return a DataLoader that emits class-balanced batches.
 
@@ -290,6 +330,10 @@ def make_balanced_pair_loader(
     per batch and the collate function unrolls them into a flat
     ``(images, labels, metadata)`` tuple where labels alternate 0, 1,
     0, 1, ... ensuring perfect class balance per batch.
+
+    ``augment=True`` enables D4 (8-orientation) random augmentation
+    of each cover/stego pair (paper-faithful to Boroumand+2019 SRNet
+    Section II-B). Should be True for training, False for validation.
 
     Gotcha #2 (class imbalance, duplicate covers): solved by sampling
     from the de-duplicated cover-group view and pairing each cover with
@@ -305,7 +349,7 @@ def make_balanced_pair_loader(
         raise ValueError(f"batch_size must be even and >= 2; got {batch_size}")
     pair_batch = batch_size // 2
 
-    ds = make_paired_dataset(cover_groups, seed=seed)
+    ds = make_paired_dataset(cover_groups, seed=seed, augment=augment)
 
     def _collate(batch):
         # batch: list of (cover_t, stego_t, meta)
