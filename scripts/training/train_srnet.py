@@ -47,8 +47,21 @@ def main() -> None:
                    help="Embedding branch this checkpoint targets.")
     p.add_argument("--payload", required=True, choices=["low", "medium", "high"])
     p.add_argument("--epochs", type=int, default=80)
-    p.add_argument("--batch-size", type=int, default=16)
-    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--batch-size", type=int, default=32,
+                   help="Total per-batch image count (covers+stegos). "
+                        "Paper-faithful is 32 (16 covers + 16 stegos). "
+                        "Drop to 16 only if VRAM-constrained.")
+    p.add_argument("--lr", type=float, default=1e-3,
+                   help="Initial learning rate. Boroumand+2019 used 1e-3 with Adamax.")
+    p.add_argument("--optimizer", default="adamax", choices=["adam", "adamax"],
+                   help="Optimiser. 'adamax' matches Boroumand+2019 (default, paper-"
+                        "faithful, more robust to early-epoch gradient outliers). "
+                        "'adam' is the common-substitute used in many open-source "
+                        "SRNet ports but is known to occasionally diverge on "
+                        "caption-matched / small-batch settings.")
+    p.add_argument("--grad-clip", type=float, default=1.0,
+                   help="Gradient L2-norm clip. Set 0 to disable. 1.0 prevents the "
+                        "early-epoch divergence that can park CE loss at ln(2).")
     p.add_argument("--device", default="auto", help="'cuda', 'mps', 'cpu' or 'auto'.")
     p.add_argument("--out", type=Path, required=True,
                    help="Output checkpoint path (.pt).")
@@ -100,7 +113,12 @@ def main() -> None:
     # ---------------- Model + optimiser ----------------
     model = SRNet().to(device)
     print(f"[train-srnet] parameters: {count_parameters(model):,}")
-    opt = torch.optim.Adam(model.parameters(), lr=args.lr)
+    if args.optimizer == "adamax":
+        opt = torch.optim.Adamax(model.parameters(), lr=args.lr)
+    else:
+        opt = torch.optim.Adam(model.parameters(), lr=args.lr)
+    print(f"[train-srnet] optimiser: {type(opt).__name__}, lr={args.lr}, "
+          f"grad_clip={args.grad_clip if args.grad_clip > 0 else 'OFF'}")
     sched = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode="max", patience=5, factor=0.5)
     loss_fn = torch.nn.CrossEntropyLoss()
 
@@ -159,7 +177,8 @@ def main() -> None:
     SANITY_THRESHOLD = 0.55
     sanity_warned = False
     for epoch in range(start_epoch, args.epochs + 1):
-        train_loss = _train_one_epoch(model, train_loader, opt, loss_fn, device)
+        train_loss = _train_one_epoch(model, train_loader, opt, loss_fn, device,
+                                        grad_clip=args.grad_clip)
         val_loss, val_auc = _validate(model, val_loader, loss_fn, device)
         sched.step(val_auc)
         history.append({"epoch": epoch, "train_loss": train_loss,
@@ -209,8 +228,14 @@ def _resolve_device(name: str):
     return torch.device(name)
 
 
-def _train_one_epoch(model, loader, opt, loss_fn, device) -> float:
-    """Each batch is class-balanced 50/50 (see make_balanced_pair_loader)."""
+def _train_one_epoch(model, loader, opt, loss_fn, device, grad_clip: float = 0.0) -> float:
+    """Each batch is class-balanced 50/50 (see make_balanced_pair_loader).
+
+    grad_clip > 0 enables L2-norm gradient clipping; this prevents the
+    early-epoch divergence that can park CE loss at exactly ln(2) when
+    Adam fires its first few aggressive updates on noisy small batches.
+    """
+    import torch
     model.train()
     total, count = 0.0, 0
     for x, y, _meta in loader:
@@ -219,6 +244,8 @@ def _train_one_epoch(model, loader, opt, loss_fn, device) -> float:
         logits = model(x)
         loss = loss_fn(logits, y)
         loss.backward()
+        if grad_clip > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip)
         opt.step()
         total += loss.item() * x.size(0); count += x.size(0)
     return total / max(count, 1)
