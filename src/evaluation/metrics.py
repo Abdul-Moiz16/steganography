@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import math
 from typing import Iterable
 
+import numpy as np
+
 
 @dataclass(frozen=True)
 class BinaryMetrics:
@@ -53,33 +55,57 @@ def roc_auc_score_binary(labels: list[int], scores: list[float]) -> float:
 
 
 def _roc_points(labels: list[int], scores: list[float]) -> list[tuple[float, float, float, float]]:
-    """Return (threshold, tpr, fpr, fnr) points over score thresholds."""
-    thresholds = sorted(set(scores), reverse=True)
-    if thresholds:
-        thresholds = [thresholds[0] + 1.0] + thresholds + [thresholds[-1] - 1.0]
+    """Return (threshold, tpr, fpr, fnr) points over score thresholds.
 
-    n_pos = sum(1 for y in labels if y == 1)
-    n_neg = sum(1 for y in labels if y == 0)
+    Implemented with numpy sort + cumsum (O(n log n)).  The earlier pure-Python
+    nested-loop version was O(n^2) in unique scores and became the bottleneck of
+    compute_metrics_from_predictions for large prediction tables (108k+ samples
+    per detector took 10+ minutes per group).  Output format is preserved
+    exactly: one (threshold, tpr, fpr, fnr) tuple per unique score plus a
+    boundary point above the maximum and below the minimum, all in descending
+    threshold order.
+    """
+    if not scores:
+        return []
 
-    points: list[tuple[float, float, float, float]] = []
-    for thr in thresholds:
-        tp = fp = tn = fn = 0
-        for y, s in zip(labels, scores):
-            pred_pos = s >= thr
-            if y == 1 and pred_pos:
-                tp += 1
-            elif y == 1 and not pred_pos:
-                fn += 1
-            elif y == 0 and pred_pos:
-                fp += 1
-            else:
-                tn += 1
+    scores_arr = np.asarray(scores, dtype=np.float64)
+    labels_arr = np.asarray(labels, dtype=np.int64)
 
-        tpr = tp / n_pos if n_pos else 0.0
-        fpr = fp / n_neg if n_neg else 0.0
-        fnr = fn / n_pos if n_pos else 0.0
-        points.append((thr, tpr, fpr, fnr))
-    return points
+    n_pos = int((labels_arr == 1).sum())
+    n_neg = int((labels_arr == 0).sum())
+
+    # Sort by score descending; on ties we still recover the right cumulative
+    # counts at each unique threshold by collapsing on the score boundary below.
+    order = np.argsort(-scores_arr, kind="mergesort")
+    scores_desc = scores_arr[order]
+    labels_desc = labels_arr[order]
+
+    # tp_cum[k] = #positives in the top-(k+1) by score; fp_cum[k] analogous.
+    tp_cum = np.cumsum(labels_desc == 1)
+    fp_cum = np.cumsum(labels_desc == 0)
+
+    # Pick the last index of each unique score (i.e. once we've crossed the
+    # entire equal-score run) so the (tp, fp) counts include every tied sample.
+    unique_boundary = np.r_[np.flatnonzero(np.diff(scores_desc) != 0),
+                            len(scores_desc) - 1]
+    unique_thresholds = scores_desc[unique_boundary]
+    tp_at_unique = tp_cum[unique_boundary]
+    fp_at_unique = fp_cum[unique_boundary]
+
+    # Prepend the "predict nothing" extreme (threshold above max -> tp=fp=0)
+    # and append the "predict everything" extreme (threshold below min ->
+    # tp=n_pos, fp=n_neg) to mirror the original helper's behaviour.
+    thresholds = np.r_[unique_thresholds[0] + 1.0,
+                       unique_thresholds,
+                       unique_thresholds[-1] - 1.0]
+    tp_arr = np.r_[0, tp_at_unique, n_pos]
+    fp_arr = np.r_[0, fp_at_unique, n_neg]
+
+    tpr = tp_arr / n_pos if n_pos else np.zeros_like(tp_arr, dtype=np.float64)
+    fpr = fp_arr / n_neg if n_neg else np.zeros_like(fp_arr, dtype=np.float64)
+    fnr = 1.0 - tpr if n_pos else np.zeros_like(tpr)
+
+    return list(zip(thresholds.tolist(), tpr.tolist(), fpr.tolist(), fnr.tolist()))
 
 
 def eer_score(labels: list[int], scores: list[float]) -> float:
