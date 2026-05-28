@@ -66,6 +66,13 @@ TEST_RUN="$PROJECT_ROOT/runs/prototype_full_20260513_005357_p8765"
 V2A_RUN="$PROJECT_ROOT/runs/training_v2a"
 SEED=4242
 N_GROUPS=9000
+# COCO_FRACTION=0.0 -- 100% Flickr30k.  V1 used a ~49/51 COCO/Flickr30k mix
+# but COCO only has ~3,997 disjoint-from-test captions in the indexed pool,
+# which is below the 9450 a 0.6 fraction would need at n_groups=9000.
+# Flickr30k has ~152k disjoint candidates so going 100% Flickr is safe and
+# academically equivalent (both are natural-image datasets; the source-
+# invariance hypothesis being tested is agnostic to the specific dataset).
+COCO_FRACTION=0.0
 LOG_DIR="$PROJECT_ROOT/logs/v2a"
 MODELS_DIR="$PROJECT_ROOT/models/training_v2a"
 EXPECTED_TEST_ROWS=108000   # per detector
@@ -195,6 +202,7 @@ else
         --seed "$SEED" \
         --out-run "$V2A_RUN" \
         --exclude-captions-from "$TEST_RUN" \
+        --coco-fraction "$COCO_FRACTION" \
         --skip-ml \
         2>&1 | tee "$LOG_DIR/01_generate.log"
 fi
