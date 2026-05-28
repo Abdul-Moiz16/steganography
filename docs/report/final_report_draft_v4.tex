@@ -169,7 +169,7 @@ The simplest spatial-domain stego method, \textbf{LSB replacement}, overwrites t
 The \textbf{Westfeld $\chi^2$ attack}~\cite{westfeld1999chi} tests whether adjacent value pairs $\{2k,2k\!+\!1\}$ have moved toward equal frequency, the diagnostic signature of LSB replacement. \textbf{RS Analysis}~\cite{fridrich2001lsb} tracks changes in Regular and Singular pixel-group counts under flipping masks. \textbf{Sample Pairs analysis} (SPA)~\cite{dumitrescu2003sp} estimates the embedded fraction from trace multisets on adjacent pixel pairs. In the frequency domain, Fridrich~et~al.'s \textbf{calibration $\chi^2$}~\cite{fridrich2003calib} introduced a non-block-aligned crop-recompress reference that approximates a payload-free histogram. All five are training-free and have closed-form scores; this makes them attractive for a comparison study because any AUC difference between carrier groups cannot be attributed to training-set bias.
 
 \subsection{AI-Generated Carriers}
-Gao~et~al.~\cite{gao2022ai} use generative models to encode steganographic secrets as the generated image itself (coverless steganography). That setting differs from ours, where a payload is embedded \emph{into} an existing cover. The closest prior work is M\'{e}reur~et~al.~\cite{mereur2024deepfake}, who test AI-generated images as carriers under adaptive embedding (HILL, UNIWARD, MiPOD) and report classifier-error rate $P_E$ rather than AUC. Mallet~et~al.~\cite{mallet2024csm} provide a systematic survey of cover-source mismatch and document that classical detectors built on one cover distribution often degrade on another. Table~\ref{tab:relatedwork} contrasts our design against the closest prior work along five axes that matter for cross-comparison.
+Gao~et~al.~\cite{gao2022ai} use generative models to encode steganographic secrets as the generated image itself (coverless steganography). That setting differs from ours, where a payload is embedded \emph{into} an existing cover. The closest prior work is M\'{e}reur~et~al.~\cite{mereur2024deepfake}, who test 15 GAN- and diffusion-based image generators as carriers under three adaptive spatial embeddings (HILL, S-UNIWARD, MiPOD) at 0.4~bpp, against an SRMQ1 + low-complexity linear classifier and an EfficientNet-v2 deep classifier, and report classifier-error rate $P_E$ rather than AUC. Mallet~et~al.~\cite{mallet2024csm} provide a systematic survey of cover-source mismatch and document that classical detectors built on one cover distribution often degrade on another. Table~\ref{tab:relatedwork} contrasts our design against the closest prior work along five axes that matter for cross-comparison.
 
 \begin{table*}[t]
 \centering\footnotesize
@@ -188,7 +188,7 @@ SRM+12~\cite{fridrich2012srm}           & photo (BOSS)     & HUGO/HILL       & e
 SRNet+19~\cite{boroumand2019srnet}      & photo (BOSS)     & adaptive        & deep CNN              & $P_E$      & --- \\
 Gao+22~\cite{gao2022ai}                 & GAN-coverless    & secret-sharing  & ---                   & ---        & --- \\
 Corvi+23~\cite{corvi2023diffusion}      & diffusion        & none (detection only) & CNN forensics   & AUC        & no  \\
-M\'ereur+24~\cite{mereur2024deepfake}   & real + GAN/diff. & HILL / UNIWARD  & xu-Net / SRNet        & $P_E$      & no  \\
+M\'ereur+24~\cite{mereur2024deepfake}   & real + 15 gen.   & HILL / S-UNIW / MiPOD  & SRMQ1+LC / EffNet-v2  & $P_E$      & no  \\
 \midrule
 \textbf{This work} & \textbf{real + 2 diffusion} & \textbf{LSB / DCT-LSB} & \textbf{6 training-free} & \textbf{paired AUC + pAUC} & \textbf{yes} \\
 \bottomrule
@@ -1433,6 +1433,8 @@ The result \emph{falsifies} the naive ``smoother diffusion outputs $\Rightarrow$
 
 \paragraph{Scope bounds.} Two generator families only; we cannot disentangle architecture from training data in RQ2. Grayscale only; colour information is intentionally removed for closer comparability with BOSSBase~\cite{bas2011boss} and the published detectors, but a colour study would be informative. The \emph{primary} (pre-registered) Bonferroni--Holm family contains only the six classical training-free detectors; the learned baselines (SRNet and DCTR) are reported with a separate Bonferroni--Holm correction over their own 6-stratum family in Section~\ref{sec:learnedxval} so the pre-registered correction in Table~\ref{tab:verdicts} is preserved exactly. RQ4 pools an asymmetric set (three spatial vs.\ three frequency detectors after adding the tile-local variant); the branch contrast accounts for this in its inverse-variance weighting.
 
+\paragraph{Embedding-family scope.} Every result in this paper is reported for \emph{non-adaptive} LSB-replacement embeddings: spatial LSB on PNG and JSteg-style DCT-LSB on JPEG~Q=95. Modern content-adaptive JPEG embeddings such as J-UNIWARD~\cite{holub2014uniward}, S-UNIWARD~\cite{holub2014uniward}, UED~\cite{guo2014ued} and their spatial-domain counterparts (HILL~\cite{li2014hill}, MiPOD~\cite{sedighi2016mipod}) are not tested. This is a deliberate design choice with two consequences. \emph{(i)~Detector-side:} the $\chi^2$-family detectors that drive five of our six pre-registered findings are obsoleted \emph{by construction} on adaptive embeddings -- the pairs-of-values signature they target is precisely what an adaptive distortion function is designed to preserve -- so an apples-to-apples comparison across the $\chi^2$ family requires a non-adaptive embedding, and the tile-local $\chi^2$-DCT contribution (Section~\ref{sec:tiled}) is intrinsically scoped to that family. \emph{(ii)~Carrier-source:} fixing the embedding to a content-agnostic rule isolates the carrier as the experimental variable; an adaptive embedding's distortion function would itself respond to carrier statistics (textured regions are preferred and diffusion outputs differ from photographs in their texture distribution), entangling ``real-vs-ML detectability gap'' with ``embedding-adapted-to-carrier'' in ways the present factorial cannot disentangle. Our findings therefore do not transfer to adaptive embeddings without re-testing; the orthogonal axis -- AI carriers under adaptive embeddings -- has been studied by M\'ereur~\textit{et~al.}~\cite{mereur2024deepfake} using HILL / S-UNIWARD / MiPOD at 0.4~bpp against an SRMQ1 + low-complexity-linear-classifier feature set and an EfficientNet-v2 deep classifier on a 15-generator pool (GAN- and diffusion-based, including SDXL but not FLUX). The two studies are complementary along three axes: detector family (training-free $\chi^2$ + caption-matched-trained SRNet/DCTR here vs.\ feature-set-trained classifiers there), embedding family (non-adaptive LSB here vs.\ adaptive STC-coded distortion-minimisation there), and dataset design (caption-matched factorial here vs.\ unpaired generator pools there); together they bracket the deepfake-as-carrier question across detector training regime and embedding adaptivity.
+
 \paragraph{Learned-detector caveats.} Three caveats accompany the supplementary learned-detector analysis. \textit{(i)} A single training-set random seed is used; we do not report multi-seed variability of the learned-AUC estimates. \textit{(ii)} The DCTR feature extractor uses the 8{,}000-dim variant of Holub \& Fridrich~\cite{holub2015dctr} interpreted as 64 modes $\times$ 25 phases (5$\times$5 alignment subset) $\times$ 5 truncated bins; the exact phase decomposition that yields the paper's headline 8{,}000 count is somewhat ambiguous from the paper text alone, and our interpretation is one of several defensible reconstructions. \textit{(iii)} SRNet is trained on caption-matched data, not on BOSSBase; this is the academically preferable choice for our cover-source-mismatch-aware design, but it makes our AUC numbers not directly comparable to literature SRNet figures on BOSSBase.
 
 \paragraph{Engineering caveats.} The analysis pipeline's ROC computation is implemented as a pure-Python $O(N^2)$ scan over per-threshold confusion-matrix updates ([src/evaluation/metrics.py]); for 648{,}000 predictions this took roughly six wall-clock hours on a single CPU. A vectorised \texttt{sklearn.metrics.roc\_curve} equivalent would complete the same work in seconds. The result is correct; the cost is excessive. This is flagged as a Phase~3 cleanup item.
@@ -1538,8 +1540,11 @@ A.~Mallet, M.~Bene\v{s}, and R.~Cogranne,
 
 \bibitem{mereur2024deepfake}
 A.~M\'{e}reur, A.~Mallet, and R.~Cogranne,
-``Are deepfakes a game-changer in digital images steganography leveraging the cover-source mismatch?''
-in \textit{Proc.\ 19th Int.\ Conf.\ Availability, Reliability and Security (ARES)}, 9~pages, 2024.
+``Are deepfakes a game changer in digital images steganography leveraging the cover-source mismatch?''
+in \textit{Proc.\ 19th Int.\ Conf.\ Availability, Reliability and Security (ARES)},
+Vienna, Austria, Jul.~30--Aug.~2, 2024, Art.~161, 9~pp.
+\href{https://doi.org/10.1145/3664476.3670893}{doi:10.1145/3664476.3670893}.
+Preprint: \href{https://hal.science/hal-04601453v3/document}{hal-04601453v3}.
 
 \bibitem{gao2022ai}
 K.~Gao, C.-C.~Chang, J.-H.~Horng, and I.~Echizen,
@@ -1602,6 +1607,29 @@ L.~Zhang, L.~Zhang, X.~Mou, and D.~Zhang,
 A.~Mittal, A.~K.~Moorthy, and A.~C.~Bovik,
 ``No-reference image quality assessment in the spatial domain,''
 \textit{IEEE Trans.\ Image Process.}, vol.~21, no.~12, pp.~4695--4708, 2012.
+
+\bibitem{holub2014uniward}
+V.~Holub, J.~Fridrich, and T.~Denemark,
+``Universal distortion function for steganography in an arbitrary domain,''
+\textit{EURASIP J. Info. Security}, vol.~2014, no.~1, p.~1, 2014.
+(Introduces S-UNIWARD and J-UNIWARD.)
+
+\bibitem{guo2014ued}
+L.~Guo, J.~Ni, and Y.~Q.~Shi,
+``Uniform embedding for efficient JPEG steganography,''
+\textit{IEEE Trans.\ Inf.\ Forensics Security}, vol.~9, no.~5, pp.~814--825, 2014.
+
+\bibitem{li2014hill}
+B.~Li, M.~Wang, J.~Huang, and X.~Li,
+``A new cost function for spatial image steganography,''
+in \textit{Proc.\ IEEE Int.\ Conf.\ Image Processing (ICIP)}, 2014, pp.~4206--4210.
+(Introduces HILL.)
+
+\bibitem{sedighi2016mipod}
+V.~Sedighi, R.~Cogranne, and J.~Fridrich,
+``Content-adaptive steganography by minimizing statistical detectability,''
+\textit{IEEE Trans.\ Inf.\ Forensics Security}, vol.~11, no.~2, pp.~221--234, 2016.
+(MiPOD.)
 
 \end{thebibliography}
 
