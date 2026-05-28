@@ -130,6 +130,15 @@ gate_fail() {
 }
 
 # Background heartbeat: every HEARTBEAT_SECS, send a status digest.
+# Uses "default" priority (audible buzz on iOS) so the user notices.
+# IMPORTANT: tqdm progress bars in generate_training_set / train_srnet /
+# train_dctr / apply_*_to_run write thousands of refresh-frames separated
+# by '\r' (carriage return) rather than '\n'.  A naive `tail -3 | tr -d '\r'`
+# concatenates all of those frames into one multi-MB "line" that overruns
+# ntfy's POST-body limit and silently fails the curl (eaten by `|| true`).
+# We instead read only the last 8 KB of the file, translate '\r' INTO '\n'
+# (so each tqdm frame becomes its own line), skip empties, take the last,
+# and hard-cap at 250 chars.
 heartbeat_loop() {
     while true; do
         sleep "$HEARTBEAT_SECS"
@@ -139,21 +148,37 @@ heartbeat_loop() {
         [[ -f "$LOG_DIR/CURRENT_LOG.txt" ]] && cur_log=$(cat "$LOG_DIR/CURRENT_LOG.txt")
         local latest=""
         if [[ -n "$cur_log" && -f "$cur_log" ]]; then
-            latest=$(tail -3 "$cur_log" 2>/dev/null | tr -d '\r' | grep -v '^$' | tail -1)
+            latest=$(tail -c 8192 "$cur_log" 2>/dev/null \
+                     | tr '\r' '\n' \
+                     | grep -v '^$' \
+                     | tail -1 \
+                     | head -c 250)
             [[ -z "$latest" ]] && latest="(no recent log output)"
         fi
         local extra=""
-        # If we're in SRNet training, extract latest epoch + val_auc
-        if [[ "$cur_log" == *srnet* && -f "$cur_log" ]]; then
-            local epoch_line=$(grep -E "epoch.*val_auc|epoch.*loss" "$cur_log" 2>/dev/null | tail -1)
-            [[ -n "$epoch_line" ]] && extra=" | $epoch_line"
-        fi
-        # If we're in inference, extract progress percent
-        if [[ "$cur_log" == *apply_* && -f "$cur_log" ]]; then
-            local prog=$(grep -E "[0-9]+/[0-9]+|[0-9]+%" "$cur_log" 2>/dev/null | tail -1)
-            [[ -n "$prog" ]] && extra=" | $prog"
-        fi
-        notify "V2a heartbeat @ $(human_elapsed)" "Phase: $phase | $latest$extra" "low" "heart"
+        # Phase-specific enrichment: live file counts for generation, latest
+        # epoch line for SRNet training, progress fragment for inference.
+        case "$phase" in
+            *generate*)
+                local nc=$(find "$V2A_RUN/covers/real"   -type f 2>/dev/null | wc -l | tr -d ' ')
+                local nl=$(find "$V2A_RUN/stego/lsb"     -type f 2>/dev/null | wc -l | tr -d ' ')
+                local nd=$(find "$V2A_RUN/stego/dct"     -type f 2>/dev/null | wc -l | tr -d ' ')
+                extra=" | covers=$nc lsb=$nl dct=$nd"
+                ;;
+            *SRNet*|*srnet*)
+                if [[ -n "$cur_log" && -f "$cur_log" ]]; then
+                    local epoch_line=$(grep -E "epoch.*val_auc|epoch.*loss" "$cur_log" 2>/dev/null | tail -1 | head -c 200)
+                    [[ -n "$epoch_line" ]] && extra=" | $epoch_line"
+                fi
+                ;;
+            *inference*|*apply_*)
+                if [[ -n "$cur_log" && -f "$cur_log" ]]; then
+                    local prog=$(grep -E "[0-9]+/[0-9]+|[0-9]+%" "$cur_log" 2>/dev/null | tail -1 | head -c 200)
+                    [[ -n "$prog" ]] && extra=" | $prog"
+                fi
+                ;;
+        esac
+        notify "V2a heartbeat @ $(human_elapsed)" "Phase: $phase$extra | $latest" "default" "heart"
     done
 }
 
