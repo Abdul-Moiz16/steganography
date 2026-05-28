@@ -213,6 +213,37 @@ echo "HEAD: $HEAD_SHORT"
 notify "V2a: git pull ok" "HEAD: $HEAD_SHORT" "default" "git"
 
 # ============================================================
+# Phase 0.5: verify dependencies BEFORE wasting time on downloads
+# ============================================================
+# Cloud instances provisioned for V1 DCTR-only inference are missing
+# embedding-pipeline deps (jpeglib, cryptography, ...).  Three previous
+# V2a launches crashed mid-Phase-1 after burning an hour of downloads
+# because we discovered missing deps stage-by-stage.  This step does
+# the full transitive import the embedding stage will need, and if
+# anything fails, installs both requirements files automatically.
+set_phase "Phase 0.5: verify deps"
+banner "Phase 0.5: verify Python dependencies"
+TRY_IMPORTS='
+import sys; sys.path.insert(0, ".")
+from src.pipeline.runner import PipelineRunner       # triggers cryptography, jpeglib
+from src.detection_learned.srnet import SRNet         # triggers torch
+from src.detection_learned.dctr import dctr_features  # triggers numpy/PIL
+from src.embedding.encryption import encrypt_payload_aes_256_cbc
+import jpeglib, cryptography, torch, sklearn, joblib, scipy, tqdm, PIL
+print(f"OK torch={torch.__version__} cuda={torch.cuda.is_available()} jpeglib={jpeglib.__version__} cryptography={cryptography.__version__}")
+'
+if ! "$PY" -c "$TRY_IMPORTS" 2>&1 | tee "$LOG_DIR/00_deps_check.log"; then
+    echo "  some imports failed -- installing BOTH requirements files now"
+    notify "V2a: installing missing deps" "Auto-install in progress" "default" "package"
+    "$PY" -m pip install --quiet -r requirements.txt 2>&1 | tee -a "$LOG_DIR/00_deps_check.log" | tail -5
+    "$PY" -m pip install --quiet -r requirements_learned.txt 2>&1 | tee -a "$LOG_DIR/00_deps_check.log" | tail -5
+    echo "  re-verifying..."
+    "$PY" -c "$TRY_IMPORTS" 2>&1 | tee -a "$LOG_DIR/00_deps_check.log" || \
+        gate_fail "Phase 0.5" "deps still missing after pip install -- see $LOG_DIR/00_deps_check.log"
+fi
+notify "V2a: deps OK" "$(tail -1 "$LOG_DIR/00_deps_check.log")" "default" "white_check_mark"
+
+# ============================================================
 # Phase 1: generate real-only training corpus
 # ============================================================
 set_phase "Phase 1: generate corpus" "$LOG_DIR/01_generate.log"
