@@ -395,9 +395,12 @@ def download_real_covers(
             with existing_manifest.open() as f:
                 n_existing = sum(1 for _ in _csv.DictReader(f))
             cover_files_on_disk = len(list((run_dir / "covers" / "real").glob("g*__src-real*")))
-            # Accept if we have >=90% of the requested row count AND at least
-            # 2 cover files per row (spatial + frequency variants).
-            if n_existing >= max(1, int(target_total * 0.9)) and cover_files_on_disk >= 2 * n_existing - 10:
+            # Permissive: short-circuit if we have at least a meaningful
+            # fraction of the overshoot AND enough cover files to back the
+            # records.  covers_real.csv can legitimately be post-caption-prune
+            # (smaller than the overshoot) on a relaunch -- the caller's
+            # pruning step is idempotent on already-pruned data.
+            if n_existing >= max(100, int(target_total * 0.4)) and cover_files_on_disk >= 2 * n_existing - 10:
                 print(
                     f"[download_real_covers] SHORT-CIRCUIT: covers_real.csv has "
                     f"{n_existing} rows (target was {target_total}); "
