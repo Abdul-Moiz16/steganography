@@ -702,11 +702,31 @@ def _embed_training_stegos(run_dir: Path, *, seed: int) -> None:
     )
 
     # ---- Execute embedding ----
-    print("[embed] embedding stegos (this is the slow step)")
+    # Performance levers for training-corpus embedding:
+    #
+    #   quality_metrics_path: when None, the worker skips PSNR / SSIM / FSIM /
+    #     BRISQUE.  FSIM (via piq + torch on CPU) and BRISQUE (libsvm) dominate
+    #     per-stego time -- skipping them takes the per-stego budget from
+    #     ~1s to ~0.05s.  Training corpora do NOT need quality metrics; the
+    #     stego files are identical to a metrics-enabled run because the
+    #     embedding algorithm is deterministic and pixel-identical regardless
+    #     of whether we measure quality afterwards.  Quality metrics are
+    #     reported only for the test run (where they go into the report's
+    #     image-quality table).
+    #
+    #   n_workers: defaults to min(6, cpu_count // 2) which is laptop-safe but
+    #     leaves >250 cores idle on a Vast.ai instance.  Bumped via env var
+    #     EMBED_N_WORKERS (default 24, capped by os.cpu_count) so cloud users
+    #     get the parallelism their machine can sustain without code changes.
+    import os as _os
+    n_workers = int(_os.environ.get("EMBED_N_WORKERS", 24))
+    n_workers = max(1, min(n_workers, _os.cpu_count() or 8))
+    print(f"[embed] embedding stegos (n_workers={n_workers}, quality_metrics=skipped)")
     n = runner.run_embedding_stage(
         stego_manifest,
         execute=True,
-        quality_metrics_path=run_dir / "metrics" / "quality_metrics.csv",
+        quality_metrics_path=None,
+        n_workers=n_workers,
     )
     print(f"[embed] DONE — {n} stego rows processed")
 
