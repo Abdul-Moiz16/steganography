@@ -262,20 +262,22 @@ notify "V2a: deps OK" "$(tail -1 "$LOG_DIR/00_deps_check.log")" "default" "white
 # ============================================================
 set_phase "Phase 1: generate corpus" "$LOG_DIR/01_generate.log"
 banner "Phase 1: generate real-only training corpus (n=$N_GROUPS captions)"
-if [[ -d "$V2A_RUN/manifests" && -s "$V2A_RUN/manifests/covers.csv" ]]; then
-    EXIST_N=$(awk 'NR>1' "$V2A_RUN/manifests/covers.csv" | wc -l | tr -d ' ')
-    echo "  found existing $V2A_RUN with $EXIST_N rows -- reusing"
-    notify "V2a: reusing existing corpus" "covers.csv has $EXIST_N rows" "default" "recycle"
-else
-    "$PY" scripts/training/generate_training_set.py \
-        --n-groups "$N_GROUPS" \
-        --seed "$SEED" \
-        --out-run "$V2A_RUN" \
-        --exclude-captions-from "$TEST_RUN" \
-        --coco-fraction "$COCO_FRACTION" \
-        --skip-ml \
-        2>&1 | tee "$LOG_DIR/01_generate.log"
-fi
+# Always invoke generate_training_set.py.  It has internal short-circuits:
+#  - download_real_covers SHORT-CIRCUITS when covers_real.csv already exists
+#    (so HuggingFace API is skipped on a relaunch)
+#  - run_embedding_stage's quality-CSV resume drops rows whose quality entry
+#    is already on disk (so stego work already done is skipped)
+# The outer "if covers.csv exists, skip" was incorrect: it also skipped
+# the embedding step, leaving the corpus half-built (covers but no stegos)
+# which then failed Gate 1's stego-count check.
+"$PY" scripts/training/generate_training_set.py \
+    --n-groups "$N_GROUPS" \
+    --seed "$SEED" \
+    --out-run "$V2A_RUN" \
+    --exclude-captions-from "$TEST_RUN" \
+    --coco-fraction "$COCO_FRACTION" \
+    --skip-ml \
+    2>&1 | tee "$LOG_DIR/01_generate.log"
 
 # -------- gate 1: corpus content sanity --------
 banner "Gate 1: verify training corpus is real-only, disjoint from test"
