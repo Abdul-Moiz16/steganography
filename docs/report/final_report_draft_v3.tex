@@ -127,7 +127,7 @@ Nikolas~Zouros\\[2pt]
 \vspace{-0.8cm}
 \begin{center}
 \begin{minipage}{0.86\textwidth}\small
-\noindent\textbf{Abstract}---We study whether the source of a carrier image -- a real photograph vs.\ a diffusion-generated synthetic image -- changes the detectability of LSB-style steganography under fixed embedding settings. A caption-matched factorial design ($N\!=\!3{,}000$ groups, 18{,}000 covers, 108{,}000 stego images, 648{,}000 classical-detector predictions) is processed through two embedding branches (spatial LSB on PNG; DCT-LSB on JPEG~Q=95), three payload levels (0.05/0.15/0.30~bpp), and two payload conditions (plain, AES-256-CBC). Six training-free statistical detectors score every (cover, stego) pair. Carrier-source contrasts are evaluated with the paired DeLong test and Bonferroni--Holm correction, with a practical-significance gate at the pre-registered $\delta_\text{min}\!=\!0.05$ as primary and the power-matched $\delta_\text{min}\!=\!0.025$ as supplementary, plus a partial-AUC analysis at FPR\,$\leq\!0.10$. Five of six detectors find diffusion carriers \emph{easier} to attack than real photographs; only $\chi^2$-spatial reverses this pattern, an effect that dissolves under the partial-AUC view. The SDXL vs.\ FLUX comparison yields no practical difference, and AES-256-CBC encryption is perfectly invariant. We \emph{cross-validate} the pre-registered protocol on a methodologically orthogonal detector family: two state-of-the-art learned baselines (SRNet for the spatial branch, DCTR for the frequency branch) trained on a separate 3{,}000-group caption-matched corpus disjoint from the test set by caption~ID. The learned detectors reach 0.998 (SRNet) and 0.814 (DCTR) overall AUC; they reproduce the encryption-invariance result of RQ5 ($|\Delta_\text{AUC}|\!<\!10^{-3}$, supported) and the monotone payload$\times$source interaction of RQ3 at roughly half the classical magnitude, but DCTR matches the classical RQ1 carrier-source pattern (real-harder, $\Delta_\text{AUC}\!\approx\!-0.03$) while SRNet -- saturated at AUC $\geq 0.997$ across all sources -- does not, an ambiguity we further probe with a real-only-training ablation (V2a, \S\ref{sec:v2a}). Two secondary contributions are reported: \textit{(i)} a tile-local Westfeld $\chi^2$ variant that ranks as the strongest frequency-branch classical detector in our pipeline, and \textit{(ii)} a mechanistic account of the $\chi^2$-spatial reversal grounded in diffusion-decoder tone-curve smoothness.
+\noindent\textbf{Abstract}---We study whether the source of a carrier image -- real photograph vs.\ diffusion-generated -- changes the detectability of LSB-style steganography under fixed embedding settings. A caption-matched factorial design ($N\!=\!3{,}000$ groups across real, SDXL and FLUX.1-schnell carriers; spatial LSB and DCT-LSB at three payload levels) is scored by six training-free statistical detectors and analysed with paired DeLong tests, Bonferroni--Holm correction, and a pre-registered practical-significance gate. Five of six classical detectors find diffusion carriers \emph{easier} to attack than real photographs; the sixth ($\chi^2$-spatial) reverses, an artefact that dissolves under partial-AUC at operational FPR\,$\leq\!0.10$. SDXL vs.\ FLUX shows no practical difference, and AES-256-CBC encryption is perfectly invariant. We cross-validate every pre-registered finding on an orthogonal detector family (SRNet, DCTR) trained on a disjoint caption-matched corpus: RQ2/4/5 corroborate directly, RQ3 refines (same monotone direction at $\sim$half magnitude), and RQ1 splits by detector branch -- DCTR replicates the classical real-harder pattern at $\Delta_\text{AUC}\!\approx\!-0.03$; SRNet, saturated at AUC$\geq$0.997, does not (an ambiguity that a real-only-training ablation, V2a, is designed to resolve). Two secondary contributions: a tile-local Westfeld $\chi^2$ variant that becomes the strongest frequency-branch classical detector in our pipeline, and a mechanistic account of the $\chi^2$-spatial reversal grounded in diffusion-decoder tone-curve smoothness.
 
 \smallskip
 \noindent\textit{\textbf{Index Terms}---steganography, steganalysis, LSB embedding, cover-source mismatch, diffusion models, paired DeLong test, partial AUC.}
@@ -994,51 +994,26 @@ The RQ1 verdict therefore strengthens from mixed to \textbf{supported} at both t
 
 This section applies the pre-registered statistical protocol of Section~\ref{sec:stats} (paired DeLong, Bonferroni--Holm at $\alpha\!=\!0.05$, $\delta_\text{min}$ thresholds at 0.05 primary / 0.025 supplementary, equivalence test at $\pm 0.025$ for RQ5) to two state-of-the-art learned detectors -- SRNet (spatial) and DCTR (frequency) -- as an independent replication of the classical findings on an orthogonal detector family. The Bonferroni--Holm family is computed separately for the six learned-detector strata, leaving the pre-registered classical-detector correction (Table~\ref{tab:verdicts}) untouched.
 
-\subsection{Training Outcomes (V1)}
+\subsection{Training Outcomes and Test-Set AUCs (V1)}
 \label{sec:v1-train}
 
-The V1 training corpus is the 3{,}000-caption source-balanced run described in Section~\ref{sec:experiments} (real + SDXL + FLUX, 1:1:1; train/val split $n_\text{train}\!=\!18{,}900$, $n_\text{val}\!=\!5{,}292$ per checkpoint). All six checkpoints converged cleanly within the planned epoch budget; per-cell validation AUCs are reported in Table~\ref{tab:learned-val-auc}.
+The V1 training corpus is the 3{,}000-caption source-balanced run of Section~\ref{sec:experiments} (real + SDXL + FLUX, 1:1:1; per-checkpoint $n_\text{train}\!=\!18{,}900$, $n_\text{val}\!=\!5{,}292$). All six checkpoints converged within budget. Validation AUCs: SRNet $\{0.9989, 0.9988, 0.9990\}$ at LSB / \{low, medium, high\}; DCTR $\{0.6174, 0.7949, 0.9363\}$ at DCT / \{low, medium, high\}. Applying the checkpoints as-is to the held-out test set (leakage-guarded by manifest hash; Section~\ref{sec:learned-detectors}) gives the per-source AUCs of Table~\ref{tab:learned-headline-auc}. SRNet saturates the LSB-detection task at AUC$\geq$0.997 across all carriers, payloads and encryption modes -- substantially above the strongest classical LSB detector (sample\_pairs at 0.93 overall). DCTR sits at AUC 0.81 overall, between $\chi^2$-DCT-tiled (0.85) and $\chi^2$-DCT (0.76); its per-cell range from 0.62 (low payload) to 0.94 (high payload) tracks the payload signal cleanly.
 
 \begin{table}[!htbp]
-\centering\small
-\caption{V1 validation AUCs of the learned detectors at the end of training. The held-out validation set is disjoint from the test set scored in Table~\ref{tab:learned-headline-auc}.}
-\label{tab:learned-val-auc}
-\setlength{\tabcolsep}{6pt}\renewcommand{\arraystretch}{1.1}
-\begin{tabular}{@{}llrr@{}}
-\toprule
-\textbf{Detector} & \textbf{Cell} & \textbf{Val AUC} & \textbf{$n_\text{val}$} \\
-\midrule
-SRNet & LSB / low     & 0.9989 & 5{,}292 \\
-SRNet & LSB / medium  & 0.9988 & 5{,}292 \\
-SRNet & LSB / high    & 0.9990 & 5{,}292 \\
-DCTR  & DCT / low     & 0.6174 & 5{,}292 \\
-DCTR  & DCT / medium  & 0.7949 & 5{,}292 \\
-DCTR  & DCT / high    & 0.9363 & 5{,}292 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Headline AUCs on the Held-Out Test Set}
-
-Applying the six trained checkpoints as-is to the 3{,}000-group test run (leakage-guarded by manifest hash; Section~\ref{sec:learned-detectors}) gives Table~\ref{tab:learned-headline-auc}. SRNet saturates the LSB-detection task at AUC $\geq 0.997$ across all carriers, payloads and encryption modes -- substantially above the strongest classical LSB detector (sample\_pairs at 0.93 overall). DCTR sits at AUC 0.81 overall, between $\chi^2$-DCT-tiled (0.85) and $\chi^2$-DCT (0.76); its per-cell range from 0.62 (low payload) to 0.94 (high payload) tracks the payload signal cleanly.
-
-\begin{table}[!htbp]
-\centering\small
-\caption{V1 learned-detector AUC on the held-out test run ($N\!=\!3{,}000$ groups), per carrier source. ``Real'' aggregates COCO + Flickr30k; ``ML-A''=SDXL; ``ML-B''=FLUX.1-schnell. Encryption is averaged within each (detector, cell, source) bucket; per-encryption values agree to $\leq\!0.001$ AUC at every cell.}
+\centering\footnotesize
+\caption{V1 learned-detector AUC on the test run, per carrier source. ML-A$=$SDXL, ML-B$=$FLUX. Encryption averaged within each cell (per-encryption agree to $\leq\!0.001$). Overall: SRNet 0.998, DCTR 0.814.}
 \label{tab:learned-headline-auc}
-\setlength{\tabcolsep}{6pt}\renewcommand{\arraystretch}{1.1}
+\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.05}
 \begin{tabular}{@{}llrrr@{}}
 \toprule
-\textbf{Detector} & \textbf{Cell} & \textbf{Real} & \textbf{ML-A} & \textbf{ML-B} \\
+\textbf{Det.} & \textbf{Cell} & \textbf{Real} & \textbf{ML-A} & \textbf{ML-B} \\
 \midrule
-SRNet & LSB / low     & 0.9990 & 0.9965 & 0.9985 \\
-SRNet & LSB / medium  & 0.9992 & 0.9981 & 0.9981 \\
-SRNet & LSB / high    & 0.9994 & 0.9985 & 0.9978 \\
-DCTR  & DCT / low     & 0.6043 & 0.6453 & 0.6233 \\
-DCTR  & DCT / medium  & 0.7831 & 0.8302 & 0.7911 \\
-DCTR  & DCT / high    & 0.9300 & 0.9577 & 0.9317 \\
-\midrule
-\textbf{Overall (all cells)} & SRNet $|$ DCTR & 0.9992 $|$ 0.8018 & 0.9978 $|$ 0.8459 & 0.9982 $|$ 0.8069 \\
+SRNet & low     & 0.9990 & 0.9965 & 0.9985 \\
+SRNet & medium  & 0.9992 & 0.9981 & 0.9981 \\
+SRNet & high    & 0.9994 & 0.9985 & 0.9978 \\
+DCTR  & low     & 0.6043 & 0.6453 & 0.6233 \\
+DCTR  & medium  & 0.7831 & 0.8302 & 0.7911 \\
+DCTR  & high    & 0.9300 & 0.9577 & 0.9317 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1048,22 +1023,22 @@ DCTR  & DCT / high    & 0.9300 & 0.9577 & 0.9317 \\
 Table~\ref{tab:learned-verdicts} and the matched visual in Figure~\ref{fig:learned-verdicts} report the learned-detector verdict for each RQ alongside the corresponding classical-detector verdict, with the three-way interpretation \textbf{corroborates / refines / contradicts}.
 
 \begin{table}[!htbp]
-\centering\small
-\caption{V1 learned-detector cross-validation of the pre-registered classical-detector verdicts. Pooled $\Delta_\text{AUC}$ is inverse-variance-weighted over the six learned-detector strata. See Figure~\ref{fig:learned-verdicts} for the visual.}
+\centering\footnotesize
+\caption{V1 cross-validation verdicts. Classical and learned $\Delta_\text{AUC}$ inverse-variance pooled within each detector family.}
 \label{tab:learned-verdicts}
-\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}
 \begin{tabular}{@{}llll@{}}
 \toprule
-\textbf{RQ} & \textbf{Classical $\Delta$} & \textbf{Learned $\Delta$} & \textbf{Interpretation} \\
+\textbf{RQ} & \textbf{Classical $\Delta$} & \textbf{Learned $\Delta$} & \textbf{Verdict} \\
 \midrule
-RQ1 (real vs.\ pooled ML)        & $-0.0129$ (mixed)    & $+0.0012$ (trivial)  & {\bfseries Contradicts} (sign-flip, but see \S\ref{sec:disc-rq1-revisited}) \\
-RQ2 (SDXL vs.\ FLUX)              & $+0.0004$ (trivial)  & $-0.0002$ (trivial)  & Corroborates (both trivial) \\
-RQ3 (payload$\times$source gap)   & $-0.0157$ (supported) & $-0.0068$ (mixed)   & Refines (same direction, $\sim$1/2 magnitude) \\
-RQ4 (spatial vs.\ frequency)      & $-0.0013$ (trivial)  & $+0.0159$ (trivial)  & Corroborates (both within trivial margin) \\
-RQ5 (encryption invariance)       & $\approx 0$ (supported) & $\approx 0$ (supported) & {\bfseries Corroborates} \\
+RQ1 real vs.\ ML        & $-0.0129$ mixed     & $+0.0012$ trivial   & \textbf{Contradicts$^\star$} \\
+RQ2 SDXL vs.\ FLUX      & $+0.0004$ trivial   & $-0.0002$ trivial   & Corroborates \\
+RQ3 payload$\times$src  & $-0.0157$ supp.     & $-0.0068$ mixed     & Refines (1/2 mag.) \\
+RQ4 spatial vs.\ freq.  & $-0.0013$ trivial   & $+0.0159$ trivial   & Corroborates \\
+RQ5 encr.\ invariance   & $\approx 0$ supp.   & $\approx 0$ supp.   & \textbf{Corroborates} \\
 \bottomrule
-\end{tabular}\\[2pt]
-{\scriptsize $^\star$\,RQ1 sign-flip is an inverse-variance-pooling artefact; see \S\ref{sec:disc-rq1-revisited} and Figure~\ref{fig:within-family}.}
+\end{tabular}\\[1pt]
+{\scriptsize $^\star$\,pooling artefact -- see \S\ref{sec:disc-rq1-revisited}.}
 \end{table}
 
 \begin{figure}[!htbp]
@@ -1191,57 +1166,29 @@ Each detector scores only its own embedding branch, so within each branch we hav
 To disentangle architectural source-invariance from balanced-training-exposure artefact in the SRNet result, a second training run was executed with the same per-checkpoint sample-count budget but a real-only carrier corpus (9{,}000 Flickr30k captions disjoint from both V1 train and the test set; Section~\ref{sec:experiments}). The V2a checkpoints see no AI-generated carriers during training; their per-source AUC at test time then exposes whether (a) SRNet's source-invariance survives zero-shot transfer to AI carriers (architectural), or (b) drops on AI carriers when not trained on them (training-balance artefact). Either outcome is a clean result.
 
 \begin{table}[!htbp]
-\centering\small
-\caption{V2a real-only training: validation AUCs and per-source test-set AUCs (low-payload, plain-encryption cell, mirroring Figure~\ref{fig:within-family}).  Numbers landed at the time of this draft are filled in; \protect\TBD{cells} mark stages whose results we are still post-processing.}
+\centering\footnotesize
+\caption{V2a real-only training: validation and per-source test AUCs at the low-payload, plain-encryption cell (compare Figure~\ref{fig:within-family}). \protect\TBD{} cells await the running pipeline.}
 \label{tab:v2a-results}
-\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}
-\begin{tabular}{@{}lccc@{}}
+\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{}llcccc@{}}
 \toprule
-\textbf{Detector} & \textbf{Val AUC} & \textbf{Real (test)} & \textbf{ML-A $|$ ML-B (test)} \\
+\textbf{Det.} & \textbf{Cell} & \textbf{Val} & \textbf{Real} & \textbf{ML-A} & \textbf{ML-B} \\
 \midrule
-SRNet-v2a (LSB / low)    & \TBD{auc} & \TBD{auc} & \TBD{auc} $|$ \TBD{auc} \\
-SRNet-v2a (LSB / medium) & \TBD{auc} & \TBD{auc} & \TBD{auc} $|$ \TBD{auc} \\
-SRNet-v2a (LSB / high)   & \TBD{auc} & \TBD{auc} & \TBD{auc} $|$ \TBD{auc} \\
-DCTR-v2a  (DCT / low)    & \TBD{auc} & \TBD{auc} & \TBD{auc} $|$ \TBD{auc} \\
-DCTR-v2a  (DCT / medium) & \TBD{auc} & \TBD{auc} & \TBD{auc} $|$ \TBD{auc} \\
-DCTR-v2a  (DCT / high)   & \TBD{auc} & \TBD{auc} & \TBD{auc} $|$ \TBD{auc} \\
+SRNet & low    & \TBD{a} & \TBD{a} & \TBD{a} & \TBD{a} \\
+SRNet & medium & \TBD{a} & \TBD{a} & \TBD{a} & \TBD{a} \\
+SRNet & high   & \TBD{a} & \TBD{a} & \TBD{a} & \TBD{a} \\
+DCTR  & low    & \TBD{a} & \TBD{a} & \TBD{a} & \TBD{a} \\
+DCTR  & medium & \TBD{a} & \TBD{a} & \TBD{a} & \TBD{a} \\
+DCTR  & high   & \TBD{a} & \TBD{a} & \TBD{a} & \TBD{a} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Expected interpretations.} Two outcomes are possible:
+The ablation has a binary read: if SRNet-v2a AUC stays $\geq 0.95$ on ML-A/ML-B at test time, the deep CNN's source-invariance is architectural (it abstracts source structure away regardless of training exposure); if it drops substantially, source-invariance was a balanced-training artefact and the carrier-source signal exists in the spatial domain too. \TBD{Once V2a lands: one sentence specifying which outcome obtained and the corresponding interpretation of the V1 SRNet near-flat per-source AUC.}
 
-\begin{enumerate}
-\item \textbf{SRNet-v2a stays at AUC $\geq 0.95$ on ML-A / ML-B cells.}  The deep CNN abstracts away from carrier source structurally, not just because of balanced training exposure.  This is the stronger architectural claim: a learned spatial steganalyser trained exclusively on natural photographs generalises zero-shot to AI-generated carriers.  The V1 SRNet source-invariance result is interpreted as a property of the SRNet architecture and cover/stego objective, not an artefact of the source-balanced training distribution.
-\item \textbf{SRNet-v2a drops substantially on ML-A / ML-B (say to AUC $\sim 0.85$ or below).}  Source-invariance was a balanced-training artefact, and the carrier-source signal exists in the spatial domain too -- SRNet's V1 source-uniformity reflected exposure, not insensitivity.  The classical-detector RQ1 finding then \emph{generalises} to the learned spatial regime when training-corpus composition does not absorb the signal.
-\end{enumerate}
+\subsection{Strongest-Detector Comparison}
 
-\paragraph{Outcome (V1$\to$V2a) so far.} \TBD{single paragraph summary of which outcome obtained; cite which cells changed by how much; reaffirm/refute the V1 SRNet source-invariance interpretation}.
-
-\subsection{Strongest-Detector Comparison: Learned vs.\ Classical}
-
-For completeness, Table~\ref{tab:learned-vs-classical} reports the best-vs-best comparison: the learned detector's AUC against the strongest classical detector on the same (method, payload) cell, averaged over encryption.
-
-\begin{table}[!htbp]
-\centering\small
-\caption{Best-vs-best comparison. SRNet outperforms the best classical LSB detector by 0.001-0.065 AUC across the three payload cells; DCTR underperforms the best classical DCT detector ($\chi^2$-DCT-tiled) by 0.030-0.090 AUC -- showing that the learned frequency detector is genuinely the weaker option in its branch, not just a different one.}
-\label{tab:learned-vs-classical}
-\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}
-\begin{tabular}{@{}lllrrr@{}}
-\toprule
-\textbf{Cell} & \textbf{Learned} & \textbf{Best classical} & \textbf{Learn.} & \textbf{Class.} & \textbf{$\Delta$} \\
-\midrule
-LSB / low     & SRNet (V1) & sample\_pairs        & 0.998 & 0.934 & $+0.065$ \\
-LSB / medium  & SRNet (V1) & sample\_pairs        & 0.998 & 0.988 & $+0.010$ \\
-LSB / high    & SRNet (V1) & sample\_pairs        & 0.999 & 0.997 & $+0.001$ \\
-DCT / low     & DCTR (V1)  & $\chi^2$-DCT-tiled   & 0.619 & 0.665 & $-0.047$ \\
-DCT / medium  & DCTR (V1)  & $\chi^2$-DCT-tiled   & 0.795 & 0.904 & $-0.109$ \\
-DCT / high    & DCTR (V1)  & $\chi^2$-DCT-tiled   & 0.936 & 0.995 & $-0.058$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The asymmetry is informative: in the spatial branch a deep CNN beats the best classical detector at every payload (by a margin that shrinks as the classical detectors approach ceiling); in the frequency branch our tile-local $\chi^2$-DCT variant (Section~\ref{sec:tiled}) outperforms the LDA-ensemble learned baseline at every payload. The relevant lesson for steganalyser selection is that frequency-domain steganalysis remains a regime where well-designed classical features can still dominate.
+The best-vs-best AUC (learned vs.\ strongest same-branch classical detector, averaged over encryption) reveals a branch-asymmetric picture: in the \textbf{LSB branch} SRNet beats sample\_pairs by $\{+0.065, +0.010, +0.001\}$ at \{low, medium, high\} payload (advantage shrinks as the classical detector approaches the ceiling); in the \textbf{DCT branch} our tile-local $\chi^2$-DCT-tiled variant (Section~\ref{sec:tiled}) outperforms DCTR by $\{+0.047, +0.109, +0.058\}$ across the same payload cells. The takeaway for detector selection: a deep spatial CNN is the right tool for LSB, but frequency-domain steganalysis remains a regime where a well-designed classical detector still dominates.
 
 \paragraph{Provenance.} The training-set caption manifests (V1 and V2a), model checkpoints, per-cell training logs, and the leakage-guard SHA-256 hashes are included in the supplementary deliverables bundle. The classical-detector predictions, the V1 and V2a learned-detector predictions, and the verdict tables in this section are all reproducible from the manifests $+$ the seed (\texttt{4242}).
 
