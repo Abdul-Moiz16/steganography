@@ -36,6 +36,46 @@ def _average_ranks(values: list[float]) -> list[float]:
     return ranks
 
 
+def pe_min(labels: Iterable[int], scores: Iterable[float]) -> float:
+    """Minimum total detection error under equal priors.
+
+    P_E^min = 0.5 * min_tau (FPR(tau) + FNR(tau))
+
+    The operational error metric used by the Fridrich-lab classical-detector
+    papers (Fridrich 2001 RS, Fridrich 2003 calibration-chi^2) and reported
+    by Holub & Fridrich 2015 (DCTR) as the trained-ensemble out-of-bag
+    estimate E_OOB.  For a single-score detector this is computed by sweeping
+    the decision threshold across all score values and taking the minimum
+    of FPR + FNR; for a trained ensemble it can equivalently be computed
+    from the OOB decision function.
+
+    Returns 0.5 (chance) when one of the classes is empty.
+    Range: 0.5 (random) -> 0.0 (perfect separation).
+    """
+    labels_list = [int(y) for y in labels]
+    scores_list = [float(s) for s in scores]
+    if not labels_list:
+        return 0.5
+    n_pos = sum(1 for y in labels_list if y == 1)
+    n_neg = len(labels_list) - n_pos
+    if n_pos == 0 or n_neg == 0:
+        return 0.5
+    sorted_pairs = sorted(zip(scores_list, labels_list), key=lambda p: -p[0])
+    tp = fp = 0
+    best = 1.0  # threshold above max -> tp=fp=0, fnr=1, fpr=0; sum = 1
+    for _, y in sorted_pairs:
+        if y == 1:
+            tp += 1
+        else:
+            fp += 1
+        fpr = fp / n_neg
+        fnr = (n_pos - tp) / n_pos
+        s = fpr + fnr
+        if s < best:
+            best = s
+    return 0.5 * best
+
+
 def roc_auc_score_binary(labels: list[int], scores: list[float]) -> float:
     """Compute binary ROC-AUC using the rank-based formulation."""
     if len(labels) != len(scores):

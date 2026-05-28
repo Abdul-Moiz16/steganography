@@ -57,7 +57,22 @@ venv312/bin/python -m scripts.experiments.tiled_chi2_validation.import_bossbase 
 ... --n-images 100 --out-run runs/bossbase_q95_smoke
 ```
 
-Each subsequent experiment then accepts `--run runs/bossbase_q95` (or whatever name you chose) in place of the caption-matched corpus path. The validation work consists of running each experiment on BOTH corpora and comparing.
+The importer writes two manifests, both with SHA256 audit columns:
+- `manifests/covers_real.csv` — one row per cover, with `pgm_sha256` (input) and `cover_sha256` (output JPEG).
+- `manifests/stegos.csv` — one row per stego, with `stego_sha256`, `cover_sha256` (back-pointer), and `payload_bytes` (per-cover capacity used at that fill rate).
+
+The payload axis is the **six-level bpnzAC sweep** `{0.05, 0.10, 0.20, 0.30, 0.40, 0.50}` written to directories `p005..p050` (zero-padded so string sort = numeric order). This is intentionally different from the main pipeline's three coarse `low/medium/high` points so the BOSSBase validation reports a full operating curve.
+
+Each subsequent experiment then accepts `--run runs/bossbase_q95` plus two extra flags that tell it about the BOSSBase axis (the defaults still match the main pipeline's `low/medium/high` + `real ml_a ml_b` layout):
+
+```bash
+venv312/bin/python -m scripts.experiments.tiled_chi2_validation.exp1_tsweep \
+    --run runs/bossbase_q95 \
+    --payload-levels p005 p010 p020 p030 p040 p050 \
+    --sources real
+```
+
+The validation work consists of running each experiment on BOTH corpora and comparing.
 
 ### Experiment 1 — tile-size sweep (~30 min on laptop)
 ```bash
@@ -67,8 +82,8 @@ venv312/bin/python -m scripts.experiments.tiled_chi2_validation.exp1_tsweep \
     --pool max
 ```
 Outputs:
-- `runs/tiled_validation/exp1_tsweep/results.csv` (T × cell × AUC)
-- `runs/tiled_validation/exp1_tsweep/auc_vs_T.png` (line plot)
+- `runs/tiled_validation/exp1_tsweep/results.csv` (T × cell × {AUC, P_E^min})
+- `runs/tiled_validation/exp1_tsweep/auc_vs_T.png` and `pe_min_vs_T.png` (parallel line plots, one per metric)
 
 For a quick dry run cap cells per stratum:
 ```bash
@@ -81,8 +96,9 @@ venv312/bin/python -m scripts.experiments.tiled_chi2_validation.exp2_payload_inv
     --exp1-results runs/tiled_validation/exp1_tsweep/results.csv
 ```
 Outputs:
-- `runs/tiled_validation/exp2_payload_invariance/argmax_T_by_payload.csv`
-- `runs/tiled_validation/exp2_payload_invariance/argmax_T_by_payload.png`
+- `runs/tiled_validation/exp2_payload_invariance/best_T_by_payload.csv` (one row per (payload, encryption, source) with both `best_T_auc` and `best_T_pe`)
+- `runs/tiled_validation/exp2_payload_invariance/argmax_T_by_payload.png` (AUC)
+- `runs/tiled_validation/exp2_payload_invariance/argmin_T_by_payload.png` (P_E^min)
 
 ### Experiment 3 — pooling-rule ablation (~30 min, T=2 fixed)
 ```bash
@@ -93,7 +109,7 @@ venv312/bin/python -m scripts.experiments.tiled_chi2_validation.exp3_pooling \
 ```
 Outputs:
 - `runs/tiled_validation/exp3_pooling/results.csv`
-- `runs/tiled_validation/exp3_pooling/auc_by_pool.png`
+- `runs/tiled_validation/exp3_pooling/auc_by_pool.png` and `pe_min_by_pool.png`
 
 ### Experiment 4 — baseline detectors (~20 min, plus optional DCTR fold-in)
 ```bash
@@ -106,7 +122,7 @@ With DCTR included (reads existing `predictions_dctr.csv` if present):
 ```
 Outputs:
 - `runs/tiled_validation/exp4_baselines/results.csv`
-- `runs/tiled_validation/exp4_baselines/auc_by_detector.png`
+- `runs/tiled_validation/exp4_baselines/auc_by_detector.png` and `pe_min_by_detector.png`
 
 ### Experiment 5 — JPEG-quality sweep (SKELETON, requires re-embedding)
 Requires you to first re-embed the test corpus at each target Q.
@@ -143,7 +159,7 @@ Every experiment writes both metrics to its `results.csv`:
 | `auc` | Area under the ROC curve | 0.5 (chance) → 1.0 (perfect) | Our main paper (v4); steganalysis-eval literature post-2010 |
 | `pe_min` | Minimum total detection error: ½·min_τ(FPR(τ) + FNR(τ)) | 0.5 (chance) → 0.0 (perfect) | Fridrich/Goljan & Westfeld classical-detector papers; DCTR (as E_OOB of a trained ensemble) |
 
-`pe_min` is added so the results are directly comparable to the operational error rates reported in Fridrich's RS analysis (IEEE Multimedia 2001), the calibration-χ² paper (SPIE 2003), and Holub & Fridrich's DCTR (IEEE T-IFS 2015 — their `E_OOB` is the trained-ensemble estimate of this same quantity). Plot scripts default to AUC but you can re-plot from the CSV using `pe_min` for any cross-paper comparison.
+`pe_min` is added so the results are directly comparable to the operational error rates reported in Fridrich's RS analysis (IEEE Multimedia 2001), the calibration-χ² paper (SPIE 2003), and Holub & Fridrich's DCTR (IEEE T-IFS 2015 — their `E_OOB` is the trained-ensemble estimate of this same quantity). Every experiment now writes **two parallel PNG figures** — one keyed on AUC, one on P_E^min — so both audiences are served without having to re-plot from the CSV. Both plots share the same chance-line-at-0.5 convention and the y-label carries the directionality ("higher is better" for AUC, "lower is better" for P_E^min).
 
 ## Reproducibility
 

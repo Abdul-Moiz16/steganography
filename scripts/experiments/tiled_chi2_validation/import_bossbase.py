@@ -15,9 +15,18 @@ This script:
 3. For each (payload_level, encryption) cell, embeds a JSteg-style DCT-LSB
    stego via the pipeline's existing :func:`embed_dct_lsb_jpeg`, then writes
    it under ``<out_run>/stego/dct/<payload>/<encryption>/real/g<NNNN>__src-real__m-dct__p-<payload>__e-<encryption>.jpg``.
-4. Writes a minimal ``manifests/covers_real.csv`` so the existing
-   experiment scripts (exp1, exp3, exp4, exp5) can iterate the new run
-   directory without modification.
+4. Writes ``manifests/covers_real.csv`` (one row per cover, with SHA256s
+   of both the input PGM and the output cover JPEG) and
+   ``manifests/stegos.csv`` (one row per stego, with SHA256s of the stego
+   bytes and a back-pointer to the cover SHA256), so the import is fully
+   auditable and the experiment scripts (exp1, exp3, exp4) can iterate
+   the new run directory by passing ``--payload-levels`` and ``--sources``.
+
+The payload axis here is the six-level bpnzAC sweep
+``{0.05, 0.10, 0.20, 0.30, 0.40, 0.50}`` -- intentionally different from
+the main pipeline's three coarse low/medium/high points so the BOSSBase
+validation reports a full operating curve.  Directory names are
+``p005..p050`` (zero-padded so string sort = numeric order).
 
 Importantly, this importer does NOT call :class:`PipelineRunner` --
 it bypasses the runner's strict n_groups check and skip-if-exists
@@ -54,17 +63,21 @@ Usage
     # Quick smoke run on first 100 images only (~3 min instead of ~3h):
     ... --n-images 100 --out-run runs/bossbase_q95_smoke
 
-After import, run any validation experiment with --run pointed at the new dir:
+After import, run any validation experiment with --run pointed at the new
+dir, plus --payload-levels and --sources flags that match BOSSBase's six
+numerical payload levels and single 'real' source:
 
     venv312/bin/python -m scripts.experiments.tiled_chi2_validation.exp1_tsweep \\
-        --run runs/bossbase_q95
+        --run runs/bossbase_q95 \\
+        --payload-levels p005 p010 p020 p030 p040 p050 \\
+        --sources real
 """
 from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
-import os
 import sys
 import time
 from pathlib import Path
@@ -80,10 +93,30 @@ if str(ROOT) not in sys.path:
 from src.embedding.dct import dct_payload_capacity_bytes, embed_dct_lsb_jpeg  # noqa: E402
 
 
-# Match the main pipeline's payload-level definitions (proposal-aligned).
-PAYLOAD_FILL_RATES = {"low": 0.05, "medium": 0.15, "high": 0.30}
+# Six-level bpnzAC sweep matching the validation methodology decided for
+# BOSSBase: 0.05, 0.10, 0.20, 0.30, 0.40, 0.50 bits per non-zero AC
+# coefficient.  Names are zero-padded so directory listings and CSV
+# string-sorts agree with numeric order (p005 < p010 < ... < p050).
+#
+# This is INTENTIONALLY different from the main pipeline's three-level
+# low/medium/high naming -- the main pipeline reports three coarse points
+# on its caption-matched corpus, while BOSSBase validation reports the
+# full operating curve.  The experiment runners (exp1/exp3/exp4) accept
+# --payload-levels p005 p010 p020 p030 p040 p050 to iterate this axis.
+PAYLOAD_FILL_RATES: list[tuple[str, float]] = [
+    ("p005", 0.05),
+    ("p010", 0.10),
+    ("p020", 0.20),
+    ("p030", 0.30),
+    ("p040", 0.40),
+    ("p050", 0.50),
+]
 ENCRYPTIONS = ("plain", "encrypted")
 IMAGE_SIZE = (512, 512)  # BOSSBase native; standardise just in case.
+
+
+def _sha256_hex(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 def main() -> None:
@@ -123,8 +156,13 @@ def main() -> None:
     for idx, pgm in enumerate(pgm_paths, start=1):
         group_id = idx
         jpeg_path = covers_dir / f"g{group_id:04d}__src-real.jpg"
+        # Always hash the input PGM (cheap, audit-relevant) regardless of
+        # whether we skipped re-encoding because the JPEG already existed.
+        pgm_bytes = pgm.read_bytes()
+        pgm_sha256 = _sha256_hex(pgm_bytes)
         if not jpeg_path.exists():
-            _pgm_to_jpeg(pgm, jpeg_path, quality=args.quality)
+            _pgm_to_jpeg(pgm_bytes, jpeg_path, quality=args.quality)
+        cover_sha256 = _sha256_hex(jpeg_path.read_bytes())
         cover_records.append({
             "group_id": group_id,
             "source": "real",
@@ -137,6 +175,8 @@ def main() -> None:
             "qc_pass": "true",
             "qc_score": "1.0",
             "seed": "0",
+            "pgm_sha256": pgm_sha256,
+            "cover_sha256": cover_sha256,
         })
         if idx % 1000 == 0:
             print(f"  {idx}/{len(pgm_paths)} covers encoded ({(time.time() - t0) / 60:.1f} min)")
@@ -160,7 +200,11 @@ def main() -> None:
     total = len(cover_records) * len(PAYLOAD_FILL_RATES) * len(ENCRYPTIONS)
     done = 0
     t0 = time.time()
-    for payload_level, fill_rate in PAYLOAD_FILL_RATES.items():
+    stego_records: list[dict] = []
+    # Index covers by group_id so we can pair each stego row with its
+    # cover sha256 without re-reading the manifest.
+    cover_sha_by_gid: dict[int, str] = {r["group_id"]: r["cover_sha256"] for r in cover_records}
+    for payload_level, fill_rate in PAYLOAD_FILL_RATES:
         for encryption in ENCRYPTIONS:
             stego_dir = args.out_run / "stego" / "dct" / payload_level / encryption / "real"
             stego_dir.mkdir(parents=True, exist_ok=True)
@@ -191,6 +235,18 @@ def main() -> None:
                     f"g{gid:04d}__src-real__m-dct__p-{payload_level}__e-{encryption}.jpg"
                 )
                 stego_path.write_bytes(stego_jpeg)
+                stego_records.append({
+                    "group_id": gid,
+                    "source": "real",
+                    "method": "dct",
+                    "payload_level": payload_level,
+                    "fill_rate": fill_rate,
+                    "encryption": encryption,
+                    "stego_path": str(stego_path.relative_to(args.out_run.parent)),
+                    "stego_sha256": _sha256_hex(stego_jpeg),
+                    "cover_sha256": cover_sha_by_gid[gid],
+                    "payload_bytes": capacity,
+                })
                 done += 1
                 if done % 500 == 0:
                     rate = done / max(time.time() - t0, 1e-3)
@@ -198,10 +254,23 @@ def main() -> None:
                     print(f"  {done}/{total} stegos written ({rate:.0f} img/s, ETA {eta_min:.1f} min)")
     print(f"  done: {done} stegos in {(time.time() - t0) / 60:.1f} min")
 
+    # --- Write stegos manifest -----------------------------------------
+    stego_manifest = manifests_dir / "stegos.csv"
+    if stego_records:
+        with stego_manifest.open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=list(stego_records[0].keys()))
+            w.writeheader()
+            w.writerows(stego_records)
+        print(f"  wrote {stego_manifest} ({len(stego_records)} rows)")
+
+    payload_arg = " ".join(name for name, _ in PAYLOAD_FILL_RATES)
     print(f"\nBOSSBase imported to {args.out_run}")
-    print("Next step: validate by running any experiment, e.g.")
+    print("Next step: validate by running any experiment.  BOSSBase uses the "
+          "six-level bpnzAC axis and single 'real' source, so pass:")
     print(f"    venv312/bin/python -m scripts.experiments.tiled_chi2_validation.exp1_tsweep \\")
-    print(f"        --run {args.out_run}")
+    print(f"        --run {args.out_run} \\")
+    print(f"        --payload-levels {payload_arg} \\")
+    print(f"        --sources real")
 
 
 def _discover_pgms(root: Path, n_images: int | None) -> list[Path]:
@@ -220,9 +289,9 @@ def _discover_pgms(root: Path, n_images: int | None) -> list[Path]:
     return pgms
 
 
-def _pgm_to_jpeg(pgm_path: Path, out_path: Path, *, quality: int) -> None:
-    """Read a PGM (grayscale 8-bit), JPEG-encode at quality, save to out_path."""
-    with Image.open(pgm_path) as im:
+def _pgm_to_jpeg(pgm_bytes: bytes, out_path: Path, *, quality: int) -> None:
+    """Decode PGM bytes (grayscale 8-bit), JPEG-encode at quality, save to out_path."""
+    with Image.open(io.BytesIO(pgm_bytes)) as im:
         im = im.convert("L")  # PGM is already grayscale but force just in case
         if im.size != IMAGE_SIZE:
             # BOSSBase is 512x512 by construction; this is defence-in-depth.

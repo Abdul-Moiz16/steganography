@@ -36,10 +36,13 @@ from scripts.experiments.tiled_chi2_validation._lib import (
 ensure_project_root_on_sys_path()
 
 from scripts.experiments.tiled_chi2_validation._lib import (  # noqa: E402
+    METRICS,
     PALETTE,
+    apply_metric_axis_style,
     compute_auc_per_cell,
     configure_matplotlib_for_paper,
     enumerate_dct_test_cells,
+    palette_for_payloads,
     score_cells,
     sliding_chi2_score,
     tiled_chi2_score,
@@ -65,6 +68,12 @@ def main() -> None:
     p.add_argument("--dctr-models", nargs="+", type=Path,
                    help="Optional DCTR .pkl checkpoints (per payload). When given, "
                         "DCTR is added to the comparison.")
+    p.add_argument("--payload-levels", nargs="+", default=["low", "medium", "high"],
+                   help="Payload level directory names (default: low medium high). "
+                        "Pass p005 p010 p020 p030 p040 p050 for BOSSBase runs.")
+    p.add_argument("--sources", nargs="+", default=["real", "ml_a", "ml_b"],
+                   help="Source directory names (default: real ml_a ml_b). "
+                        "Pass --sources real for BOSSBase runs.")
     p.add_argument("--max-cells-per-strata", type=int, default=None)
     args = p.parse_args()
 
@@ -86,7 +95,10 @@ def main() -> None:
         t0 = time.time()
         print(f"\n=== {name} ===")
         cells = list(enumerate_dct_test_cells(
-            args.run, max_cells_per_strata=args.max_cells_per_strata
+            args.run,
+            payload_levels=args.payload_levels,
+            sources=args.sources,
+            max_cells_per_strata=args.max_cells_per_strata,
         ))
         rows = score_cells(cells, score_fn)
         auc_rows = compute_auc_per_cell(rows)
@@ -94,7 +106,9 @@ def main() -> None:
             entry["detector"] = name
         all_auc_rows.extend(auc_rows)
         mean_auc = sum(r["auc"] for r in auc_rows) / max(1, len(auc_rows))
-        print(f"  {name}: {len(auc_rows)} strata, mean AUC {mean_auc:.4f}, took {(time.time() - t0) / 60:.1f} min")
+        mean_pe = sum(r["pe_min"] for r in auc_rows) / max(1, len(auc_rows))
+        print(f"  {name}: {len(auc_rows)} strata, mean AUC {mean_auc:.4f}, "
+              f"mean P_E^min {mean_pe:.4f}, took {(time.time() - t0) / 60:.1f} min")
 
     if args.dctr_models:
         print("\n=== DCTR ===")
@@ -104,8 +118,10 @@ def main() -> None:
     write_csv(csv_path, all_auc_rows)
     print(f"\nwrote {csv_path} ({len(all_auc_rows)} rows)")
 
-    _plot(all_auc_rows, args.out_dir / "auc_by_detector.png")
-    print(f"wrote {args.out_dir / 'auc_by_detector.png'}")
+    for metric, ylabel, _ in METRICS:
+        out_path = args.out_dir / f"{metric}_by_detector.png"
+        _plot(all_auc_rows, out_path, args.payload_levels, metric=metric, ylabel=ylabel)
+        print(f"wrote {out_path}")
 
 
 def _score_dctr_into(all_auc_rows: list[dict], args: argparse.Namespace) -> None:
@@ -142,8 +158,9 @@ def _score_dctr_into(all_auc_rows: list[dict], args: argparse.Namespace) -> None
     print(f"  DCTR: {len(auc_rows)} strata, mean AUC {sum(r['auc'] for r in auc_rows) / len(auc_rows):.4f}")
 
 
-def _plot(rows: list[dict], out_path: Path) -> None:
-    """Plot mean AUC per (detector, payload), faceted by detector."""
+def _plot(rows: list[dict], out_path: Path, payload_levels: list[str],
+          *, metric: str, ylabel: str) -> None:
+    """Plot mean ``metric`` per (detector, payload), grouped by detector."""
     import matplotlib.pyplot as plt
     from collections import defaultdict
 
@@ -152,23 +169,28 @@ def _plot(rows: list[dict], out_path: Path) -> None:
 
     grouped: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     for r in rows:
-        grouped[r["detector"]][r["payload_level"]].append(r["auc"])
+        grouped[r["detector"]][r["payload_level"]].append(float(r[metric]))
 
     detectors = list(grouped.keys())
-    payloads = ["low", "medium", "high"]
-    color = {"low": PALETTE["umdark"], "medium": PALETTE["umlight"], "high": PALETTE["umorange"]}
+    color = palette_for_payloads(payload_levels)
 
     x = list(range(len(detectors)))
-    w = 0.27
-    for i, payload in enumerate(payloads):
-        ys = [sum(grouped[d][payload]) / max(1, len(grouped[d][payload])) for d in detectors]
-        ax.bar([xi + (i - 1) * w for xi in x], ys, width=w,
-               color=color[payload], edgecolor=PALETTE["umdark"], linewidth=0.4, label=payload)
+    n = max(len(payload_levels), 1)
+    w = 0.8 / n
+    offset = (n - 1) / 2
+    for i, payload in enumerate(payload_levels):
+        ys = [sum(grouped[d].get(payload, [])) / max(1, len(grouped[d].get(payload, [])))
+              for d in detectors]
+        ax.bar([xi + (i - offset) * w for xi in x], ys, width=w,
+               color=color.get(payload, "#888888"),
+               edgecolor=PALETTE["umdark"], linewidth=0.4, label=payload)
+    apply_metric_axis_style(ax, metric)
     ax.set_xticks(x)
     ax.set_xticklabels(detectors, rotation=15, ha="right", fontsize=7)
-    ax.set_ylabel("mean ROC-AUC over (source, encryption)")
-    ax.set_title(r"DCT-domain detectors on shared test corpus")
-    ax.legend(loc="best", fontsize=8, title="payload")
+    ax.set_ylabel(ylabel)
+    metric_title = "AUC" if metric == "auc" else r"$P_E^{\min}$"
+    ax.set_title(rf"DCT-domain detectors on shared test corpus: {metric_title}")
+    ax.legend(loc="best", fontsize=8, title="payload", ncol=2 if n > 4 else 1)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path)
 

@@ -46,7 +46,9 @@ from scripts.experiments.tiled_chi2_validation._lib import (
 ensure_project_root_on_sys_path()
 
 from scripts.experiments.tiled_chi2_validation._lib import (  # noqa: E402
+    METRICS,
     PALETTE,
+    apply_metric_axis_style,
     compute_auc_per_cell,
     configure_matplotlib_for_paper,
     enumerate_dct_test_cells,
@@ -106,8 +108,10 @@ def main() -> None:
     csv_path = args.out_dir / "results.csv"
     write_csv(csv_path, all_rows)
     print(f"\nwrote {csv_path} ({len(all_rows)} rows)")
-    _plot(all_rows, args.out_dir / "auc_vs_quality.png")
-    print(f"wrote {args.out_dir / 'auc_vs_quality.png'}")
+    for metric, ylabel, _ in METRICS:
+        out_path = args.out_dir / f"{metric}_vs_quality.png"
+        _plot(all_rows, out_path, metric=metric, ylabel=ylabel)
+        print(f"wrote {out_path}")
 
 
 def _infer_quality_from_run_name(run_dir: Path) -> int | None:
@@ -118,7 +122,7 @@ def _infer_quality_from_run_name(run_dir: Path) -> int | None:
     return None
 
 
-def _plot(rows: list[dict], out_path: Path) -> None:
+def _plot(rows: list[dict], out_path: Path, *, metric: str, ylabel: str) -> None:
     import matplotlib.pyplot as plt
     from collections import defaultdict
 
@@ -126,7 +130,7 @@ def _plot(rows: list[dict], out_path: Path) -> None:
     fig, ax = plt.subplots(figsize=(5.5, 3.0))
     grouped: dict[str, dict[int, list[float]]] = defaultdict(lambda: defaultdict(list))
     for r in rows:
-        grouped[r["detector"]][int(r["jpeg_quality"])].append(r["auc"])
+        grouped[r["detector"]][int(r["jpeg_quality"])].append(float(r[metric]))
 
     color_by_detector = {
         "global_chi2_dct": PALETTE["umgray"],
@@ -138,9 +142,11 @@ def _plot(rows: list[dict], out_path: Path) -> None:
         ys = [sum(by_Q[q]) / len(by_Q[q]) for q in xs]
         ax.plot(xs, ys, color=color_by_detector.get(det, PALETTE["umdark"]),
                 marker="o", markersize=4, label=det)
+    apply_metric_axis_style(ax, metric)
     ax.set_xlabel("JPEG quality factor")
-    ax.set_ylabel("mean ROC-AUC across cells")
-    ax.set_title(r"Tile-local vs.\ global $\chi^2$-DCT across JPEG quality")
+    ax.set_ylabel(ylabel)
+    metric_title = "AUC" if metric == "auc" else r"$P_E^{\min}$"
+    ax.set_title(rf"Tile-local vs.\ global $\chi^2$-DCT across JPEG quality: {metric_title}")
     ax.legend(loc="best", fontsize=8)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path)

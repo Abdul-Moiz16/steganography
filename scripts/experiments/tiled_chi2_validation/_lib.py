@@ -53,7 +53,7 @@ import numpy as np
 # in each experiment runner before importing this module).
 from src.detection.chi_square_dct import _build_pairs, _count_ac_frequencies
 from src.embedding.jpeg_dct import luminance_coefficients, read_dct_jpeg
-from src.evaluation.metrics import roc_auc_score_binary
+from src.evaluation.metrics import pe_min as _pe_min, roc_auc_score_binary
 
 
 PoolName = Literal["max", "mean", "median", "topk_mean"]
@@ -349,42 +349,6 @@ def score_cells(
     return out
 
 
-def _pe_min(labels: list[int], scores: list[float]) -> float:
-    """Compute the minimum total detection error over all decision thresholds.
-
-    P_E^min = 0.5 * min_tau (FPR(tau) + FNR(tau))
-
-    This is the operational error metric used by the Fridrich-lab
-    steganalysis papers (notably the DCTR paper's E_OOB, which is the
-    out-of-bag estimate of this same quantity from a trained ensemble).
-    For a single-score detector like our chi^2 family, P_E^min is the
-    bound the detector can achieve at its optimal threshold.
-
-    Range: 0.5 (random) down to 0.0 (perfect separation).
-    """
-    if not labels:
-        return 0.5
-    sorted_pairs = sorted(zip(scores, labels), key=lambda p: -p[0])
-    n_pos = sum(1 for y in labels if y == 1)
-    n_neg = len(labels) - n_pos
-    if n_pos == 0 or n_neg == 0:
-        return 0.5
-    tp = fp = 0
-    best = 1.0  # FPR + FNR, max 2.0; init high
-    # Threshold "above max" -> tp=fp=0, fnr=1, fpr=0; sum = 1
-    for _, y in sorted_pairs:
-        if y == 1:
-            tp += 1
-        else:
-            fp += 1
-        fpr = fp / n_neg
-        fnr = (n_pos - tp) / n_pos
-        s = fpr + fnr
-        if s < best:
-            best = s
-    return 0.5 * best
-
-
 def compute_metrics_per_cell(
     rows: list[dict],
     *,
@@ -470,6 +434,27 @@ PALETTE = {
 }
 
 
+def palette_for_payloads(payload_levels: Iterable[str]) -> dict[str, str]:
+    """Return a colour per payload level for plotting.
+
+    For the canonical three-level ``low/medium/high`` axis (the main paper's
+    convention) the brand palette is used so figures match the rest of the
+    paper.  For arbitrary N (e.g. the six-level ``p005..p050`` axis the
+    BOSSBase importer emits), a graduated ``plasma`` sample is returned so
+    ordered payload sweeps render as a perceptually uniform gradient.
+    """
+    levels = list(payload_levels)
+    if levels == ["low", "medium", "high"]:
+        return {"low": PALETTE["umdark"],
+                "medium": PALETTE["umlight"],
+                "high": PALETTE["umorange"]}
+    import matplotlib.cm as cm
+    import matplotlib.colors as mc
+    cmap = cm.get_cmap("plasma")
+    n = max(len(levels), 1)
+    return {p: mc.to_hex(cmap((i + 0.5) / n)) for i, p in enumerate(levels)}
+
+
 def configure_matplotlib_for_paper() -> None:
     """Match the v4 paper figure style (Latin Modern serif, gray grid, umdark text)."""
     import matplotlib.pyplot as plt
@@ -496,6 +481,43 @@ def configure_matplotlib_for_paper() -> None:
         "savefig.dpi": 200,
         "savefig.bbox": "tight",
     })
+
+
+# ---------------------------------------------------------------------------
+# Dual-metric plotting convention
+# ---------------------------------------------------------------------------
+#
+# Every experiment runner emits two figures with parallel filenames -- one
+# keyed on ROC-AUC, one keyed on P_E^min -- so the results can be read by
+# both the AUC-reporting modern literature (our v4 paper, recent learned
+# detectors) and the P_E / E_OOB-reporting Fridrich-lab classical-detector
+# lineage (Westfeld 1999, Fridrich 2001 RS, Fridrich 2003 calibration-chi^2,
+# Holub & Fridrich 2015 DCTR).  ``METRICS`` is the canonical list of
+# (column, axis_label, lower_is_better) tuples plot helpers iterate over.
+
+METRICS: list[tuple[str, str, bool]] = [
+    ("auc", "ROC-AUC (higher is better)", False),
+    ("pe_min", r"$P_E^{\min}$ (lower is better)", True),
+]
+
+
+def apply_metric_axis_style(ax, metric: str) -> None:
+    """Apply axis label + y-limits + chance-line for ``metric`` in METRICS.
+
+    Both metric plots use the natural orientation (smaller y at bottom)
+    with a dashed chance line at 0.5; the y-axis label carries the
+    'higher/lower is better' directionality.  Bar charts therefore render
+    consistently in both metric variants: short bars = bad detector for
+    AUC, short bars = good detector for P_E^min.
+    """
+    if metric == "auc":
+        ax.set_ylim(0.45, 1.02)
+        ax.axhline(0.5, color=PALETTE["umgray"], linestyle=":", linewidth=0.6,
+                   label="_nolegend_")
+    elif metric == "pe_min":
+        ax.set_ylim(0.0, 0.55)
+        ax.axhline(0.5, color=PALETTE["umgray"], linestyle=":", linewidth=0.6,
+                   label="_nolegend_")
 
 
 def ensure_project_root_on_sys_path() -> Path:
