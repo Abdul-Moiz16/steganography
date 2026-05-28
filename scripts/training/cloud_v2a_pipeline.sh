@@ -83,6 +83,20 @@ START_TIME=$(date +%s)
 cd "$PROJECT_ROOT"
 mkdir -p "$LOG_DIR" "$MODELS_DIR"
 
+# ---------------- Global thread caps (CRITICAL) ----------------
+# Set BEFORE any Python invocation so torch / numpy / openblas / piq don't
+# each spawn their own thread-pool-of-size-N_CPUS.  On large instances
+# (256-core in our case) the multiplicative effect is catastrophic:
+# 6 multiprocessing workers x 54 internal threads each = 324 threads
+# competing for CPU, with the embedding stage producing ~1 stego per
+# 30 seconds (extrapolated 12.5 days for the full corpus).  Capping each
+# pool to 1 thread per process keeps the worker-level parallelism that
+# matters and removes the contention that doesn't.
+export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+
 # ---------------- Helpers ----------------
 banner() {
     printf "\n============================================================\n%s\n============================================================\n" "$1"
@@ -272,8 +286,24 @@ echo "  train rows: $TRAIN_ROWS"
 [[ "$TRAIN_ROWS" -ge $(( N_GROUPS * 80 / 100 )) ]] || \
     gate_fail "Phase 1" "covers.csv has $TRAIN_ROWS rows, expected at least $(( N_GROUPS * 80 / 100 ))"
 
-TRAIN_CAPS=$(awk -F, 'NR>1 {print $5}' "$V2A_RUN/manifests/covers.csv" | sort -u)
-TEST_CAPS=$(awk  -F, 'NR>1 {print $5}' "$TEST_RUN/manifests/covers.csv" | sort -u)
+# Caption_id is column 5 in covers.csv, covers_real.csv, and raw_cover_index_real.csv.
+# Test runs on cloud may only have raw_cover_index_real.csv (minimal upload from V1
+# DCTR inference); fall back to that file when covers.csv is absent.
+_caption_file() {
+    local d=$1
+    for f in covers.csv covers_real.csv raw_cover_index_real.csv; do
+        [[ -s "$d/manifests/$f" ]] && { echo "$d/manifests/$f"; return; }
+    done
+    echo ""
+}
+V2A_CAP_FILE=$(_caption_file "$V2A_RUN")
+TEST_CAP_FILE=$(_caption_file "$TEST_RUN")
+[[ -n "$V2A_CAP_FILE" ]] || gate_fail "Phase 1" "no caption manifest in $V2A_RUN/manifests/"
+[[ -n "$TEST_CAP_FILE" ]] || gate_fail "Phase 1" "no caption manifest in $TEST_RUN/manifests/"
+echo "  V2a captions from:  $V2A_CAP_FILE"
+echo "  Test captions from: $TEST_CAP_FILE"
+TRAIN_CAPS=$(awk -F, 'NR>1 {print $5}' "$V2A_CAP_FILE" | sort -u)
+TEST_CAPS=$(awk  -F, 'NR>1 {print $5}' "$TEST_CAP_FILE" | sort -u)
 N_TRAIN=$(echo "$TRAIN_CAPS" | wc -l | tr -d ' ')
 N_TEST=$(echo  "$TEST_CAPS"  | wc -l | tr -d ' ')
 N_OVERLAP=$(comm -12 <(echo "$TRAIN_CAPS") <(echo "$TEST_CAPS") | wc -l | tr -d ' ')
