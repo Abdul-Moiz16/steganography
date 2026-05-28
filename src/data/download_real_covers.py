@@ -417,6 +417,8 @@ def download_real_covers(
     from tqdm import tqdm
 
     records: list[DownloadRecord] = []
+    n_skipped_existing = 0
+    n_failed = 0
     for idx, candidate in tqdm(
         enumerate(collected, start=1),
         total=len(collected),
@@ -428,24 +430,65 @@ def download_real_covers(
             dataset_slug = candidate.dataset.lower().replace(" ", "")
             ext = _url_extension(candidate.image_url)
             raw_path = run_dir / "raw" / "real" / dataset_slug / f"g{group_id:04d}__src-real{ext}"
-        else:
-            raw_path = _raw_image_path(paths, group_id, candidate.dataset, candidate.image_url)
-        raw_path.parent.mkdir(parents=True, exist_ok=True)
-        raw_path.write_bytes(fetch_bytes(candidate.image_url))
-
-        if run_dir is not None:
             spatial_path = (run_dir / "covers" / "real") / cover_filename(group_id, "real", "spatial")
             frequency_path = (run_dir / "covers" / "real") / cover_filename(group_id, "real", "frequency")
         else:
+            raw_path = _raw_image_path(paths, group_id, candidate.dataset, candidate.image_url)
             spatial_path = paths.cover_path(group_id, "real", "spatial")
             frequency_path = paths.cover_path(group_id, "real", "frequency")
-        standardize_and_save_variants(
-            raw_path,
-            spatial_path,
-            frequency_path,
-            size=image_size,
-            jpeg_quality=95,
-        )
+
+        # Skip-if-exists: if both standardised variants are already on disk
+        # from a previous attempt, reuse without re-downloading.  This makes
+        # the download stage resumable across crashes (e.g. a stray HTTP 4xx
+        # used to abort the whole loop and waste the prior work).
+        if spatial_path.exists() and frequency_path.exists():
+            n_skipped_existing += 1
+            records.append(
+                DownloadRecord(
+                    group_id=group_id,
+                    source="real",
+                    dataset=candidate.dataset,
+                    orig_id=candidate.orig_id,
+                    caption_id=candidate.caption_id,
+                    caption_text=candidate.caption_text,
+                    raw_image_path=_to_project_relative(project_root, raw_path),
+                    spatial_path=_to_project_relative(project_root, spatial_path),
+                    frequency_path=_to_project_relative(project_root, frequency_path),
+                    qc_pass=True,
+                    qc_score=1.0,
+                    seed=seed,
+                )
+            )
+            continue
+
+        # Per-image error handling: HTTP 4xx (image unavailable / restricted),
+        # network errors, or decode failures are non-fatal -- log the skip and
+        # move on so a single bad URL does not crash the entire pipeline.
+        raw_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            raw_path.write_bytes(fetch_bytes(candidate.image_url))
+            standardize_and_save_variants(
+                raw_path,
+                spatial_path,
+                frequency_path,
+                size=image_size,
+                jpeg_quality=95,
+            )
+        except (HTTPError, URLError, OSError, ValueError) as exc:
+            n_failed += 1
+            tqdm.write(
+                f"[download_real_covers] SKIP g{group_id:04d} "
+                f"({candidate.dataset}/{candidate.orig_id}): "
+                f"{type(exc).__name__}: {exc}"
+            )
+            # Clean up half-written raw file if write_bytes succeeded but
+            # standardize failed.
+            if raw_path.exists():
+                try:
+                    raw_path.unlink()
+                except OSError:
+                    pass
+            continue
 
         records.append(
             DownloadRecord(
@@ -462,6 +505,13 @@ def download_real_covers(
                 qc_score=1.0,
                 seed=seed,
             )
+        )
+
+    if n_skipped_existing or n_failed:
+        print(
+            f"[download_real_covers] reused {n_skipped_existing} existing covers, "
+            f"skipped {n_failed} failed downloads "
+            f"({len(records)} valid records of {len(collected)} attempted)"
         )
 
     raw_rows, cover_rows, prompt_rows = _build_rows(records)
