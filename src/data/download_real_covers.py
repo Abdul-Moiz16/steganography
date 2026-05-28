@@ -377,6 +377,40 @@ def download_real_covers(
         (run_dir / "covers" / "real").mkdir(parents=True, exist_ok=True)
         (run_dir / "manifests").mkdir(parents=True, exist_ok=True)
 
+    # SHORT-CIRCUIT: if a previous run already produced manifests and the
+    # standardised covers on disk, skip the HuggingFace datasets-server
+    # API calls entirely.  The HF API is the only thing this function uses
+    # the network for that we cannot regenerate from local state, and it is
+    # also the most frequent rate-limit / outage failure point (CloudFront
+    # 429s).  When manifests + cover files exist with the expected row count
+    # we return the existing paths and let the caller proceed to embedding.
+    if run_dir is not None:
+        existing_manifest = run_dir / "manifests" / "covers_real.csv"
+        existing_raw_index = run_dir / "manifests" / "raw_cover_index_real.csv"
+        existing_prompts = run_dir / "manifests" / "generation_prompts.csv"
+        existing_summary = run_dir / "manifests" / "real_download_summary.json"
+        if existing_manifest.exists() and existing_raw_index.exists():
+            target_total = coco_target + flickr_target
+            import csv as _csv
+            with existing_manifest.open() as f:
+                n_existing = sum(1 for _ in _csv.DictReader(f))
+            cover_files_on_disk = len(list((run_dir / "covers" / "real").glob("g*__src-real*")))
+            # Accept if we have >=90% of the requested row count AND at least
+            # 2 cover files per row (spatial + frequency variants).
+            if n_existing >= max(1, int(target_total * 0.9)) and cover_files_on_disk >= 2 * n_existing - 10:
+                print(
+                    f"[download_real_covers] SHORT-CIRCUIT: covers_real.csv has "
+                    f"{n_existing} rows (target was {target_total}); "
+                    f"{cover_files_on_disk} cover files on disk; "
+                    f"skipping HuggingFace API + downloads, reusing existing state."
+                )
+                return {
+                    "raw_index": existing_raw_index,
+                    "covers_master_real": existing_manifest,
+                    "generation_prompts": existing_prompts,
+                    "summary": existing_summary,
+                }
+
     specs = [
         DatasetSpec(
             dataset="COCO",
