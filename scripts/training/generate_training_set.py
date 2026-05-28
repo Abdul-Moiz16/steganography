@@ -623,17 +623,28 @@ def _embed_training_stegos(run_dir: Path, *, seed: int) -> None:
     real_manifest = run_dir / "manifests" / "covers_real.csv"
     ml_a_manifest = run_dir / "manifests" / "covers_ml_a.csv"
     ml_b_manifest = run_dir / "manifests" / "covers_ml_b.csv"
-    for m in (real_manifest, ml_a_manifest, ml_b_manifest):
-        if not m.exists():
-            raise FileNotFoundError(
-                f"Missing manifest {m}. Did the download/generation stages run?"
-            )
 
-    # build_payload_manifest does a strict n_groups check, so we must
-    # pass the actual count from the merged manifest (after any caption
-    # pruning) rather than the requested --n-groups (which may overshoot).
+    # Real-only mode: if ml_a and ml_b are both absent (e.g. --skip-ml was
+    # passed for the V2a ablation), skip the cross-source merge and feed
+    # covers_real.csv straight to the payload/stego/embed stages. The
+    # downstream runner methods iterate over whatever rows are in
+    # covers.csv, so a real-only manifest produces a real-only stego set.
+    if not real_manifest.exists():
+        raise FileNotFoundError(
+            f"Missing manifest {real_manifest}. Did the download stage run?"
+        )
+    real_only_mode = not ml_a_manifest.exists() and not ml_b_manifest.exists()
+    if not real_only_mode and (not ml_a_manifest.exists() or not ml_b_manifest.exists()):
+        raise FileNotFoundError(
+            f"Partial source manifests: real={real_manifest.exists()}, "
+            f"ml_a={ml_a_manifest.exists()}, ml_b={ml_b_manifest.exists()}. "
+            "Either all three sources or real-only is supported; mixed state is not."
+        )
+
     n_groups = _count_rows(real_manifest)
     print(f"[embed] {n_groups} groups in covers_real.csv -- using this as n_groups")
+    if real_only_mode:
+        print("[embed] REAL-ONLY mode: ml_a/ml_b manifests absent, skipping cross-source merge")
 
     config = PipelineConfig(
         project_root=project_root,
@@ -646,20 +657,31 @@ def _embed_training_stegos(run_dir: Path, *, seed: int) -> None:
     )
     runner = PipelineRunner(config)
 
-    # ---- Merge into covers_master.csv ----
-    # merge_covers_master() validates that group_id sets agree across all
-    # three sources, so a mismatch (e.g. an ML cell failed to generate)
-    # will raise here rather than producing a half-broken stego manifest.
-    print("[embed] merging covers_real + covers_ml_{a,b} -> covers_master")
-    from src.data.merge_covers_master import merge_covers_master
-    covers_master = merge_covers_master(
-        project_root=project_root,
-        real_manifest=real_manifest,
-        ml_a_manifest=ml_a_manifest,
-        ml_b_manifest=ml_b_manifest,
-        output_manifest=run_dir / "manifests" / "covers.csv",
-        expected_groups=_count_rows(real_manifest),  # match the actual count
-    )
+    if real_only_mode:
+        # Use covers_real.csv as the covers master directly.  The two files
+        # share the same schema (group_id, source, dataset, orig_id,
+        # caption_id, caption_text, spatial_path, frequency_path, qc_pass,
+        # qc_score, seed); the only difference for the merged version is
+        # additional rows from ml_a/ml_b which are absent in real-only mode.
+        import shutil as _shutil
+        covers_master = run_dir / "manifests" / "covers.csv"
+        _shutil.copy2(real_manifest, covers_master)
+        print(f"[embed] real-only: copied {real_manifest.name} -> {covers_master.name}")
+    else:
+        # ---- Merge into covers_master.csv ----
+        # merge_covers_master() validates that group_id sets agree across all
+        # three sources, so a mismatch (e.g. an ML cell failed to generate)
+        # will raise here rather than producing a half-broken stego manifest.
+        print("[embed] merging covers_real + covers_ml_{a,b} -> covers_master")
+        from src.data.merge_covers_master import merge_covers_master
+        covers_master = merge_covers_master(
+            project_root=project_root,
+            real_manifest=real_manifest,
+            ml_a_manifest=ml_a_manifest,
+            ml_b_manifest=ml_b_manifest,
+            output_manifest=run_dir / "manifests" / "covers.csv",
+            expected_groups=_count_rows(real_manifest),  # match the actual count
+        )
 
     # ---- Build payload manifest (writes payload bytes) ----
     print("[embed] building payload manifest + writing payload files")
