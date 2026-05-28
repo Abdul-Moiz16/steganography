@@ -465,6 +465,56 @@ echo "  dctr rows: $DCTR_ROWS (expected $EXPECTED_TEST_ROWS)"
 notify "V2a: DCTR inference done" "$DCTR_ROWS rows in predictions_dctr_v2a.csv" "high" "white_check_mark"
 
 # ============================================================
+# Phase 7: P_E^min summaries + strict DCTR E_OOB (post-training metrics)
+# ============================================================
+# These steps emit the two "DCTR/SRNet operational error" numbers the
+# paper's Section VII reports alongside chi^2-DCT-tiled.  Both are
+# deterministic given the upstream artifacts:
+#   - compute_pe_min_from_predictions.py: pure function of the per-image
+#     (label, score) pairs in the predictions CSVs (~30 sec each).
+#   - compute_dctr_eoob.py: re-fits each DCTR ensemble with oob_score=True
+#     using the SAME seed and SAME training data; deterministic re-fit
+#     yields bit-identical base learners plus the OOB decision function.
+#     Dominant cost is feature extraction (~30-60 min per payload).
+# Total Phase 7 wall-clock: ~1.5-3h (driven by DCTR feature re-extraction).
+set_phase "Phase 7: post-training metrics" "$LOG_DIR/07_metrics.log"
+banner "Phase 7: per-stratum P_E^min + strict DCTR E_OOB"
+
+# 7a: test-set P_E^min for both detectors (trivial, ~30 sec each)
+"$PY" scripts/inference/compute_pe_min_from_predictions.py \
+    --predictions "$SRNET_OUT" "$DCTR_OUT" \
+    2>&1 | tee -a "$LOG_DIR/07_metrics.log"
+PE_SRNET_OUT="$TEST_RUN/predictions/pe_min_srnet_v2a.csv"
+PE_DCTR_OUT="$TEST_RUN/predictions/pe_min_dctr_v2a.csv"
+[[ -f "$PE_SRNET_OUT" ]] || gate_fail "Phase 7a" "pe_min_srnet_v2a.csv not written"
+[[ -f "$PE_DCTR_OUT" ]]  || gate_fail "Phase 7a" "pe_min_dctr_v2a.csv not written"
+notify "V2a: P_E^min summaries done" "wrote pe_min_{srnet,dctr}_v2a.csv" "default" "bar_chart"
+
+# 7b: strict E_OOB via deterministic re-fit of each DCTR ensemble.
+# Each call re-extracts features for one payload (~30-60 min) then re-fits
+# and reads oob_decision_function_; the original .pkl is untouched, only
+# the sibling .summary.json gets an "oob_metrics" block appended.
+"$PY" scripts/training/compute_dctr_eoob.py \
+    --checkpoint "$MODELS_DIR/dctr_dct_low_v2a.pkl" \
+                 "$MODELS_DIR/dctr_dct_medium_v2a.pkl" \
+                 "$MODELS_DIR/dctr_dct_high_v2a.pkl" \
+    --training-run "$V2A_RUN" \
+    --n-workers "$NW" \
+    2>&1 | tee -a "$LOG_DIR/07_metrics.log"
+for payload in low medium high; do
+    summary="$MODELS_DIR/dctr_dct_${payload}_v2a.summary.json"
+    if ! grep -q '"oob_metrics"' "$summary" 2>/dev/null; then
+        gate_fail "Phase 7b" "E_OOB not persisted to $summary"
+    fi
+done
+EOOB_TEXT=$(for payload in low medium high; do
+    summary="$MODELS_DIR/dctr_dct_${payload}_v2a.summary.json"
+    eoob=$(python3 -c "import json; print(json.load(open('$summary'))['oob_metrics']['e_oob'])")
+    echo "$payload E_OOB=$eoob"
+done | paste -sd' ' -)
+notify "V2a: DCTR E_OOB done" "$EOOB_TEXT" "high" "trophy"
+
+# ============================================================
 # Phase 8: final summary + scp instructions
 # ============================================================
 set_phase "DONE"
@@ -487,8 +537,10 @@ cat <<'EOSCP'
   mkdir -p models/training_v2a
   scp -P 16523 'root@185.17.198.196:/workspace/m2-2_steganography/models/training_v2a/*' models/training_v2a/
 
-  # 2) Test predictions (~10 MB)
+  # 2) Test predictions + P_E^min summaries (~10 MB)
   scp -P 16523 'root@185.17.198.196:/workspace/m2-2_steganography/runs/prototype_full_20260513_005357_p8765/predictions/predictions_*_v2a.csv' \
+      runs/prototype_full_20260513_005357_p8765/predictions/
+  scp -P 16523 'root@185.17.198.196:/workspace/m2-2_steganography/runs/prototype_full_20260513_005357_p8765/predictions/pe_min_*_v2a.csv' \
       runs/prototype_full_20260513_005357_p8765/predictions/
 
   # 3) Training manifests for provenance (~5 MB)
