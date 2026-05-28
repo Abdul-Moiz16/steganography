@@ -349,14 +349,56 @@ def score_cells(
     return out
 
 
-def compute_auc_per_cell(
+def _pe_min(labels: list[int], scores: list[float]) -> float:
+    """Compute the minimum total detection error over all decision thresholds.
+
+    P_E^min = 0.5 * min_tau (FPR(tau) + FNR(tau))
+
+    This is the operational error metric used by the Fridrich-lab
+    steganalysis papers (notably the DCTR paper's E_OOB, which is the
+    out-of-bag estimate of this same quantity from a trained ensemble).
+    For a single-score detector like our chi^2 family, P_E^min is the
+    bound the detector can achieve at its optimal threshold.
+
+    Range: 0.5 (random) down to 0.0 (perfect separation).
+    """
+    if not labels:
+        return 0.5
+    sorted_pairs = sorted(zip(scores, labels), key=lambda p: -p[0])
+    n_pos = sum(1 for y in labels if y == 1)
+    n_neg = len(labels) - n_pos
+    if n_pos == 0 or n_neg == 0:
+        return 0.5
+    tp = fp = 0
+    best = 1.0  # FPR + FNR, max 2.0; init high
+    # Threshold "above max" -> tp=fp=0, fnr=1, fpr=0; sum = 1
+    for _, y in sorted_pairs:
+        if y == 1:
+            tp += 1
+        else:
+            fp += 1
+        fpr = fp / n_neg
+        fnr = (n_pos - tp) / n_pos
+        s = fpr + fnr
+        if s < best:
+            best = s
+    return 0.5 * best
+
+
+def compute_metrics_per_cell(
     rows: list[dict],
     *,
     strata: tuple[str, ...] = ("method", "payload_level", "encryption", "source"),
 ) -> list[dict]:
-    """Aggregate per-row (label, score) records into per-stratum AUC entries.
+    """Aggregate per-row (label, score) records into per-stratum metric entries.
 
-    Returns one row per stratum with the AUC plus n_pos and n_neg.
+    Each output row has columns:
+      - the stratification keys (e.g. method, payload_level, ...)
+      - n_pos, n_neg          : class counts
+      - auc                   : ROC area-under-curve (chance = 0.5, perfect = 1.0)
+      - pe_min                : minimum total detection error (Fridrich/DCTR convention,
+                                chance = 0.5, perfect = 0.0)
+
     Strata with fewer than 2 of either class are skipped.
     """
     buckets: dict[tuple, list[tuple[int, float]]] = defaultdict(list)
@@ -376,10 +418,23 @@ def compute_auc_per_cell(
             auc = roc_auc_score_binary(labels, scores)
         except ValueError:
             continue
+        pe = _pe_min(labels, scores)
         entry = {s: v for s, v in zip(strata, key)}
-        entry.update({"n_pos": n_pos, "n_neg": n_neg, "auc": float(auc)})
+        entry.update({
+            "n_pos": n_pos,
+            "n_neg": n_neg,
+            "auc": float(auc),
+            "pe_min": float(pe),
+        })
         out.append(entry)
     return out
+
+
+# Backwards-compatible alias: the original name remains so existing
+# experiment scripts continue to import compute_auc_per_cell.  The
+# implementation now also reports pe_min, but callers that only access
+# the "auc" column see no behaviour change.
+compute_auc_per_cell = compute_metrics_per_cell
 
 
 # ---------------------------------------------------------------------------

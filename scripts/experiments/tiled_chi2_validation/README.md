@@ -100,6 +100,17 @@ Total laptop wall-clock for experiments 1–4: ~1.5 h. Experiment 5
 adds 3–5 h of cloud time for re-embedding plus ~30 min of laptop
 scoring once the runs exist.
 
+## Metrics reported
+
+Every experiment writes both metrics to its `results.csv`:
+
+| Column | Definition | Range | Convention used by |
+|---|---|---|---|
+| `auc` | Area under the ROC curve | 0.5 (chance) → 1.0 (perfect) | Our main paper (v4); steganalysis-eval literature post-2010 |
+| `pe_min` | Minimum total detection error: ½·min_τ(FPR(τ) + FNR(τ)) | 0.5 (chance) → 0.0 (perfect) | Fridrich/Goljan & Westfeld classical-detector papers; DCTR (as E_OOB of a trained ensemble) |
+
+`pe_min` is added so the results are directly comparable to the operational error rates reported in Fridrich's RS analysis (IEEE Multimedia 2001), the calibration-χ² paper (SPIE 2003), and Holub & Fridrich's DCTR (IEEE T-IFS 2015 — their `E_OOB` is the trained-ensemble estimate of this same quantity). Plot scripts default to AUC but you can re-plot from the CSV using `pe_min` for any cross-paper comparison.
+
 ## Reproducibility
 
 All experiments are deterministic given a fixed test corpus + a fixed
