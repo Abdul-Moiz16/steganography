@@ -391,7 +391,7 @@ The 18 stratum-level p-values are corrected with \textbf{Bonferroni--Holm} at $\
 
 The verdict assignment follows the decision rule in Table~\ref{tab:verdictrule}.
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\small
 \caption{Verdict assignment rule for confirmatory RQs.}
 \label{tab:verdictrule}
@@ -999,7 +999,7 @@ This section applies the pre-registered statistical protocol of Section~\ref{sec
 
 The V1 training corpus is the 3{,}000-caption source-balanced run described in Section~\ref{sec:experiments} (real + SDXL + FLUX, 1:1:1; train/val split $n_\text{train}\!=\!18{,}900$, $n_\text{val}\!=\!5{,}292$ per checkpoint). All six checkpoints converged cleanly within the planned epoch budget; per-cell validation AUCs are reported in Table~\ref{tab:learned-val-auc}.
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\small
 \caption{V1 validation AUCs of the learned detectors at the end of training. The held-out validation set is disjoint from the test set scored in Table~\ref{tab:learned-headline-auc}.}
 \label{tab:learned-val-auc}
@@ -1022,7 +1022,7 @@ DCTR  & DCT / high    & 0.9363 & 5{,}292 \\
 
 Applying the six trained checkpoints as-is to the 3{,}000-group test run (leakage-guarded by manifest hash; Section~\ref{sec:learned-detectors}) gives Table~\ref{tab:learned-headline-auc}. SRNet saturates the LSB-detection task at AUC $\geq 0.997$ across all carriers, payloads and encryption modes -- substantially above the strongest classical LSB detector (sample\_pairs at 0.93 overall). DCTR sits at AUC 0.81 overall, between $\chi^2$-DCT-tiled (0.85) and $\chi^2$-DCT (0.76); its per-cell range from 0.62 (low payload) to 0.94 (high payload) tracks the payload signal cleanly.
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\small
 \caption{V1 learned-detector AUC on the held-out test run ($N\!=\!3{,}000$ groups), per carrier source. ``Real'' aggregates COCO + Flickr30k; ``ML-A''=SDXL; ``ML-B''=FLUX.1-schnell. Encryption is averaged within each (detector, cell, source) bucket; per-encryption values agree to $\leq\!0.001$ AUC at every cell.}
 \label{tab:learned-headline-auc}
@@ -1045,11 +1045,11 @@ DCTR  & DCT / high    & 0.9300 & 0.9577 & 0.9317 \\
 
 \subsection{Per-RQ Cross-Validation Verdicts}
 
-Table~\ref{tab:learned-verdicts} reports the learned-detector verdict for each RQ alongside the corresponding classical-detector verdict, with the three-way interpretation \textbf{corroborates / refines / contradicts}.
+Table~\ref{tab:learned-verdicts} and the matched visual in Figure~\ref{fig:learned-verdicts} report the learned-detector verdict for each RQ alongside the corresponding classical-detector verdict, with the three-way interpretation \textbf{corroborates / refines / contradicts}.
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\small
-\caption{V1 learned-detector cross-validation of the pre-registered classical-detector verdicts. ``Corroborates'' = same verdict, same direction; ``Refines'' = same direction, different magnitude; ``Contradicts'' = opposite direction. Pooled $\Delta_\text{AUC}$ is inverse-variance-weighted over the six learned-detector strata.}
+\caption{V1 learned-detector cross-validation of the pre-registered classical-detector verdicts. Pooled $\Delta_\text{AUC}$ is inverse-variance-weighted over the six learned-detector strata. See Figure~\ref{fig:learned-verdicts} for the visual.}
 \label{tab:learned-verdicts}
 \setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.15}
 \begin{tabular}{@{}llll@{}}
@@ -1060,56 +1060,139 @@ RQ1 (real vs.\ pooled ML)        & $-0.0129$ (mixed)    & $+0.0012$ (trivial)  &
 RQ2 (SDXL vs.\ FLUX)              & $+0.0004$ (trivial)  & $-0.0002$ (trivial)  & Corroborates (both trivial) \\
 RQ3 (payload$\times$source gap)   & $-0.0157$ (supported) & $-0.0068$ (mixed)   & Refines (same direction, $\sim$1/2 magnitude) \\
 RQ4 (spatial vs.\ frequency)      & $-0.0013$ (trivial)  & $+0.0159$ (trivial)  & Corroborates (both within trivial margin) \\
-RQ5 (encryption invariance)       & $\approx 0$ (supported) & $\approx 0$ (supported, 18/18 within $\pm 0.025$) & {\bfseries Corroborates} (preserves methodological assumption) \\
+RQ5 (encryption invariance)       & $\approx 0$ (supported) & $\approx 0$ (supported) & {\bfseries Corroborates} \\
 \bottomrule
-\end{tabular}
+\end{tabular}\\[2pt]
+{\scriptsize $^\star$\,RQ1 sign-flip is an inverse-variance-pooling artefact; see \S\ref{sec:disc-rq1-revisited} and Figure~\ref{fig:within-family}.}
 \end{table}
 
-The single ``contradicts'' verdict (RQ1) deserves the unpacking in Section~\ref{sec:disc-rq1-revisited}: it is driven entirely by inverse-variance pooling weighting saturated SRNet at near-infinite weight and effectively ignoring DCTR -- whose per-source pattern actually \emph{corroborates} the classical RQ1 in direction and magnitude.
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  classDot/.style={circle, draw=umdark, fill=umdark, inner sep=1.5pt},
+  learnDot/.style={circle, draw=umorange, fill=umorange, inner sep=1.5pt},
+  conn/.style={line width=0.4pt, color=umgray!70},
+  zeroL/.style={dashed, line width=0.3pt, color=umgray!60},
+]
+\def\xmin{-3.5}
+\def\xmax{2.0}
+\def\rowH{0.55}
+\draw[zeroL] (0,-0.3) -- (0,5*\rowH+0.2);
+\foreach \v in {-0.03,-0.02,-0.01,0,0.01,0.02} {
+  \pgfmathsetmacro{\xx}{\v * 100}
+  \draw[umgray!30, line width=0.2pt] (\xx,-0.25) -- (\xx,5*\rowH+0.1);
+  \node[font=\scriptsize\color{umdark!75}, anchor=north] at (\xx,-0.30) {\v};
+}
+\node[font=\footnotesize\color{umdark}] at (-0.5,-0.80) {$\Delta_\text{AUC}$ (negative $=$ real harder)};
+\foreach \i/\rq/\cdelta/\ldelta/\vdt in {%
+  1/RQ1/-0.0129/+0.0012/{Contradicts$^\star$},
+  2/RQ2/+0.0004/-0.0002/{Corroborates},
+  3/RQ3/-0.0157/-0.0068/{Refines},
+  4/RQ4/-0.0013/+0.0159/{Corroborates},
+  5/RQ5/0.0000/0.0000/{Corroborates}%
+} {
+  \pgfmathsetmacro{\yy}{(5-\i) * \rowH}
+  \pgfmathsetmacro{\cx}{\cdelta * 100}
+  \pgfmathsetmacro{\lx}{\ldelta * 100}
+  \node[font=\footnotesize\color{umdark}, anchor=east] at (\xmin-0.1,\yy) {\rq};
+  \draw[conn] (\cx,\yy) -- (\lx,\yy);
+  \node[classDot] at (\cx,\yy) {};
+  \node[learnDot] at (\lx,\yy) {};
+  \node[font=\scriptsize\color{umgray}, anchor=west] at (\xmax+0.2,\yy) {\vdt};
+}
+\node[classDot] at (-2.0,5*\rowH+0.70) {};
+\node[font=\footnotesize\color{umdark}, anchor=west] at (-1.9,5*\rowH+0.70) {classical};
+\node[learnDot] at (0.0,5*\rowH+0.70) {};
+\node[font=\footnotesize\color{umdark}, anchor=west] at (0.1,5*\rowH+0.70) {learned (V1)};
+\end{tikzpicture}
+\caption{Cross-validation verdicts visualised. Each row is one RQ; dark dot is the classical pooled $\Delta_\text{AUC}$, orange dot is the learned (V1) pooled $\Delta_\text{AUC}$. RQ3 keeps direction at half the magnitude; RQ2/4/5 stack near zero; RQ1 sign-flips at small magnitude -- the within-family Figure~\ref{fig:within-family} below resolves this as a pooling artefact, not a genuine reversal.}
+\label{fig:learned-verdicts}
+\end{figure}
 
-\subsection{Within-Family Fair Comparison at Low Payload}
+\subsection{Within-Family Per-Source AUC at the Hardest Cell}
 \label{sec:within-family}
 
-Each detector scores only its own embedding branch, so within each branch we have a clean four-way comparison (3 classical + 1 learned) on identical test cells. Table~\ref{tab:within-family} shows the per-source AUC at the low-payload + plain-encryption cell, where headroom is largest.
+Each detector scores only its own embedding branch, so within each branch we have a clean four-way comparison (3 classical + 1 learned) on identical test cells. Figure~\ref{fig:within-family} plots the per-source AUC at the low-payload + plain-encryption cell -- the regime with most detection headroom ($n\!=\!6{,}000$ stegos $+$ $6{,}000$ covers per cell). In the DCT branch DCTR sits squarely between its classical peers in magnitude and source ordering; in the LSB branch SRNet is the only working detector whose three source-bars are visually indistinguishable.
 
-\begin{table}[h]
-\centering\small
-\caption{Within-family per-source AUC at the low-payload, plain-encryption cell (largest detection-headroom regime; $n\!=\!6{,}000$ stegos $+$ $6{,}000$ covers per cell). $\Delta\!=\!$ real $-$ pooled ML. Detectors with overall AUC $<\!0.6$ in this regime are flagged ``near-random'' -- their tiny source range is not informative about source-sensitivity.}
-\label{tab:within-family}
-\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}
-\begin{tabular}{@{}lcccrr@{}}
-\toprule
-\textbf{Detector} & \textbf{Real} & \textbf{ML-A} & \textbf{ML-B} & \textbf{Range} & \textbf{$\Delta_\text{real-pmL}$} \\
-\midrule
-\multicolumn{6}{l}{\textit{LSB family (low payload, plain)}} \\
-rs                       & 0.856 & 0.941 & 0.952 & 0.096 & $-0.091$ \\
-sample\_pairs            & 0.883 & 0.974 & 0.971 & 0.091 & $-0.089$ \\
-$\chi^2$-spatial         & 0.541 & 0.530 & 0.533 & 0.012 & $+0.010$ {\scriptsize (near-random)} \\
-\textbf{SRNet (V1)}      & \textbf{0.999} & \textbf{0.997} & \textbf{0.998} & \textbf{0.003} & \textbf{$+0.002$} \\
-\midrule
-\multicolumn{6}{l}{\textit{DCT family (low payload, plain)}} \\
-$\chi^2$-DCT             & 0.581 & 0.620 & 0.605 & 0.039 & $-0.031$ \\
-$\chi^2$-DCT-tiled       & 0.635 & 0.702 & 0.724 & 0.089 & $-0.078$ \\
-calibration-$\chi^2$     & 0.519 & 0.528 & 0.531 & 0.012 & $-0.011$ {\scriptsize (near-random)} \\
-\textbf{DCTR (V1)}       & \textbf{0.605} & \textbf{0.645} & \textbf{0.623} & \textbf{0.041} & \textbf{$-0.030$} \\
-\bottomrule
-\end{tabular}
-\end{table}
+\begin{figure*}[!htbp]
+\centering
+\begin{tikzpicture}[
+  bardark/.style={draw=umdark,   fill=umdark!75, line width=0.25pt},
+  barblue/.style={draw=umlight,  fill=umlight!70, line width=0.25pt},
+  baroran/.style={draw=umorange, fill=umorange!80, line width=0.25pt},
+]
+\def\yscale{10}
+\def\bw{0.36}
+\def\bg{0.06}
+\foreach \v in {0.5,0.6,0.7,0.8,0.9,1.0} {
+  \pgfmathsetmacro{\y}{(\v - 0.5) * \yscale}
+  \draw[umdark!12, line width=0.3pt] (0,\y) -- (16,\y);
+  \node[font=\scriptsize\color{umdark!70}, anchor=east] at (-0.05,\y) {\v};
+}
+\draw[umdark!75, line width=0.5pt] (0,0) -- (16,0);
+\node[font=\footnotesize\color{umdark}, rotate=90] at (-0.8,2.5) {ROC AUC (low payload, plain)};
+\node[font=\small\bfseries\color{umdark}] at (3.35, 5.5) {LSB branch};
+\foreach \i/\name/\real/\mla/\mlb in {%
+  0/{rs}/0.856/0.941/0.952,
+  1/{samp-pairs}/0.883/0.974/0.971,
+  2/{$\chi^2$-spat.}/0.541/0.530/0.533,
+  3/{SRNet (V1)}/0.999/0.997/0.998%
+} {
+  \pgfmathsetmacro{\xc}{0.8 + \i*1.70}
+  \pgfmathsetmacro{\xa}{\xc - 1.5*\bw - \bg}
+  \pgfmathsetmacro{\xb}{\xc - 0.5*\bw}
+  \pgfmathsetmacro{\xcc}{\xc + 0.5*\bw + \bg}
+  \pgfmathsetmacro{\hreal}{(\real - 0.5) * \yscale}
+  \pgfmathsetmacro{\hmla}{(\mla - 0.5) * \yscale}
+  \pgfmathsetmacro{\hmlb}{(\mlb - 0.5) * \yscale}
+  \draw[bardark] (\xa,0)  rectangle (\xa+\bw,\hreal);
+  \draw[barblue] (\xb,0)  rectangle (\xb+\bw,\hmla);
+  \draw[baroran] (\xcc,0) rectangle (\xcc+\bw,\hmlb);
+  \node[font=\tiny\color{umdark}, below=2pt] at (\xc,0) {\name};
+}
+\draw[umgray!40, line width=0.4pt, dashed] (7.6, -0.5) -- (7.6, 5.2);
+\node[font=\small\bfseries\color{umdark}] at (10.85, 5.5) {DCT branch};
+\foreach \i/\name/\real/\mla/\mlb in {%
+  0/{$\chi^2$-DCT}/0.581/0.620/0.605,
+  1/{$\chi^2$-DCTt}/0.635/0.702/0.724,
+  2/{cal-$\chi^2$}/0.519/0.528/0.531,
+  3/{DCTR (V1)}/0.605/0.645/0.623%
+} {
+  \pgfmathsetmacro{\xc}{8.3 + \i*1.70}
+  \pgfmathsetmacro{\xa}{\xc - 1.5*\bw - \bg}
+  \pgfmathsetmacro{\xb}{\xc - 0.5*\bw}
+  \pgfmathsetmacro{\xcc}{\xc + 0.5*\bw + \bg}
+  \pgfmathsetmacro{\hreal}{(\real - 0.5) * \yscale}
+  \pgfmathsetmacro{\hmla}{(\mla - 0.5) * \yscale}
+  \pgfmathsetmacro{\hmlb}{(\mlb - 0.5) * \yscale}
+  \draw[bardark] (\xa,0)  rectangle (\xa+\bw,\hreal);
+  \draw[barblue] (\xb,0)  rectangle (\xb+\bw,\hmla);
+  \draw[baroran] (\xcc,0) rectangle (\xcc+\bw,\hmlb);
+  \node[font=\tiny\color{umdark}, below=2pt] at (\xc,0) {\name};
+}
+\begin{scope}[shift={(11.5, 5.4)}]
+  \draw[bardark] (0,0) rectangle (0.30,0.30);
+  \node[font=\scriptsize\color{umdark}, anchor=west] at (0.32,0.15) {real};
+  \draw[barblue] (1.20,0) rectangle (1.50,0.30);
+  \node[font=\scriptsize\color{umdark}, anchor=west] at (1.52,0.15) {ml\_a (SDXL)};
+  \draw[baroran] (3.30,0) rectangle (3.60,0.30);
+  \node[font=\scriptsize\color{umdark}, anchor=west] at (3.62,0.15) {ml\_b (FLUX)};
+\end{scope}
+\end{tikzpicture}
+\caption{Within-family per-source AUC at the low-payload, plain-encryption cell ($n\!=\!6{,}000$ stegos $+$ $6{,}000$ covers per cell, the regime with most detection headroom). Each detector group has three bars (real / ml\_a / ml\_b). \textbf{DCT branch (right):} DCTR replicates its classical peers' source pattern in both magnitude and ordering (ml\_a $>$ ml\_b $>$ real, range $\sim$0.04). \textbf{LSB branch (left):} the two working classical detectors show real-as-lowest with range $\sim$0.09; SRNet's three bars are visually indistinguishable at AUC $\sim$0.998. $\chi^2$-spatial and calibration-$\chi^2$ are near-random at this cell (AUC $\!<\!0.55$); their small source range is uninformative.}
+\label{fig:within-family}
+\end{figure*}
 
-Two patterns emerge from Table~\ref{tab:within-family}:
-\begin{itemize}
-\item \textbf{DCTR sits squarely in its family.} Its per-source range (0.041), ordering (ML-A $>$ ML-B $>$ real), and signed gap ($-0.030$) are all bracketed by the working classical DCT detectors. The learned frequency detector replicates the classical RQ1 finding within the DCT branch.
-\item \textbf{SRNet is the LSB-family outlier.} The two working classical LSB detectors show source range $\sim$0.09 with strong real-harder direction; SRNet shows range 0.003 and a near-zero gap. The categorical difference cannot be dismissed as ``the task was too easy'' because the same task is hard for SRNet's classical peers (best classical AUC at this cell is 0.93, not near ceiling). However, SRNet at 0.999 AUC has so little residual error budget that a ``source-correlated errors absorbed into the residual'' interpretation is also consistent with the data. The V2a ablation (Section~\ref{sec:v2a}) is designed to distinguish these two interpretations.
-\end{itemize}
+\textbf{DCTR sits squarely in its family} -- range 0.041, ordering ml\_a $>$ ml\_b $>$ real, signed gap $-0.030$; the learned frequency detector replicates the classical RQ1 inside its branch. \textbf{SRNet is the LSB-family outlier} at ceiling: working classical peers show source range $\sim$0.09 with real-harder direction, SRNet shows 0.003. The task is genuinely hard for the classical peers (best classical AUC 0.93, not near ceiling) so the difference cannot be ``too easy''; but SRNet at 0.999 has so little residual error budget that source-correlated errors cannot register here. The V2a ablation (Section~\ref{sec:v2a}) breaks this tie.
 
 \subsection{Real-Only Training Ablation (V2a)}
 \label{sec:v2a}
 
 To disentangle architectural source-invariance from balanced-training-exposure artefact in the SRNet result, a second training run was executed with the same per-checkpoint sample-count budget but a real-only carrier corpus (9{,}000 Flickr30k captions disjoint from both V1 train and the test set; Section~\ref{sec:experiments}). The V2a checkpoints see no AI-generated carriers during training; their per-source AUC at test time then exposes whether (a) SRNet's source-invariance survives zero-shot transfer to AI carriers (architectural), or (b) drops on AI carriers when not trained on them (training-balance artefact). Either outcome is a clean result.
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\small
-\caption{V2a real-only training: validation AUCs and per-source test-set AUCs (low-payload, plain-encryption cell, mirroring Table~\ref{tab:within-family}).  Numbers landed at the time of this draft are filled in; \protect\TBD{cells} mark stages whose results we are still post-processing.}
+\caption{V2a real-only training: validation AUCs and per-source test-set AUCs (low-payload, plain-encryption cell, mirroring Figure~\ref{fig:within-family}).  Numbers landed at the time of this draft are filled in; \protect\TBD{cells} mark stages whose results we are still post-processing.}
 \label{tab:v2a-results}
 \setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}
 \begin{tabular}{@{}lccc@{}}
@@ -1139,7 +1222,7 @@ DCTR-v2a  (DCT / high)   & \TBD{auc} & \TBD{auc} & \TBD{auc} $|$ \TBD{auc} \\
 
 For completeness, Table~\ref{tab:learned-vs-classical} reports the best-vs-best comparison: the learned detector's AUC against the strongest classical detector on the same (method, payload) cell, averaged over encryption.
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\small
 \caption{Best-vs-best comparison. SRNet outperforms the best classical LSB detector by 0.001-0.065 AUC across the three payload cells; DCTR underperforms the best classical DCT detector ($\chi^2$-DCT-tiled) by 0.030-0.090 AUC -- showing that the learned frequency detector is genuinely the weaker option in its branch, not just a different one.}
 \label{tab:learned-vs-classical}
@@ -1180,7 +1263,7 @@ The cross-validation Table~\ref{tab:learned-verdicts} reports RQ1 as ``contradic
 
 \paragraph{The pooled learned $\Delta$ is dominated by saturated SRNet.} Inverse-variance pooling weights each stratum by $1/\sigma^2$. SRNet's per-cell variance is microscopic ($\sigma\!\sim\!10^{-3}$) because every score is near 1.0; DCTR's per-cell variance is two orders of magnitude larger. The pooled $+0.001$ is therefore essentially the SRNet estimate, with DCTR contributing $<\!5\%$ of the weight. Reading per-detector: SRNet gives $+0.001$ (essentially zero, sign undefined at ceiling), DCTR gives $-0.030$ (same direction and order-of-magnitude as the classical pooled $-0.013$). DCTR \emph{corroborates} the classical RQ1 inside the DCT branch; it is the classical pattern, observed once more by a learned detector with a completely different feature backbone (LDA ensemble over 1{,}280-dim DCTR features vs.\ hand-crafted $\chi^2$ on pairs-of-values).
 
-\paragraph{SRNet's source range is at the ceiling of measurability.} The within-family fair comparison in Table~\ref{tab:within-family} shows that the two working classical LSB detectors (rs, sample\_pairs) place the real-vs-ML AUC gap at $-0.089$ to $-0.091$ at the low/plain cell, with per-source AUC ranges of $\sim$0.09. SRNet at the same cell yields per-source range 0.003 with a gap of $+0.002$. The categorical difference cannot be dismissed as ``the task was too easy'' -- the same task is hard for SRNet's classical peers (best classical AUC 0.93, not near ceiling). However, SRNet at AUC 0.999 has so little residual error budget that source-correlated errors cannot register at this measurement granularity. The V2a real-only-training ablation (Section~\ref{sec:v2a}) was designed precisely to break the tie between the two interpretations; the conclusion below incorporates whichever V2a outcome obtained.
+\paragraph{SRNet's source range is at the ceiling of measurability.} The within-family fair comparison in Figure~\ref{fig:within-family} shows that the two working classical LSB detectors (rs, sample\_pairs) place the real-vs-ML AUC gap at $-0.089$ to $-0.091$ at the low/plain cell, with per-source AUC ranges of $\sim$0.09. SRNet at the same cell yields per-source range 0.003 with a gap of $+0.002$. The categorical difference cannot be dismissed as ``the task was too easy'' -- the same task is hard for SRNet's classical peers (best classical AUC 0.93, not near ceiling). However, SRNet at AUC 0.999 has so little residual error budget that source-correlated errors cannot register at this measurement granularity. The V2a real-only-training ablation (Section~\ref{sec:v2a}) was designed precisely to break the tie between the two interpretations; the conclusion below incorporates whichever V2a outcome obtained.
 
 \paragraph{Revised RQ1 reading.} The carrier-source effect of RQ1 is real and reproducible \emph{when the detector has room to register it}. The DCT family unambiguously sees real-as-harder across three classical detectors and one learned detector. The spatial family sees real-as-harder across two classical detectors; the third classical detector ($\chi^2$-spatial) reverses this and the reversal dissolves under pAUC (Section~\ref{sec:chi2spatial}); SRNet abstracts the signal away (architecturally or via balanced training -- see V2a). The corrected academic claim is therefore: \emph{the carrier-source effect of RQ1 is a property of the detector family, not the carrier alone; it is observable wherever a detector has both genuine sensitivity to the embedding distortion and headroom above the ceiling}. \TBD{Once V2a is in, append one sentence specifying which interpretation (architectural source-invariance vs.\ balanced-training artefact) the V2a evidence supports for the spatial-CNN case.}
 
@@ -1665,7 +1748,7 @@ sample-pairs         & LSB & high   & 1.000 & 0.999 & $+0.001$ & $+0.001$ & $+0.
 \label{app:pauc-table}
 Table~\ref{tab:appendix-pauc} gives the 18-stratum McClish-normalised partial AUC contrasts for RQ1 with bootstrap standard errors (500 resamples per stratum) and Holm-corrected p-values within the 18-test family.
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\footnotesize
 \caption{RQ1 -- per-stratum partial AUC contrast at FPR\,$\leq\!0.10$ (real $-$ pooled ML).}
 \label{tab:appendix-pauc}
@@ -1700,7 +1783,7 @@ sample-pairs         & LSB & high   & $-0.034$ & $0.004$ & $7.1\!\times\!10^{-14
 \label{app:t-tests}
 Table~\ref{tab:appendix-ttest} reports paired Student's t-tests on the \emph{raw detector scores} across the four pre-registered comparisons (3 source contrasts $\times$ 6 detectors $+$ plain vs.\ AES-256-CBC $\times$ 6 detectors $=24$ tests). Holm correction is applied within the 24-test family. Effect sizes are Cohen's $d$ (small $\!=\!0.2$, medium $\!=\!0.5$, large $\!=\!0.8$). The encryption comparisons (top block) all have $|d|\!\leq\!0.029$ and are consistent with the RQ5 null; the carrier-source comparisons show large effects on the strongest detectors (RS, sample-pairs) and the new $\chi^2$-DCT-tiled.
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\footnotesize
 \caption{Score-level paired t-tests across all pre-registered comparisons. $n$ is the number of paired score samples per test.}
 \label{tab:appendix-ttest}
@@ -1746,7 +1829,7 @@ SDXL vs FLUX   & sample-pairs       & 18\,000 & $-24.99$ & $<\!10^{-15}$ & $<\!1
 \label{app:wilcoxon}
 Table~\ref{tab:appendix-wilcoxon} reports the non-parametric Wilcoxon signed-rank counterpart of the t-tests, with rank-biserial effect size $r$ and Holm correction within the same 24-test family. Conclusions agree with the t-tests; we include the Wilcoxon results because chi-square detector scores have heavy right tails and the t-test's normality assumption is mildly violated on those detectors.
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\footnotesize
 \caption{Score-level paired Wilcoxon signed-rank tests across all pre-registered comparisons.}
 \label{tab:appendix-wilcoxon}
@@ -1773,7 +1856,7 @@ plain vs AES   & sample-pairs       & 27\,000 & $1.68\!\times\!10^{8}$ & $<\!10^
 \label{app:pov}
 Table~\ref{tab:appendix-pov} reports the full per-source distribution of the cover-only PoV imbalance $S$ from Equation~\ref{eq:pov-imbalance} ($n\!=\!3{,}000$ covers per source, no embedding) and the paired Wilcoxon signed-rank tests against the caption-matched real baseline. The same data drives Figure~\ref{fig:pov} in Section~\ref{sec:chi2spatial}.
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering\footnotesize
 \caption{Cover-only PoV imbalance $S\!=\!\sum_k|n_{2k}-n_{2k+1}|$ per carrier source. Paired Wilcoxon tests are against the caption-matched real cover.}
 \label{tab:appendix-pov}
