@@ -1179,8 +1179,107 @@ To disentangle architectural source-invariance from balanced-training-exposure a
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\linewidth]{figures/v4_paper/v1_vs_v2a_heatmap.png}
-\caption{Per-(detector, payload, source) test AUC under matched (V1, left) vs real-only (V2a, right) training. Cells are coloured by AUC (red $\sim$0.5, green $\sim$1.0). Under matched training every cell is high; under real-only training the SRNet ml\_a / ml\_b cells at medium and high payload collapse to red (AUC 0.55--0.71), while the real column stays green (AUC 0.99). DCTR shows the same pattern at smaller absolute magnitude. The heatmap form makes the cover-source-mismatch effect visually immediate: red blocks materialise only in the columns the model never saw at training time.}
+\begin{tikzpicture}[
+  % Heat-cell colour: linear interpolation from red (low) to green (high)
+  % via the umdark/umlight/umorange palette is not natural, so use a
+  % brand-tinted red->amber->green ramp:
+  %   AUC 0.50 -> umorange   (poorest)
+  %   AUC 0.75 -> umorange!40
+  %   AUC 0.90 -> umlight!50
+  %   AUC 1.00 -> umlight   (best)
+  cellbase/.style={draw=umdark!70, line width=0.4pt},
+]
+% Helper: given AUC value v, define a fill colour name and text colour.
+% We use TikZ \pgfmathsetmacro to map and let user pick a colour for each cell.
+% Two 6x3 grids side by side: rows = (detector x payload), cols = (real, ml_a, ml_b).
+% Cell w x h = 1.2 x 0.55 cm; row label takes the leftmost 1.7 cm.
+
+\def\cw{1.2}   % cell width
+\def\ch{0.55}  % cell height
+\def\rowlbl{1.65} % row-label width
+\def\panelgap{0.7}
+
+\foreach \panel/\panelX/\title in {0/0/{Matched training (V1)}, 1/{8.95}/{Real-only training (V2a)}} {
+  \pgfmathsetmacro{\px}{\panelX}
+  \node[font=\footnotesize\bfseries\color{umdark}] at (\px+\rowlbl+1.5*\cw, 3.7*\ch+0.65) {\title};
+  % Column headers
+  \foreach \j/\src in {0/Real, 1/SDXL, 2/FLUX} {
+    \pgfmathsetmacro{\xx}{\px+\rowlbl+\j*\cw+\cw/2}
+    \node[font=\scriptsize\color{umdark}] at (\xx, 3.2*\ch) {\src};
+  }
+}
+
+% Per-cell data: panel, row, col, AUC value.  Panel 0 = matched (V1), Panel 1 = real-only (V2a).
+% Row order: SRNet/low, SRNet/medium, SRNet/high, DCTR/low, DCTR/medium, DCTR/high (top->bottom).
+\foreach \panel/\panelX in {0/0, 1/{8.95}} {
+  \pgfmathsetmacro{\px}{\panelX}
+  % Row labels (panel 0 only, shared visually)
+  \ifnum\panel=0
+    \foreach \r/\lbl in {0/{SRNet / low}, 1/{SRNet / medium}, 2/{SRNet / high},
+                          3/{DCTR / low}, 4/{DCTR / medium}, 5/{DCTR / high}} {
+      \pgfmathsetmacro{\yy}{(2.5-\r)*\ch}
+      \node[font=\scriptsize\color{umdark}, anchor=east] at (\px+\rowlbl-0.05, \yy) {\lbl};
+    }
+  \fi
+}
+
+% Cell data: panel, row, col, AUC.
+\foreach \p/\r/\c/\v in {%
+  0/0/0/0.999, 0/0/1/0.997, 0/0/2/0.998,
+  0/1/0/0.999, 0/1/1/0.998, 0/1/2/0.998,
+  0/2/0/0.999, 0/2/1/0.999, 0/2/2/0.998,
+  0/3/0/0.605, 0/3/1/0.645, 0/3/2/0.623,
+  0/4/0/0.783, 0/4/1/0.830, 0/4/2/0.790,
+  0/5/0/0.930, 0/5/1/0.958, 0/5/2/0.932,
+  1/0/0/0.992, 1/0/1/0.883, 1/0/2/0.925,
+  1/1/0/0.986, 1/1/1/0.547, 1/1/2/0.644,
+  1/2/0/0.987, 1/2/1/0.587, 1/2/2/0.706,
+  1/3/0/0.541, 1/3/1/0.521, 1/3/2/0.527,
+  1/4/0/0.613, 1/4/1/0.560, 1/4/2/0.568,
+  1/5/0/0.701, 1/5/1/0.612, 1/5/2/0.621%
+} {
+  \pgfmathsetmacro{\panelX}{\p*8.95}
+  \pgfmathsetmacro{\xx}{\panelX+\rowlbl+\c*\cw}
+  \pgfmathsetmacro{\yy}{(2.5-\r)*\ch-\ch/2}
+  % Map AUC to colour: <=0.55 -> heavy umorange; 0.55-0.75 -> umorange!~50; 0.75-0.90 -> umlight!50; 0.90-1.0 -> umlight strong.
+  % Compute a "good-ness" intensity 0..100 from AUC in [0.5, 1.0]:
+  \pgfmathsetmacro{\pct}{int(100*(\v-0.5)/0.5)}
+  % If v < 0.7 use umorange-shaded, else umlight-shaded.
+  \pgfmathsetmacro{\isLow}{ifthenelse(\v<0.70, 1, 0)}
+  \pgfmathsetmacro{\textcolor}{ifthenelse(\v<0.70||\v>0.95, 0, 1)}
+  \ifdim\v pt<0.70pt
+    \pgfmathsetmacro{\fillpct}{int(85-(\v-0.5)*180)} % 0.5 -> 85, 0.7 -> 49
+    \fill[umorange!\fillpct, cellbase] (\xx,\yy) rectangle (\xx+\cw,\yy+\ch);
+  \else
+    \pgfmathsetmacro{\fillpct}{int(20+(\v-0.7)*200)} % 0.7 -> 20, 1.0 -> 80
+    \fill[umlight!\fillpct, cellbase] (\xx,\yy) rectangle (\xx+\cw,\yy+\ch);
+  \fi
+  \draw[cellbase] (\xx,\yy) rectangle (\xx+\cw,\yy+\ch);
+  \ifdim\v pt<0.70pt
+    \node[font=\scriptsize\color{umdark}, anchor=center] at (\xx+\cw/2,\yy+\ch/2) {\v};
+  \else
+    \node[font=\scriptsize\color{umdark}, anchor=center] at (\xx+\cw/2,\yy+\ch/2) {\v};
+  \fi
+}
+
+% Bottom caption-line: colour bar legend
+\begin{scope}[shift={(0,-1.0)}]
+  \node[font=\scriptsize\color{umdark}, anchor=east] at (0.0,0) {AUC scale:};
+  \foreach \i/\auc in {0/0.5, 1/0.6, 2/0.7, 3/0.8, 4/0.9, 5/1.0} {
+    \pgfmathsetmacro{\xx}{0.15 + \i*1.7}
+    \ifdim\auc pt<0.70pt
+      \pgfmathsetmacro{\pct}{int(85-(\auc-0.5)*180)}
+      \fill[umorange!\pct] (\xx,-0.18) rectangle (\xx+1.6,0.18);
+    \else
+      \pgfmathsetmacro{\pct}{int(20+(\auc-0.7)*200)}
+      \fill[umlight!\pct] (\xx,-0.18) rectangle (\xx+1.6,0.18);
+    \fi
+    \draw[umdark!50, line width=0.3pt] (\xx,-0.18) rectangle (\xx+1.6,0.18);
+    \node[font=\scriptsize\color{umdark}] at (\xx+0.8,-0.42) {\auc};
+  }
+\end{scope}
+\end{tikzpicture}
+\caption{Per-(detector, payload, source) test AUC under matched (V1, left) vs real-only (V2a, right) training. Cells are coloured by AUC (orange-tinted below 0.70 indicating poor detection, blue-tinted above 0.70 indicating good detection). Under matched training every cell is high; under real-only training the SRNet ml\_a / ml\_b cells at medium and high payload collapse to orange (AUC 0.55--0.71), while the real column stays blue (AUC 0.99). DCTR shows the same pattern at smaller absolute magnitude. The heatmap form makes the cover-source-mismatch effect visually immediate: orange blocks materialise only in the columns the model never saw at training time.}
 \label{fig:matched-vs-realonly-heatmap}
 \end{figure}
 
@@ -1227,26 +1326,115 @@ DCTR  & high   & 0.930 & 0.958 & 0.932 & 0.701 & \textbf{0.612} & \textbf{0.621}
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.82\linewidth]{figures/v4_paper/dctr_eoob_ladder.png}
-\caption{DCTR under real-only training: three error metrics by payload. $E_\mathrm{OOB}$ (dark) is the training-time out-of-bag ensemble residual (Holub \& Fridrich~\cite{holub2015dctr} convention, computed post-training by deterministic re-fit). Test-set $P_E^{\min}$ (orange) is the operational detection error on the held-out test corpus (real + ML carriers). $1-\mathrm{val\_AUC}$ (light) is a held-out-of-training proxy for $P_E$ on the in-distribution carriers (real only). Test-set $P_E^{\min}$ is uniformly worse than $E_\mathrm{OOB}$ because the test corpus contains ML carriers that the real-only-trained DCTR never saw -- the cover-source-mismatch effect manifest at the operational metric.}
+\begin{tikzpicture}[
+  barEoob/.style ={draw=umdark,  fill=umdark!75,  line width=0.25pt},
+  barTest/.style ={draw=umorange,fill=umorange!85,line width=0.25pt},
+  barVal/.style  ={draw=umlight, fill=umlight!70, line width=0.25pt},
+]
+% y-axis: detection error in [0, 0.55] -> [0, 5.5 cm]; chance at 0.5 -> 5 cm
+\foreach \v in {0.0,0.1,0.2,0.3,0.4,0.5} {
+  \pgfmathsetmacro{\y}{\v * 10}
+  \draw[umdark!12, line width=0.3pt] (0,\y) -- (11.0,\y);
+  \node[font=\scriptsize\color{umdark!70}, left=1pt] at (0,\y) {\v};
+}
+% chance line at 0.5
+\draw[umdark!40, line width=0.4pt, dotted] (0,5) -- (11.0,5)
+  node[font=\scriptsize\color{umdark!70}, right=2pt, fill=white, inner sep=1pt] {chance};
+\draw[umdark!75, line width=0.5pt] (0,0) -- (11.0,0);
+\node[font=\footnotesize\color{umdark}, rotate=90] at (-0.9,2.75) {detection error (lower = better)};
+
+\def\bw{0.65}
+\def\bg{0.10}
+\foreach \i/\name/\eoob/\test/\val in {%
+  0/low/0.456/0.469/0.367,
+  1/medium/0.257/0.423/0.169,
+  2/high/0.101/0.372/0.044%
+} {
+  \pgfmathsetmacro{\xc}{1.8 + \i*3.30}
+  \pgfmathsetmacro{\xa}{\xc - 1.5*\bw - \bg}
+  \pgfmathsetmacro{\xb}{\xc - 0.5*\bw}
+  \pgfmathsetmacro{\xcc}{\xc + 0.5*\bw + \bg}
+  \pgfmathsetmacro{\heo}{\eoob * 10}
+  \pgfmathsetmacro{\hte}{\test * 10}
+  \pgfmathsetmacro{\hva}{\val  * 10}
+  \draw[barEoob] (\xa,0)  rectangle (\xa+\bw,\heo);
+  \draw[barTest] (\xb,0)  rectangle (\xb+\bw,\hte);
+  \draw[barVal]  (\xcc,0) rectangle (\xcc+\bw,\hva);
+  \node[font=\scriptsize\color{umdark}, above=-1pt] at (\xa+\bw/2, \heo) {\eoob};
+  \node[font=\scriptsize\color{umdark}, above=-1pt] at (\xb+\bw/2, \hte) {\test};
+  \node[font=\scriptsize\color{umdark}, above=-1pt] at (\xcc+\bw/2,\hva) {\val};
+  \node[font=\footnotesize\color{umdark}, below=2pt] at (\xc,0) {\name};
+}
+% Legend below the bars
+\begin{scope}[shift={(0.4, -1.3)}]
+  \draw[barEoob] (0,0) rectangle (0.32,0.32);
+  \node[font=\scriptsize\color{umdark}, right=3pt] at (0.32,0.16) {$E_\mathrm{OOB}$ (training-time, OOB ensemble residual)};
+  \draw[barTest] (0,-0.5) rectangle (0.32,-0.18);
+  \node[font=\scriptsize\color{umdark}, right=3pt] at (0.32,-0.34) {test-set $P_E^{\min}$ (real + ML carriers, OOD on ML)};
+  \draw[barVal]  (0,-1.0) rectangle (0.32,-0.68);
+  \node[font=\scriptsize\color{umdark}, right=3pt] at (0.32,-0.84) {$1-\mathrm{val\_AUC}$ (held-out of training, proxy)};
+\end{scope}
+\node[font=\footnotesize\color{umdark}, below=8pt] at (5.5,-2.3) {payload level};
+\end{tikzpicture}
+\caption{DCTR under real-only training: three error metrics by payload. $E_\mathrm{OOB}$ (dark) is the training-time out-of-bag ensemble residual (Holub \& Fridrich~\cite{holub2015dctr} convention, computed post-training by deterministic re-fit). Test-set $P_E^{\min}$ (orange) is the operational detection error on the held-out test corpus (real + ML carriers). $1-\mathrm{val\_AUC}$ (light) is a held-out-of-training proxy for $P_E$ on the in-distribution carriers (real only). Test-set $P_E^{\min}$ is uniformly worse than $E_\mathrm{OOB}$ because the test corpus contains ML carriers the real-only-trained DCTR never saw -- the cover-source-mismatch effect manifest at the operational metric.}
 \label{fig:dctr-eoob-ladder}
 \end{figure}
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\linewidth]{figures/v4_paper/v2a_srnet_score_dists.png}
-\caption{Real-only-trained SRNet score distributions in a $3\!\times\!3$ grid (rows: payload; columns: source). The Real column behaves as a clean cover-vs-stego binary classifier with shift $\approx 0.95$ between distributions. The SDXL and FLUX columns at medium and high payload exhibit \emph{cover-saturation}: the model assigns ML covers a near-1.0 stego score because their diffusion-decoder noise patterns share structural features with the LSB perturbations the model was trained to detect; cover-stego separation collapses to a shift of 0.05--0.27 and AUC drops accordingly. This mechanism is structurally consistent with the $\chi^2$-spatial cover-side variance-inflation of Section~\ref{sec:chi2spatial}: both detectors register diffusion-decoder noise as a stego-like signal on the cover side.}
+\begin{tikzpicture}[
+  covermk/.style={circle, draw=umdark, fill=umlight!70, line width=0.4pt, minimum size=8pt, inner sep=0pt},
+  stegomk/.style={circle, draw=umdark, fill=umorange!85, line width=0.4pt, minimum size=8pt, inner sep=0pt},
+  shiftarr/.style={->, >=stealth, line width=1.5pt, draw=umdark!60},
+]
+% Three rows: real (top), SDXL (middle), FLUX (bottom).
+% Per row, plot the cover-mean (blue circle) and stego-mean (orange circle) on a [0,1] axis,
+% with an arrow connecting them showing the "shift" (which collapses on ML carriers).
+
+% X-axis: 0 -> 0 cm, 1 -> 11 cm
+\foreach \v in {0,0.25,0.5,0.75,1.0} {
+  \pgfmathsetmacro{\x}{\v * 11}
+  \draw[umdark!12, line width=0.3pt] (\x,-0.4) -- (\x,3.6);
+  \node[font=\scriptsize\color{umdark!70}, below=1pt] at (\x,-0.4) {\v};
+}
+\node[font=\footnotesize\color{umdark}] at (5.5,-1.1) {SRNet score $P[\mathrm{stego}]$ (real-only-trained, medium payload)};
+\draw[umdark!75, line width=0.5pt] (0,0) -- (11,0);
+
+% Per-source rows
+\foreach \i/\src/\cover/\stego in {%
+  0/{FLUX}/0.790/1.000,
+  1/{SDXL}/0.946/1.000,
+  2/{Real}/0.030/0.978%
+} {
+  \pgfmathsetmacro{\yy}{0.6 + \i*1.0}
+  \pgfmathsetmacro{\xc}{\cover*11}
+  \pgfmathsetmacro{\xs}{\stego*11}
+  \pgfmathsetmacro{\shift}{\stego-\cover}
+  \node[font=\footnotesize\color{umdark}, anchor=east] at (-0.15, \yy) {\src};
+  \draw[shiftarr] (\xc,\yy) -- (\xs,\yy);
+  \node[covermk] at (\xc,\yy) {};
+  \node[stegomk] at (\xs,\yy) {};
+  \node[font=\scriptsize\color{umdark}, above=2pt] at ({(\xc+\xs)/2}, \yy+0.1) {shift = \pgfmathprintnumber[fixed,precision=2]{\shift}};
+  % Per-marker value
+  \node[font=\scriptsize\color{umdark}, below=2pt] at (\xc,\yy-0.05) {\pgfmathprintnumber[fixed,precision=3]{\cover}};
+  \node[font=\scriptsize\color{umdark}, below=2pt] at (\xs,\yy-0.05) {\pgfmathprintnumber[fixed,precision=3]{\stego}};
+}
+
+% Legend
+\begin{scope}[shift={(0.4, 4.3)}]
+  \node[covermk] at (0,0) {};
+  \node[font=\scriptsize\color{umdark}, right=3pt] at (0.2,0) {mean cover score};
+  \node[stegomk] at (4.5,0) {};
+  \node[font=\scriptsize\color{umdark}, right=3pt] at (4.7,0) {mean stego score};
+  \draw[shiftarr] (8.6,0) -- (9.6,0);
+  \node[font=\scriptsize\color{umdark}, right=3pt] at (9.6,0) {cover$\to$stego shift};
+\end{scope}
+\end{tikzpicture}
+\caption{Real-only-trained SRNet, medium payload, plain encryption: cover-mean and stego-mean score per carrier source, with the arrow showing the cover-to-stego shift. On real carriers the shift is 0.95 (clean separation, AUC 0.986). On SDXL the model assigns covers a near-1.0 stego score because diffusion-decoder noise patterns trigger the LSB-perturbation detector; the shift collapses to 0.05 and AUC drops to 0.547. On FLUX the same mechanism applies more weakly (shift 0.21, AUC 0.644). Per-payload, low-payload AUC stays higher (0.88--0.93) because the tighter decision boundary of the low-payload checkpoint still admits separation; the collapse only manifests at medium / high payload, where the model has learned features that respond to high-frequency content in general. This is structurally consistent with the $\chi^2$-spatial cover-side variance-inflation of Section~\ref{sec:chi2spatial}: both detectors register diffusion-decoder noise as a stego-like signal on the cover side.}
 \label{fig:v2a-srnet-mechanism}
 \end{figure}
 
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=\linewidth]{figures/v4_paper/verdict_matrix.png}
-\caption{Per-RQ verdict matrix across the three detector-family analyses: classical (6 detectors), matched-training learned (V1; SRNet + DCTR), real-only-training learned (V2a; SRNet + DCTR).  Verdicts are colour-coded (orange = supported; blue = mixed; grey = trivial) with the pooled $\Delta_{AUC}$ in each cell.  Four of five RQ verdicts flip under real-only training: RQ1 trivial$\to$supported with $\Delta\!=\!+0.247$, RQ2 trivial$\to$supported with $\Delta\!=\!-0.069$, RQ4 trivial$\to$supported with $\Delta\!=\!+0.220$.  RQ5 (encryption invariance) is unchanged across all three analyses ($\Delta\!\approx\!0$) as expected -- training-distribution changes do not affect what encryption does to the embedding.}
-\label{fig:verdict-matrix-three-way}
-\end{figure}
-
-\paragraph{Implication for RQ1.} Re-running the cross-validation pipeline on the real-only predictions (\texttt{runs/.../learned\_shadow\_v2a/}) flips four of the five RQ verdicts at the learned-detector family level: RQ1 from trivial ($\Delta\!=\!+0.0012$) to supported with $\Delta\!=\!+0.2473$ (CI $[+0.245,+0.250]$); RQ2 from trivial to supported with $\Delta\!=\!-0.0689$; RQ4 (spatial vs.\ frequency branch contrast) from trivial to supported with $\Delta\!=\!+0.2195$; RQ3 retains the mixed verdict but the per-payload real-minus-ML gaps grow from $\{-0.014, -0.013, -0.007\}$ to $\{+0.053, +0.220, +0.213\}$. RQ5 (encryption invariance) is unchanged at $\Delta\!\approx\!0$ as expected -- an encryption ablation does not depend on training-set carrier composition.  Figure~\ref{fig:verdict-matrix-three-way} renders the full classical / matched / real-only verdict matrix.
+\paragraph{Implication for RQ1.} Re-running the cross-validation pipeline on the real-only predictions (\texttt{runs/.../learned\_shadow\_v2a/}) flips four of the five RQ verdicts at the learned-detector family level: RQ1 from trivial ($\Delta\!=\!+0.0012$) to supported with $\Delta\!=\!+0.2473$ (CI $[+0.245,+0.250]$); RQ2 from trivial to supported with $\Delta\!=\!-0.0689$; RQ4 (spatial vs.\ frequency branch contrast) from trivial to supported with $\Delta\!=\!+0.2195$; RQ3 retains the mixed verdict but the per-payload real-minus-ML gaps grow from $\{-0.014, -0.013, -0.007\}$ to $\{+0.053, +0.220, +0.213\}$. RQ5 (encryption invariance) is unchanged at $\Delta\!\approx\!0$ as expected -- an encryption ablation does not depend on training-set carrier composition.
 
 \paragraph{Mechanism of the real-only medium/high-payload collapse on ML carriers.} Real-only-trained SRNet on ML carriers is worst at medium payload (AUC 0.55 on ML-A) and recovers only partially at high payload (0.59), rather than improving monotonically with payload as the standard expectation predicts. A per-(payload, source, label) decomposition of the SRNet score distribution (Figure~\ref{fig:v2a-srnet-mechanism}) explains this directly: at medium and high payload, the real-only-trained SRNet assigns ML \emph{covers} a near-saturated stego score (cover-mean 0.79--0.95) almost indistinguishable from the score it assigns ML \emph{stegos} (stego-mean 1.000); cover-stego separation collapses to a shift of 0.05--0.27 on the [0,1] score axis and AUC drops accordingly. On real carriers the same checkpoint behaves normally: cover-mean 0.030, stego-mean 0.978, shift 0.95. The real-only-trained medium checkpoint was trained to discriminate ``real cover'' from ``real cover $+$ 15\,\% LSB perturbation,'' and at test time it interprets ML covers' diffusion-decoder noise patterns as if they were the perturbation signal it was trained to detect. The same effect appears more weakly at high payload (cover-mean 0.91 on ML-A) and is largely absent at low payload (cover-mean 0.16 on ML-A) -- the lower-payload checkpoint's tighter decision boundary still admits separation. This is structurally consistent with the cover-side variance-inflation mechanism we identify for the $\chi^2$-spatial detector (Section~\ref{sec:chi2spatial}): both detectors register diffusion-decoder noise as a stego-like signal on the cover side, and both consequently lose discrimination power on ML carriers in ways the same detectors applied to real carriers do not. A finer-grained analysis of which SRNet layer activations drive this is a natural follow-up.
 
