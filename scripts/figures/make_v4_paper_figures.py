@@ -580,6 +580,210 @@ def fig_dctr_eoob_ladder():
 
 
 # ===========================================================================
+# POSTER FIGURES -- brand-style PNG replicas of paper tikz figures 4-8
+# (the v4 paper keeps tikz; these PNGs are for the poster)
+# ===========================================================================
+def fig_rq1_strip():
+    """Poster replica of fig:rq1strip (strip plot per detector, 3 dots per row)."""
+    rows = load_classical()
+    aucs = per_cell_aucs(rows)
+    # Order of detectors in the paper figure
+    det_order = [
+        ("calibration_chi_square", r"cal-$\chi^2$"),
+        ("chi_square_dct", r"$\chi^2$-DCT"),
+        ("chi_square_dct_tiled", r"$\chi^2$-DCT-t"),
+        ("chi_square_spatial", r"$\chi^2$-spat."),
+        ("rs", "RS"),
+        ("sample_pairs", "Sample Pairs"),
+    ]
+    payload_colors = {"low": PALETTE["umdark"], "medium": PALETTE["umlight"], "high": PALETTE["umorange"]}
+
+    fig, ax = plt.subplots(figsize=(7.0, 3.6))
+    for i, (det, det_lbl) in enumerate(det_order):
+        method = DET_METHOD[det]
+        deltas = []
+        for p in PAYLOADS:
+            real = aucs.get((det, method, p, "real"))
+            ml_a = aucs.get((det, method, p, "ml_a"))
+            ml_b = aucs.get((det, method, p, "ml_b"))
+            if real is None or ml_a is None or ml_b is None:
+                deltas.append(None); continue
+            deltas.append(real - 0.5 * (ml_a + ml_b))
+        valid = [(p, d) for p, d in zip(PAYLOADS, deltas) if d is not None]
+        if not valid: continue
+        ys = [i] * len(valid)
+        xs = [d for _, d in valid]
+        ax.plot(xs, ys, color=PALETTE["umgray"], linewidth=0.8, alpha=0.4, zorder=1)
+        for p, d in valid:
+            ax.scatter(d, i, s=55, color=payload_colors[p],
+                       edgecolor=PALETTE["umdark"], linewidth=0.4, zorder=3)
+
+    ax.axvline(0, color=PALETTE["umgray"], linewidth=0.7)
+    ax.axvspan(-0.025, 0.025, color=PALETTE["umgray"], alpha=0.10, label="trivial band (|Δ|<0.025)")
+    for x in (-0.05, 0.05):
+        ax.axvline(x, color=PALETTE["umorange"], linestyle=":", linewidth=0.6)
+    ax.set_yticks(range(len(det_order)))
+    ax.set_yticklabels([lbl for _, lbl in det_order])
+    ax.invert_yaxis()
+    ax.set_xlim(-0.12, 0.08)
+    ax.set_xlabel(r"$\Delta_{AUC}$ (real $-$ pooled ML)")
+    ax.set_title("RQ1 strip plot: per-detector x per-payload carrier-source effect (18 strata)")
+    handles = [plt.Line2D([], [], marker='o', linestyle='', color=payload_colors[p],
+                           label=p, markeredgecolor=PALETTE["umdark"], markersize=7)
+               for p in PAYLOADS]
+    ax.legend(handles=handles, loc="lower right", fontsize=8, title="payload", ncol=1)
+    fig.tight_layout()
+    fig.savefig(OUT / "rq1_strip.png")
+    plt.close()
+    print(f"wrote {OUT / 'rq1_strip.png'}")
+
+
+def fig_rq2_strip():
+    """Poster replica of fig:rq2 (strip plot per detector, SDXL vs FLUX)."""
+    rows = load_classical()
+    aucs = per_cell_aucs(rows)
+    det_order = [
+        ("calibration_chi_square", r"cal-$\chi^2$"),
+        ("chi_square_dct", r"$\chi^2$-DCT"),
+        ("chi_square_dct_tiled", r"$\chi^2$-DCT-t"),
+        ("chi_square_spatial", r"$\chi^2$-spat."),
+        ("rs", "RS"),
+        ("sample_pairs", "Sample Pairs"),
+    ]
+    payload_colors = {"low": PALETTE["umdark"], "medium": PALETTE["umlight"], "high": PALETTE["umorange"]}
+
+    fig, ax = plt.subplots(figsize=(7.0, 3.6))
+    for i, (det, det_lbl) in enumerate(det_order):
+        method = DET_METHOD[det]
+        deltas = []
+        for p in PAYLOADS:
+            ml_a = aucs.get((det, method, p, "ml_a"))
+            ml_b = aucs.get((det, method, p, "ml_b"))
+            if ml_a is None or ml_b is None:
+                deltas.append(None); continue
+            deltas.append(ml_a - ml_b)
+        valid = [(p, d) for p, d in zip(PAYLOADS, deltas) if d is not None]
+        if not valid: continue
+        ys = [i] * len(valid); xs = [d for _, d in valid]
+        ax.plot(xs, ys, color=PALETTE["umgray"], linewidth=0.8, alpha=0.4, zorder=1)
+        for p, d in valid:
+            ax.scatter(d, i, s=55, color=payload_colors[p],
+                       edgecolor=PALETTE["umdark"], linewidth=0.4, zorder=3)
+    ax.axvline(0, color=PALETTE["umgray"], linewidth=0.7)
+    ax.axvspan(-0.025, 0.025, color=PALETTE["umgray"], alpha=0.10, label="trivial band (|Δ|<0.025)")
+    for x in (-0.05, 0.05):
+        ax.axvline(x, color=PALETTE["umorange"], linestyle=":", linewidth=0.6)
+    ax.set_yticks(range(len(det_order)))
+    ax.set_yticklabels([lbl for _, lbl in det_order])
+    ax.invert_yaxis()
+    ax.set_xlim(-0.08, 0.08)
+    ax.set_xlabel(r"$\Delta_{AUC}$ (SDXL $-$ FLUX)")
+    ax.set_title("RQ2 strip plot: SDXL vs FLUX within-ML carrier (18 strata)")
+    handles = [plt.Line2D([], [], marker='o', linestyle='', color=payload_colors[p],
+                           label=p, markeredgecolor=PALETTE["umdark"], markersize=7)
+               for p in PAYLOADS]
+    ax.legend(handles=handles, loc="lower right", fontsize=8, title="payload", ncol=1)
+    fig.tight_layout()
+    fig.savefig(OUT / "rq2_strip.png")
+    plt.close()
+    print(f"wrote {OUT / 'rq2_strip.png'}")
+
+
+def fig_rq4_branch():
+    """Poster replica of fig:rq4 (spatial vs frequency branch source gap, per payload)."""
+    rows = load_classical()
+    aucs = per_cell_aucs(rows)
+    spat_dets = [d for d, _, m, _ in CLASSICAL_DETECTORS if m == "lsb"]
+    freq_dets = [d for d, _, m, _ in CLASSICAL_DETECTORS if m == "dct"]
+
+    def branch_gap(dets, payload):
+        """real-mean - ml-mean over the detectors in 'dets' for one payload."""
+        per_det = []
+        for det in dets:
+            method = DET_METHOD[det]
+            real = aucs.get((det, method, payload, "real"))
+            ml_a = aucs.get((det, method, payload, "ml_a"))
+            ml_b = aucs.get((det, method, payload, "ml_b"))
+            if real is None or ml_a is None or ml_b is None: continue
+            per_det.append(real - 0.5 * (ml_a + ml_b))
+        return float(np.mean(per_det))
+
+    fig, ax = plt.subplots(figsize=(6.5, 4.0))
+    x = np.arange(3); w = 0.32
+    spat_gaps = [branch_gap(spat_dets, p) for p in PAYLOADS]
+    freq_gaps = [branch_gap(freq_dets, p) for p in PAYLOADS]
+    ax.bar(x - w/2, spat_gaps, w, color=PALETTE["umlight"],
+           edgecolor=PALETTE["umdark"], linewidth=0.4, label="spatial branch")
+    ax.bar(x + w/2, freq_gaps, w, color=PALETTE["umorange"],
+           edgecolor=PALETTE["umdark"], linewidth=0.4, label="frequency branch")
+    # Bar-tip value labels positioned BELOW the tip for negative bars
+    for xi, v in zip(x - w/2, spat_gaps):
+        ax.text(xi, v - 0.0025, f"{v:+.3f}", ha="center", va="top",
+                fontsize=7, color=PALETTE["umdark"])
+    for xi, v in zip(x + w/2, freq_gaps):
+        ax.text(xi, v - 0.0025, f"{v:+.3f}", ha="center", va="top",
+                fontsize=7, color=PALETTE["umdark"])
+    # Delta-delta annotations ABOVE the axis (in the positive-y region)
+    for i, p in enumerate(PAYLOADS):
+        dd = spat_gaps[i] - freq_gaps[i]
+        ax.text(i, 0.018, rf"$\Delta\Delta={dd:+.3f}$", ha="center", fontsize=8.5,
+                fontweight="bold", color=PALETTE["umorange"])
+    ax.axhline(0, color=PALETTE["umgray"], linewidth=0.7)
+    # Give some headroom above 0 for the ΔΔ annotations
+    ax.set_ylim(min(min(spat_gaps), min(freq_gaps)) * 1.25, 0.030)
+    ax.set_xticks(x); ax.set_xticklabels(PAYLOADS)
+    ax.set_xlabel("payload level")
+    ax.set_ylabel(r"$\Delta_{AUC}$ (real $-$ mean ML)")
+    ax.set_title("RQ4: spatial vs frequency branch carrier-source gap, per payload")
+    ax.legend(loc="lower right", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(OUT / "rq4_branch.png")
+    plt.close()
+    print(f"wrote {OUT / 'rq4_branch.png'}")
+
+
+def fig_rq5_encryption():
+    """Poster replica of fig:rq5 (plain vs AES-256 AUC scatter, 54 strata)."""
+    rows = load_classical()
+    pairs = defaultdict(dict)
+    for r in rows:
+        key = (r["detector"], r["method"], r["payload_level"], r["source"])
+        pairs[key].setdefault(r["encryption"], []).append((int(r["label"]), float(r["score"])))
+    points = []
+    for key, by_enc in pairs.items():
+        if "plain" not in by_enc or "encrypted" not in by_enc:
+            continue
+        plain = by_enc["plain"]
+        enc = by_enc["encrypted"]
+        try:
+            auc_plain = roc_auc_score_binary([y for y, _ in plain], [s for _, s in plain])
+            auc_enc   = roc_auc_score_binary([y for y, _ in enc],   [s for _, s in enc])
+            points.append((auc_plain, auc_enc))
+        except ValueError:
+            continue
+
+    fig, ax = plt.subplots(figsize=(5.6, 5.0))
+    xs = [p[0] for p in points]; ys = [p[1] for p in points]
+    # ±0.025 equivalence band as shaded region around y=x
+    band = np.linspace(0.5, 1.0, 100)
+    ax.fill_between(band, band - 0.025, band + 0.025, color=PALETTE["umorange"], alpha=0.10,
+                    label=r"$\pm0.025$ AUC equivalence band")
+    ax.plot([0.5, 1.0], [0.5, 1.0], color=PALETTE["umdark"], linestyle="--", linewidth=0.6, label=r"$y = x$")
+    ax.scatter(xs, ys, s=22, color=PALETTE["umlight"], edgecolor=PALETTE["umdark"],
+               linewidth=0.4, alpha=0.85, zorder=3)
+    ax.set_xlim(0.5, 1.0); ax.set_ylim(0.5, 1.0)
+    ax.set_xlabel("plain AUC")
+    ax.set_ylabel("AES-256-CBC AUC")
+    ax.set_title("RQ5: plain vs AES-256 stego AUC, all 54 strata")
+    ax.set_aspect("equal")
+    ax.legend(loc="upper left", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(OUT / "rq5_encryption.png")
+    plt.close()
+    print(f"wrote {OUT / 'rq5_encryption.png'}")
+
+
+# ===========================================================================
 # FIG 8 -- per-RQ verdict matrix (classical / matched / real-only)
 # ===========================================================================
 def fig_verdict_matrix():
@@ -752,4 +956,9 @@ if __name__ == "__main__":
     fig_verdict_matrix()
     fig_v1_vs_v2a_per_source_bars()
     fig_v2a_srnet_score_dists()
+    # Poster-only replicas of the paper's tikz figures 4-8:
+    fig_rq1_strip()
+    fig_rq2_strip()
+    fig_rq4_branch()
+    fig_rq5_encryption()
     print(f"\nAll figures in {OUT}/")
