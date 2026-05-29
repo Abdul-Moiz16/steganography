@@ -93,6 +93,35 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.embedding.dct import dct_payload_capacity_bytes, embed_dct_lsb_jpeg  # noqa: E402
+from src.embedding.outguess import (  # noqa: E402
+    embed_outguess_jpeg,
+    outguess_payload_capacity_bytes,
+)
+
+
+def _capacity_for_method(method: str, cover_bytes: bytes, fill_rate: float) -> int:
+    if method == "jsteg":
+        return dct_payload_capacity_bytes(cover_bytes, fill_rate)
+    if method == "outguess":
+        return outguess_payload_capacity_bytes(cover_bytes, fill_rate)
+    raise ValueError(f"unknown method: {method!r}")
+
+
+def _embed_for_method(method: str, cover_bytes: bytes, payload_bytes: bytes,
+                     fill_rate: float, jpeg_quality: int, seed: int) -> bytes:
+    if method == "jsteg":
+        return embed_dct_lsb_jpeg(cover_bytes, payload_bytes, fill_rate,
+                                  jpeg_quality=jpeg_quality)
+    if method == "outguess":
+        # OutGuess uses the seed for the embedding-path shuffle.  Mix in the
+        # group_id-derived caller seed for per-cover determinism but keep the
+        # global flow deterministic per (seed, group_id, payload_level,
+        # encryption) -- which is exactly what _make_payload already does for
+        # the payload bytes, so passing the same composite seed here keeps
+        # everything deterministic from one upstream seed.
+        return embed_outguess_jpeg(cover_bytes, payload_bytes, fill_rate,
+                                   jpeg_quality=jpeg_quality, seed=seed)
+    raise ValueError(f"unknown method: {method!r}")
 
 
 # Six-level bpnzAC sweep matching the validation methodology decided for
@@ -156,18 +185,32 @@ def _encode_one_cover(task: tuple) -> dict:
 
 
 def _embed_one_stego(task: tuple) -> dict | None:
-    """Stage 2 worker: load cover, build payload, embed, write stego, return manifest row.
+    """Stage 2 worker: load cover, build payload, embed via the dispatched
+    method, write stego, return manifest row.
+
+    The method dispatch is per-task (rather than per-pool) so future runs
+    that want to interleave methods in one importer call can do so.
 
     Returns None for pathological covers with insufficient AC capacity (skipped
     to avoid raising in the embedder; consistent with the original serial loop).
+
+    The output directory layout uses ``stego/dct/...`` regardless of method
+    because (a) all χ²-family detectors and the validation scaffold expect
+    the ``stego/<method-axis>/<payload>/<encryption>/<source>/`` shape, and
+    (b) we run separate import_bossbase invocations per method (and write
+    them to separate top-level run directories like ``runs/bossbase_q95_jsteg/``
+    vs ``runs/bossbase_q95_outguess/``), so there is no name collision.  The
+    inner ``stego/dct/`` axis is kept as the JPEG-frequency-branch label,
+    matching the rest of the pipeline; the actual embedding method is
+    recorded in the ``method`` column of the per-stego manifest.
     """
     import datetime  # noqa: F401 -- numpy/multiprocessing PyCapsule_Import workaround
     (cover_record, payload_level, fill_rate, encryption,
-     out_run, out_run_parent, payload_seed, jpeg_quality) = task
+     out_run, out_run_parent, payload_seed, jpeg_quality, embedding_method) = task
     out_run = Path(out_run); out_run_parent = Path(out_run_parent)
     gid = cover_record["group_id"]
     cover_jpeg = (out_run_parent / cover_record["frequency_path"]).read_bytes()
-    capacity = dct_payload_capacity_bytes(cover_jpeg, fill_rate)
+    capacity = _capacity_for_method(embedding_method, cover_jpeg, fill_rate)
     if capacity <= 0:
         return None
     payload_bytes = _make_payload(
@@ -175,20 +218,26 @@ def _embed_one_stego(task: tuple) -> dict | None:
         payload_level=payload_level, encryption=encryption,
         n_bytes=capacity,
     )
-    stego_jpeg = embed_dct_lsb_jpeg(
-        cover_jpeg, payload_bytes, fill_rate,
-        jpeg_quality=jpeg_quality,
+    # Per-(gid, payload, encryption) deterministic shuffle seed for OutGuess.
+    # Reusing the payload seed string as a hash makes the choice deterministic
+    # and reproducible from (payload_seed, group_id, payload_level, encryption).
+    import hashlib as _h
+    method_seed = int(_h.sha256(
+        f"{payload_seed}|{gid}|{payload_level}|{encryption}|{embedding_method}".encode()
+    ).hexdigest()[:8], 16)
+    stego_jpeg = _embed_for_method(
+        embedding_method, cover_jpeg, payload_bytes, fill_rate,
+        jpeg_quality=jpeg_quality, seed=method_seed,
     )
     stego_dir = out_run / "stego" / "dct" / payload_level / encryption / "real"
-    # mkdir is idempotent + thread-safe; workers may race on the same dir
-    # but exist_ok absorbs that.
     stego_dir.mkdir(parents=True, exist_ok=True)
     stego_path = stego_dir / f"g{gid:04d}__src-real__m-dct__p-{payload_level}__e-{encryption}.jpg"
     stego_path.write_bytes(stego_jpeg)
     return {
         "group_id": gid,
         "source": "real",
-        "method": "dct",
+        "method": "dct",                      # JPEG-frequency branch axis
+        "embedding": embedding_method,        # jsteg | outguess
         "payload_level": payload_level,
         "fill_rate": fill_rate,
         "encryption": encryption,
@@ -223,6 +272,14 @@ def main() -> None:
                    default=max(1, (os.cpu_count() or 2) // 2),
                    help="Worker processes for parallel encode+embed (default: cpu_count/2). "
                         "On a 16-core box, --n-workers 16 takes the full import from ~3h to ~10-15 min.")
+    p.add_argument("--method", choices=["jsteg", "outguess"], default="jsteg",
+                   help="Embedding algorithm to use. "
+                        "'jsteg' (default) = Westfeld 1999 sequential LSB-replacement on "
+                        "non-zero AC DCT coefficients, the embedding the chi^2 family "
+                        "was designed to detect. "
+                        "'outguess' = Provos 2001 randomised-path LSB-replacement with "
+                        "histogram-preserving correction, designed to defeat the chi^2 "
+                        "test on the global histogram.")
     args = p.parse_args()
 
     pgm_paths = _discover_pgms(args.bossbase_dir, args.n_images)
@@ -276,8 +333,8 @@ def main() -> None:
         return
 
     # --- Stage 2: stego embedding (parallel, the slow part) -------------
-    print(f"\n--- Stage 2: embed DCT-LSB stegos at {len(PAYLOAD_FILL_RATES)} payloads x "
-          f"{len(ENCRYPTIONS)} encryptions with {args.n_workers} workers ---")
+    print(f"\n--- Stage 2: embed {args.method!r} stegos at {len(PAYLOAD_FILL_RATES)} payloads "
+          f"x {len(ENCRYPTIONS)} encryptions with {args.n_workers} workers ---")
     total = len(cover_records) * len(PAYLOAD_FILL_RATES) * len(ENCRYPTIONS)
     embed_tasks = []
     for payload_level, fill_rate in PAYLOAD_FILL_RATES:
@@ -286,7 +343,7 @@ def main() -> None:
                 embed_tasks.append((
                     record, payload_level, fill_rate, encryption,
                     str(args.out_run), str(args.out_run.parent),
-                    args.payload_seed, args.quality,
+                    args.payload_seed, args.quality, args.method,
                 ))
     print(f"  built {len(embed_tasks)} embed tasks")
 
