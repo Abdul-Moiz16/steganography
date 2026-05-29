@@ -6,6 +6,8 @@ __pycache__/
 # Local environments
 .venv/
 venv/
+venv312/
+.python-version
 
 # Secrets
 .env
@@ -37,3 +39,19 @@ runs/training_*/
 
 # Claude Code local session state
 .claude/
+
+# LaTeX build artefacts (regenerable from .tex)
+*.aux
+*.log
+*.out
+*.toc
+*.nav
+*.snm
+*.bbl
+*.blg
+*.synctex.gz
+missfont.log
+texput.log
+
+# Runtime logs (regenerable)
+logs/
