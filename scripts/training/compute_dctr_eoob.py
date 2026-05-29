@@ -86,7 +86,18 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 
 def _extract_one(job: tuple) -> tuple:
-    """Worker (top-level for spawn-pickleability).  Mirror of train_dctr.py."""
+    """Worker (top-level for spawn-pickleability).  Mirror of train_dctr.py.
+
+    The ``import datetime`` at the top of the function is a workaround for a
+    numpy 1.26.x race condition (numpy/numpy#24693): when a spawn-mode
+    multiprocessing worker imports numpy before Python's datetime C
+    extension has been fully initialised, numpy's PyCapsule_Import of
+    datetime.datetime_CAPI fails with "PyCapsule_Import could not import
+    module 'datetime'", which surfaces (misleadingly) as a numpy-source-tree
+    ImportError further up the stack.  Importing datetime here forces its
+    initialisation before the downstream numpy import via dctr_features_path.
+    """
+    import datetime  # noqa: F401 -- workaround, see docstring above
     from src.detection_learned.dctr import dctr_features_path
     path_str, label, group_id, source, encryption = job
     try:
