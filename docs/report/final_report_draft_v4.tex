@@ -27,7 +27,7 @@
 \usepackage{needspace}
 \usepackage{listings}
 \usepackage{float}
-\usetikzlibrary{positioning,calc}
+\usetikzlibrary{positioning,calc,patterns,shapes.geometric}
 
 % IEEE-trans-like column geometry: 0.6 cm column separation
 \setlength{\columnsep}{0.55cm}
@@ -90,13 +90,6 @@
 }
 \lstset{style=pystyle}
 
-% ---- Placeholder macro (v2): marks numeric results that will be
-% filled in once the learned-detector (SRNet + DCTR) cloud training
-% run completes. Visible in red so unfilled values do not slip past
-% review. Set `\renewcommand{\TBD}[1]{#1}` to silence before submission
-% (or just replace each occurrence with the final value).
-\newcommand{\TBD}[1]{\textbf{\color{red}[TBD: #1]}}
-
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\headrulewidth}{0pt}
@@ -105,10 +98,8 @@
 % ============================================================
 % Title
 % ============================================================
-\title{\vspace{-1.4cm}\textbf{Does the Source of Carrier Image Affect\\
-Steganographic Detectability?}\\[2pt]
-\normalsize\textit{Project~2.2 -- Department of Advanced Computing Sciences}\\[1pt]
-\footnotesize\textit{v2: extended with SRNet and DCTR learned-detector supplementary results}}
+\title{\vspace{-1.4cm}\textbf{Does the Source of the Carrier Image Affect\\
+Steganographic Detectability?}}
 \author{\normalsize
 Abdul~Moiz~Akbar,\quad
 Daria~Gjonbalaj,\quad
@@ -116,7 +107,7 @@ Nico~M\"uller-Sp\"ath,\quad
 Jimena~Narvaez~del~Cid,\quad
 David~Wicker,\quad
 Nikolas~Zouros\\[2pt]
-\small \textit{Maastricht University},\enskip May 2026}
+\small \textit{Department of Advanced Computing Sciences, Maastricht University},\enskip May 2026}
 \date{}
 
 \begin{document}
@@ -127,7 +118,7 @@ Nikolas~Zouros\\[2pt]
 \vspace{-0.8cm}
 \begin{center}
 \begin{minipage}{0.86\textwidth}\small
-\noindent\textbf{Abstract}---This article asks whether the source of a carrier image -- a real photograph or a diffusion generated one -- changes how detectable LSB steganography is under fixed embedding settings. We evaluated a corpus of 3{,}000 caption-matched image groups across three carrier sources (real, SDXL, FLUX.1-schnell), two embedding branches (spatial LSB on PNG, JSteg-style DCT-LSB on JPEG~Q=95), three payload levels, and two payload conditions (plain and AES-256-CBC). Each image was scored by six training-free statistical detectors and the results analysed with paired DeLong tests under Bonferroni--Holm correction. Five of the six detectors found diffusion carriers easier to attack than photographs; the sixth ($\chi^2$-spatial) reversed this, an effect that disappears under partial AUC at operational false-positive rates. We then cross-validated the pre-registered protocol on a fundamentally different class of detectors: a deep residual network (SRNet) and an undecimated-DCT feature extractor with an LDA ensemble (DCTR), both trained on a separate, matched dataset, in two configurations: \textbf{matched training} (training mix matches the test mix, 1:1:1 real/SDXL/FLUX) and \textbf{real-only training} (AI carriers held out, the realistic deployment scenario). The matched-training cross-validation replicated four of five findings; the matched-vs-real-only contrast showed that SRNet's apparent source-invariance under matched training comes from the balanced training mix rather than anything architectural -- removing AI carriers from training opens a $0.26$--$0.45$~AUC gap on the same AI test carriers, confirming the carrier-source effect for deep CNNs once they have to handle sources they were never trained on. Two further contributions: a tile-local Westfeld~$\chi^2$ variant that becomes the strongest frequency-branch classical detector on our test set, and a mechanistic account of the $\chi^2$-spatial reversal grounded in the tone-curve smoothness of diffusion-decoder outputs.
+\noindent\textbf{Abstract}---We ask whether the source of a carrier image, a real photograph or an AI-generated one, changes how detectable LSB steganography is under fixed embedding settings. On a corpus of 3{,}000 caption-matched image groups spanning three carrier sources (real, SDXL, FLUX.1-schnell), two embedding branches (spatial LSB on PNG, JSteg-style DCT-LSB on JPEG~Q=95), three payload levels, and plain vs.\ AES-256-CBC payloads, we evaluate six training-free detectors under a pre-registered DeLong $+$ Bonferroni--Holm protocol. The carrier-source effect is small and payload-dependent (pooled $|\Delta_\text{AUC}|\!\approx\!0.013$, mostly below the pre-registered $0.05$ practical-significance threshold), but consistently signed toward AI carriers being easier to attack in five of six detectors; the sixth ($\chi^2$-spatial) reverses on full AUC, though the reversal dissolves at operational false-positive rates. Restricting the ROC to FPR\,$\leq\!0.10$ amplifies the effect $3$ to $7\times$ and renders it consistently significant. Cross-validating on two learned detectors (SRNet, DCTR with an LDA ensemble) trained on a separate matched corpus reproduces the classical pattern. A real-only-training ablation then reveals that SRNet's apparent source-invariance is an artefact of balanced training: withholding AI carriers opens a per-source gap of up to $0.44$~AUC on AI test images (partly confounded by training-corpus composition at the smaller end). Two further contributions: a tile-local Westfeld~$\chi^2$ variant validated on BOSSBase~1.01 ($+0.09$~AUC over the global test on JSteg at both Q$=$75 and Q$=$95), and a candidate variance-inflation mechanism for the $\chi^2$-spatial reversal.
 
 \smallskip
 \noindent\textit{\textbf{Index Terms}---steganography, steganalysis, LSB embedding, cover-source mismatch, diffusion models, paired DeLong test, partial AUC.}
@@ -142,7 +133,7 @@ Nikolas~Zouros\\[2pt]
 \label{sec:intro}
 % ============================================================
 
-Steganography is the practice of concealing the existence of a message inside an innocuous host medium, typically a digital image~\cite{petitcolas1999,cheddad2010}. Its complement, steganalysis, is the detection problem an adversary faces: given a file, decide whether it carries a hidden payload. Because every embedding rule must perturb the cover, every detector exploits the same residual signal -- a statistical irregularity introduced into pixel intensities or frequency coefficients~\cite{westfeld1999chi,fridrich2001lsb,dumitrescu2003sp}. The size and shape of that irregularity, however, depend not only on the embedding rule but also on the cover itself, an issue formalised as cover-source mismatch~\cite{giboulot2020csm,mallet2024csm}.
+Steganography is the practice of concealing the existence of a message inside an innocuous host medium, typically a digital image~\cite{petitcolas1999,cheddad2010}. Its complement, steganalysis, is the detection problem an adversary faces: given a file, decide whether it carries a hidden payload. Because every embedding rule must perturb the cover, every detector exploits the same residual signal, a statistical irregularity introduced into pixel intensities or frequency coefficients~\cite{westfeld1999chi,fridrich2001lsb,dumitrescu2003sp}. The size and shape of that irregularity, however, depend not only on the embedding rule but also on the cover itself, an issue formalised as cover-source mismatch~\cite{giboulot2020csm,mallet2024csm}.
 
 For two decades, the published benchmarks have implicitly assumed the cover is a photograph carrying the noise pattern and JPEG history of a real camera pipeline. Latent-diffusion models such as Stable Diffusion XL~\cite{sdxl2023} and FLUX.1~\cite{flux2024} now produce photorealistic images at scale through a process that contains none of the sensor noise, demosaicing, or in-camera JPEG steps a detector would expect. Corvi~\textit{et~al.}~\cite{corvi2023diffusion} reported that diffusion outputs leave their own characteristic spectral fingerprints, and a small recent literature on cover-source mismatch for synthetic carriers~\cite{mereur2024deepfake,mallet2024csm} has begun to ask whether classical steganalysis still works when the cover is generated rather than captured. The literature so far has not, however, looked at this at the level of detector-pair contrasts on a controlled, caption-matched dataset.
 
@@ -151,9 +142,9 @@ This article addresses that gap. We build a corpus of $N\!=\!3{,}000$ caption-ma
 \paragraph{Contributions.} This work makes four contributions:
 \begin{enumerate}
 \item A corpus of 3{,}000 caption-matched image groups and a pre-registered, training-free six-detector evaluation of the carrier-source effect (real vs.\ diffusion generated) on LSB-style steganography, with paired DeLong tests, Bonferroni--Holm correction, and a partial-AUC analysis at FPR\,$\leq\!0.10$ (Sections~\ref{sec:methods}, \ref{sec:results-classical}).
-\item A cross-validation of every pre-registered finding on a fundamentally different class of learned detectors (SRNet, DCTR) trained on a separate, matched dataset, in two complementary configurations -- \textit{matched training} (1:1:1 real/SDXL/FLUX) and \textit{real-only training} (AI carriers held out). The matched-vs-real-only \emph{contrast} shows that SRNet's apparent source-invariance under matched training comes from the balanced training mix rather than anything architectural: removing AI carriers from training opens a $0.26$--$0.45$ AUC gap on AI test carriers (Section~\ref{sec:learnedxval}).
+\item A cross-validation of every pre-registered finding on a fundamentally different class of learned detectors (SRNet, DCTR) trained on a separate, matched dataset, in two complementary configurations, \textit{matched training} (1:1:1 real/SDXL/FLUX) and \textit{real-only training} (AI carriers held out). The matched-vs-real-only \emph{contrast} shows that SRNet's apparent source-invariance under matched training comes from the balanced training mix rather than anything architectural: removing AI carriers from training opens a $0.26$--$0.45$~AUC gap on AI test carriers (with a partially-confounded smaller end, see Section~\ref{sec:limitations}; Section~\ref{sec:learnedxval}).
 \item A tile-local variant of the Westfeld pairs-of-values $\chi^2$ test for the DCT domain that out-performs its global counterpart by a large margin in the spatial-heterogeneity regime characteristic of diffusion carriers, accompanied by a set of recommended validation experiments to establish its generality beyond the present corpus (Section~\ref{sec:tiled}).
-\item A mechanistic account of the $\chi^2$-spatial reversal -- the single detector that reports the opposite carrier-source ordering from its peers -- grounded in the tone-curve smoothness of diffusion-decoder outputs, with a falsification of the naive smoothness hypothesis via the cover-side pairs-of-values imbalance measurement (Section~\ref{sec:chi2spatial}).
+A candidate mechanism for the $\chi^2$-spatial reversal, the single detector that reports the opposite carrier-source ordering from its peers (an effect that is operationally negligible: it dissolves under partial AUC at FPR\,$\leq\!0.10$). The naive ``smoother diffusion outputs'' hypothesis is falsified directly on cover-side pair-of-values imbalance; a correlational variance-inflation argument is offered in its place (Section~\ref{sec:chi2spatial}).
 \end{enumerate}
 
 \paragraph{Paper organisation.} Section~\ref{sec:relatedwork} reviews relevant prior work. Section~\ref{sec:methods} describes the dataset, embedding pipeline, detector suite, and statistical protocol. Section~\ref{sec:experiments} reports the experimental configuration. Section~\ref{sec:results-classical} presents the pre-registered classical-detector results across the five research questions. Section~\ref{sec:learnedxval} reports the learned-detector cross-validation and the real-only-training ablation. Section~\ref{sec:detector-side} develops the two detector-side findings: the tile-local $\chi^2$-DCT proposal with its recommended validation experiments, and the $\chi^2$-spatial reversal analysis. Section~\ref{sec:discussion} integrates the four contributions; Sections~\ref{sec:limitations} and \ref{sec:conclusion} cover limitations and conclusions.
@@ -169,16 +160,16 @@ The simplest spatial-domain stego method, \textbf{LSB replacement}, overwrites t
 The \textbf{Westfeld $\chi^2$ attack}~\cite{westfeld1999chi} tests whether adjacent value pairs $\{2k,2k\!+\!1\}$ have moved toward equal frequency, the diagnostic signature of LSB replacement. \textbf{RS Analysis}~\cite{fridrich2001lsb} tracks changes in Regular and Singular pixel-group counts under flipping masks. \textbf{Sample Pairs analysis} (SPA)~\cite{dumitrescu2003sp} estimates the embedded fraction from trace multisets on adjacent pixel pairs. In the frequency domain, Fridrich~et~al.'s \textbf{calibration $\chi^2$}~\cite{fridrich2003calib} introduced a non-block-aligned crop-recompress reference that approximates a payload-free histogram. All five are training-free and have closed-form scores; this makes them attractive for a comparison study because any AUC difference between carrier groups cannot be attributed to training-set bias.
 
 \subsection{AI-Generated Carriers}
-Gao~et~al.~\cite{gao2022ai} use generative models to encode steganographic secrets as the generated image itself (coverless steganography). That setting differs from ours, where a payload is embedded \emph{into} an existing cover. The closest prior work is M\'{e}reur~et~al.~\cite{mereur2024deepfake}, who test 15 GAN- and diffusion-based image generators as carriers under three adaptive spatial embeddings (HILL, S-UNIWARD, MiPOD) at 0.4~bpp, against an SRMQ1 + low-complexity linear classifier and an EfficientNet-v2 deep classifier, and report classifier-error rate $P_E$ rather than AUC. Mallet~et~al.~\cite{mallet2024csm} provide a systematic survey of cover-source mismatch and document that classical detectors built on one cover distribution often degrade on another. Table~\ref{tab:relatedwork} contrasts our design against the closest prior work along five axes that matter for cross-comparison.
+Gao~et~al.~\cite{gao2022ai} use generative models to encode steganographic secrets as the generated image itself (coverless steganography). That setting differs from ours, where a payload is embedded \emph{into} an existing cover. The closest prior work is M\'{e}reur~et~al.~\cite{mereur2024deepfake}, who test 15 GAN- and diffusion-based image generators as carriers under three adaptive spatial embeddings (HILL, S-UNIWARD, MiPOD) at 0.4~bpp, against an SRMQ1 + low-complexity linear classifier and an EfficientNet-v2 deep classifier, and report classifier-error rate $P_E$. The two studies are complementary rather than directly comparable: M\'ereur+24 probes high-payload adaptive embeddings against learned detectors on unpaired generator pools, while we probe low-payload non-adaptive embeddings against training-free detectors on a caption-matched factorial. Mallet~et~al.~\cite{mallet2024csm} provide a systematic survey of cover-source mismatch and document that classical detectors built on one cover distribution often degrade on another. Table~\ref{tab:relatedwork} contrasts our design against the closest prior work along five axes that matter for cross-comparison.
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{Closest prior work on stego carriers vs.\ this study. ``Match'' = caption-matched dataset design across carriers. None of the cited references combine LSB-style embedding, training-free detectors, and caption-matched real-vs-synthetic carriers with paired AUC contrasts.}
+\caption{Closest prior work vs.\ this study. ``Match'' is the caption-matched-across-carriers design; no prior reference combines all five axes.}
 \label{tab:relatedwork}
-\setlength{\tabcolsep}{8pt}\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.15}
 \begin{tabular}{@{}l c c c c c@{}}
 \toprule
-\textbf{Reference} & \textbf{Carrier} & \textbf{Embedding} & \textbf{Detector} & \textbf{Metric} & \textbf{Caption match} \\
+\textbf{Reference} & \textbf{Carrier} & \textbf{Embedding} & \textbf{Detector} & \textbf{Metric} & \textbf{Match} \\
 \midrule
 Westfeld+99~\cite{westfeld1999chi}      & photo            & LSB / JSteg     & $\chi^2$ PoV          & p-value    & --- \\
 Fridrich+01~\cite{fridrich2001lsb}      & photo            & LSB             & RS                    & est.\ embedding rate & --- \\
@@ -195,13 +186,8 @@ M\'ereur+24~\cite{mereur2024deepfake}   & real + 15 gen.   & HILL / S-UNIW / MiP
 \end{tabular}
 \end{table*}
 
-\subsection{Cover-Source Mismatch and Synthetic-Image Forensics}
-Cross-domain steganalysis was first formalised for camera-to-camera shifts. Giboulot~et~al.~\cite{giboulot2020csm} demonstrated that detectors trained on one camera lose accuracy on images from a different camera. Our setting extends this idea to a larger shift, from natural photographs to latent-diffusion outputs. Corvi~et~al.~\cite{corvi2023diffusion} showed that diffusion generated images carry distinct low-frequency statistical fingerprints, which gives a concrete reason to expect carrier-source effects at the detector level. Hou~et~al.~\cite{hou2021gan} and a wider body of GAN-forensics work~\cite{rossler2019fake} also document that synthetic-image distributions diverge systematically from photographic ones.
-
-\subsection{Deep vs.\ Classical Detectors}
-Trained detectors like SRNet~\cite{boroumand2019srnet}, DCTR~\cite{holub2015dctr} and Spatial Rich Models~\cite{fridrich2012srm} routinely outperform training-free baselines on within-distribution benchmarks. We deliberately exclude them from the \emph{primary} analysis: any AUC gap between carrier groups for a learned detector could be explained by training-set mismatch rather than by the carrier statistics themselves. Training-free detectors leave the cause unambiguous.
-
-In response to peer-review concerns that handcrafted detectors may underestimate the detectability of modern caption-paired carriers, we also report a \emph{cross-validation} on two state-of-the-art learned detectors: SRNet~\cite{boroumand2019srnet} for the spatial branch and DCTR~\cite{holub2015dctr} for the frequency branch. Both are trained on a separate, matched dataset of 3{,}000 caption-matched image groups disjoint from the test set by caption~ID -- not on BOSSBase~\cite{bas2011boss} -- so we avoid re-introducing the cover-source mismatch~\cite{giboulot2020csm,mallet2024csm} that BOSSBase-pretrained detectors suffer when applied to diffusion generated images. The training protocol is described in Section~\ref{sec:learned-detectors}; cross-validation results are reported in Section~\ref{sec:learnedxval} for two complementary training configurations (\emph{matched} with all carrier sources present in training, and \emph{real-only} with AI carriers held out), with the second isolating whether the spatial-CNN's apparent source-invariance under matched training is architectural or a training-balance artefact (Section~\ref{sec:v2a}).
+\subsection{Cover-Source Mismatch and the Role of Learned Detectors}
+Cross-domain steganalysis was first formalised for camera-to-camera shifts: Giboulot~et~al.~\cite{giboulot2020csm} and Mallet~et~al.~\cite{mallet2024csm} show detectors trained on one cover source degrade on another. Our setting extends this to a larger shift, from natural photographs to latent-diffusion outputs, which Corvi~et~al.~\cite{corvi2023diffusion} demonstrate carry distinct low-frequency fingerprints. Trained detectors, SRNet~\cite{boroumand2019srnet}, DCTR~\cite{holub2015dctr}, SRM~\cite{fridrich2012srm}, typically outperform training-free baselines on within-distribution benchmarks, but any AUC gap between carrier groups under a learned detector could be a training-set artefact rather than a carrier-statistics property. We therefore use training-free detectors for the \emph{primary} analysis (unambiguous causal attribution) and add a learned-detector \emph{cross-validation} (SRNet + DCTR), trained on a separate caption-matched dataset disjoint from the test set by caption~ID, not on BOSSBase~\cite{bas2011boss}, in two configurations: \emph{matched training} (all carrier sources present) and \emph{real-only training} (AI carriers held out, isolating whether SRNet's apparent source-invariance is architectural or a training-balance artefact; Section~\ref{sec:v2a}).
 
 % ============================================================
 \section{Methodology}
@@ -211,8 +197,8 @@ In response to peer-review concerns that handcrafted detectors may underestimate
 \subsection{Research Questions and Pre-Registration}
 The five research questions were fixed in the project proposal, with $\delta_\text{min}\!=\!0.05$ as the pre-registered practical-significance threshold:
 \begin{description}[font=\bfseries,leftmargin=1.2em,style=nextline,itemsep=2pt]
-\item[RQ1 (primary, confirmatory)] Does carrier source (real vs.\ pooled ML) affect detectability under matched embedding?
-\item[RQ2 (primary, confirmatory)] Within ML carriers, does the generator (SDXL vs.\ FLUX.1-schnell) change detectability?
+\item[RQ1 (primary, confirmatory)] Does carrier source (real vs.\ pooled AI) affect detectability under matched embedding?
+\item[RQ2 (primary, confirmatory)] Within AI carriers, does the generator (SDXL vs.\ FLUX.1-schnell) change detectability?
 \item[RQ3 (exploratory)] Does payload size modulate the source effect?
 \item[RQ4 (exploratory)] Do the spatial (LSB+PNG) and frequency (DCT-LSB+JPEG) branches show different source effects?
 \item[RQ5 (verification)] Does AES-256-CBC encryption of the payload affect detectability? Expected null.
@@ -220,9 +206,9 @@ The five research questions were fixed in the project proposal, with $\delta_\te
 
 \subsection{Dataset Construction}
 \label{sec:dataset}
-The \textbf{caption-matched design} isolates carrier statistics by holding semantic content fixed across sources. For each of $N\!=\!3{,}000$ groups we draw one caption from COCO~\cite{coco2014} or Flickr30k~\cite{flickr30k2014} and produce three covers under that caption: a \textbf{real} photograph (the original source image), a \textbf{ML-A} image from SDXL~1.0~\cite{sdxl2023}, and a \textbf{ML-B} image from FLUX.1-schnell~\cite{flux2024}. All three are converted to 8-bit grayscale ($0.299R\!+\!0.587G\!+\!0.114B$), centre-resized to $512\!\times\!512$, and stored both as lossless PNG (spatial branch input) and as JPEG~Q=95 (frequency branch input).
+The \textbf{caption-matched design} holds the semantic prompt fixed across sources, reducing (though not eliminating) subject-matter confounding: a real photograph and a generated image conditioned on the same caption can still differ in layout, object count, texture density, and photographic statistics, so caption matching minimises rather than removes semantic shift. For each of $N\!=\!3{,}000$ groups we draw one caption from COCO~\cite{coco2014} or Flickr30k~\cite{flickr30k2014} and produce three covers: a \textbf{real} photograph (the original source image, distributed as JPEG), an \textbf{AI-A} image from SDXL~1.0~\cite{sdxl2023}, and an \textbf{AI-B} image from FLUX.1-schnell~\cite{flux2024} (both pristine PIL outputs). All three are converted to 8-bit grayscale ($0.299R\!+\!0.587G\!+\!0.114B$), centre-resized to $512\!\times\!512$, and stored both as lossless PNG (spatial branch input) and as JPEG~Q=95 (frequency branch input). A consequence of the source-format asymmetry: the frequency-branch real covers carry a double-compression history (original JPEG $\to$ decode $\to$ Q=95 re-encode), while the AI covers carry a single Q=95 compression. The spatial branch is unaffected (lossless PNG storage); the frequency-branch implication is discussed as a confound in Section~\ref{sec:limitations}.
 
-The change of the ML-B model from the proposal's PixArt-$\alpha$~\cite{pixart2023} to FLUX.1-schnell was forced by HF Inference API availability; both are transformer-based diffusion models sharing the conceptual role in the comparison. Per group the pipeline produces 3~covers and 12 stego variants per source ($2$~methods $\times\,3$ payloads $\times\,2$ encryption conditions), for a total of \textbf{39 images per group} and \textbf{117{,}000 images} across the full run (Figure~\ref{fig:factorial}).
+The change of the AI-B model from the proposal's PixArt-$\alpha$~\cite{pixart2023} to FLUX.1-schnell was forced by HF Inference API availability; both are transformer-based diffusion models sharing the conceptual role in the comparison. Per group the pipeline produces 3 logical covers and 12 stego variants per source (2 methods $\times$ 3 payloads $\times$ 2 encryption conditions): 39 logical images per group and 117{,}000 across the full run (Figure~\ref{fig:factorial}). Because each logical cover is stored in both branch formats (PNG, JPEG) while each stego file is branch-specific, the on-disk artefact count is 18{,}000 cover files ($9{,}000\!\times\!2$) plus 108{,}000 stego files ($9{,}000\!\times\!12$).
 
 \begin{figure}[t]
 \centering
@@ -264,7 +250,7 @@ The change of the ML-B model from the proposal's PixArt-$\alpha$~\cite{pixart202
 \node[font=\scriptsize\color{umdark!85}, align=left, anchor=west] at (-3.8,-3.05) {Each grid: $2$\,methods\,$\times\,3$\,payloads\,$\times\,2$\,encryptions $=12$\,stego conditions};
 \node[font=\scriptsize\color{umdark!85}, align=left, anchor=west] at (-3.8,-3.45) {Per caption group: $3$\,covers\,+\,$36$\,stego $=39$\,images\quad($\times\,3{,}000$ groups)};
 \end{tikzpicture}
-\caption{Caption-matched study design ($3$ sources $\times\,2$ methods $\times\,3$ payloads $\times\,2$ encryptions). Each of $N\!=\!3{,}000$ caption groups produces three covers (one per carrier source) under the same caption, then a per-source $2$-method $\times\,3$-payload $\times\,2$-encryption grid of stego variants. Caption-matching holds semantic content constant across sources so that any AUC contrast can only reflect carrier-source statistics, not subject-matter shift.}
+\caption{Caption-matched study design ($3$ sources $\times\,2$ methods $\times\,3$ payloads $\times\,2$ encryptions). Each of $N\!=\!3{,}000$ caption groups produces three covers (one per carrier source) under the same caption, then a per-source $2$-method $\times\,3$-payload $\times\,2$-encryption grid of stego variants. Caption matching constrains the semantic prompt across sources to minimise subject-matter confounding; residual layout/object-count/texture differences remain.}
 \label{fig:factorial}
 \end{figure}
 
@@ -279,7 +265,7 @@ The change of the ML-B model from the proposal's PixArt-$\alpha$~\cite{pixart202
 
 \paragraph{Encryption.} Payloads are tested in two conditions, \emph{plain} (raw bitstream) and \emph{AES-256-CBC} (random IV per message; key fixed per run), in both branches. The encrypted condition tests whether detectors are reacting to plaintext structure rather than to embedding distortion.
 
-\paragraph{Payload distribution: uniform random by construction.} \emph{Plain} in our setting means a uniform random bytestream produced by a seeded RNG (\texttt{payload\_seed=42}), not human-readable text. This is the standard steganalysis-benchmark choice~\cite{boroumand2019srnet,holub2015dctr} and reflects the realistic threat model: any sophisticated attacker encrypts before embedding, and a secure cipher's output is by definition computationally indistinguishable from uniform random. Our \emph{plain} and \emph{AES-256-CBC} conditions therefore both produce maximum-entropy payloads at the bit level, and the choice between them tests a methodological assumption rather than a substantive embedding-distortion property. The encryption-invariance result of RQ5 (Section~\ref{sec:rq5}) empirically validates this assumption -- if it had failed, the use of random-byte payloads as a proxy for encrypted real plaintext would itself have been suspect.
+\paragraph{Payload distribution.} \emph{Plain} is a uniform random bytestream produced by a seeded RNG, not human-readable text, the standard steganalysis-benchmark choice~\cite{boroumand2019srnet,holub2015dctr} reflecting a threat model where any sophisticated attacker encrypts before embedding. Both \emph{plain} and \emph{AES-256-CBC} therefore produce maximum-entropy payloads; RQ5 empirically validates this assumption.
 
 \begin{figure*}[t]
 \centering
@@ -347,47 +333,20 @@ Six training-free detectors are scored on every (cover, stego) pair:
 \item \textbf{Frequency branch (JPEG):} Westfeld $\chi^2$ on quantised AC DCT coefficients ($\chi^2$-DCT)~\cite{westfeld1999chi}, our \textbf{tile-local $\chi^2$-DCT variant} ($\chi^2$-DCTt, Section~\ref{sec:tiled}), and Fridrich's calibration $\chi^2$~\cite{fridrich2003calib}.
 \end{itemize}
 
-\paragraph{Underflow-free scoring.} All chi-square detectors are rank-monotonic with the Westfeld~1999 p-value but use the \emph{underflow-free} $-\chi^2_\text{stat}/(df\!-\!1)$ transformation, because chi-square p-values vanish under float64 representation on large textured images. Listing~\ref{lst:chispatial} shows the spatial-$\chi^2$ implementation.
+All chi-square detectors are rank-monotonic with the Westfeld~1999 p-value but use the underflow-free $-\chi^2_\text{stat}/(df\!-\!1)$ transformation, since p-values vanish under float64 on large textured images.
 
-\begin{lstlisting}[label={lst:chispatial},caption={Spatial $\chi^2$ (Westfeld~1999) on a grayscale image, with the underflow-free score transformation. The classical p-value is replaced by $-\chi^2/df$ which is rank-monotonic with the p-value on non-degenerate inputs but does not collapse to zero on large textured images.}]
-def chi_square_spatial_score(image: Image.Image) -> float:
-    pixels = np.array(image.convert("L")).flatten()
-    counts = np.bincount(pixels, minlength=256)
-    chi_stat, df = 0.0, 0
-    for k in range(128):
-        n_2k, n_2k1 = counts[2*k], counts[2*k+1]
-        expected = (n_2k + n_2k1) / 2.0
-        if expected > 0:
-            chi_stat += ((n_2k - expected) ** 2) / expected
-            df += 1
-    return 0.0 if df <= 1 else -float(chi_stat) / (df - 1)
-\end{lstlisting}
-
-\subsection{Learned Detectors for Cross-Validation (SRNet, DCTR)}
+\subsection{Learned Detectors for Cross-Validation}
 \label{sec:learned-detectors}
-
-Two state-of-the-art learned detectors are added as a cross-validation of the pre-registered protocol from a fundamentally different class of detectors, one per embedding branch. They are trained on a separate, matched dataset disjoint from the test set by caption~ID; the same DeLong + Bonferroni--Holm + $\delta_\text{min}$ machinery used for the classical detectors is applied to a separate 6-stratum family of learned-detector contrasts (Section~\ref{sec:learnedxval}).
-
-\paragraph{SRNet (spatial branch).} The 12-block residual network of Boroumand~et~al.~\cite{boroumand2019srnet} (Type~1$\times$2, Type~2$\times$5, Type~3$\times$4, Type~4$\times$1) with channel widths $\{64,16,16{\times}5,16,64,128,256,512\}$ matching the published Figure~2 and a $512{\rightarrow}2$ fully-connected head. We faithfully include the Type~4 residual skip (some open-source ports omit it). Our implementation totals 4.93M trainable parameters; the paper claims 467k but Figure~2 composes to $\sim$4.9M and other open-source ports also land in the $2$--$5$M range. No TLU (paper-correct); BatchNorm throughout; Adamax (lr $10^{-3}$, paper-faithful) with reduce-on-plateau on validation AUC, gradient $L_2$ clip at 1.0, and the D4 dihedral augmentation paired sampler.
-
-\paragraph{DCTR (frequency branch).} The 1{,}280-dimensional canonical DCTR feature set (64 DCT modes $\times$ 4 cosets $\times$ 5 truncated-absolute-value bins, T=4)~\cite{holub2015dctr}, computed via undecimated DCT with mode-specific quantization from the standard JPEG luminance table at Q=95. Per-image extraction is $\sim$80~ms on one core. The classifier is a Fisher-LDA ensemble in the Kodovsk\'{y}-Fridrich style~\cite{fridrich2012srm}, implemented as scikit-learn's \texttt{BaggingClassifier(LinearDiscriminantAnalysis, n\_estimators=100, max\_features=0.1, bootstrap=True)} on standardised features.
-
-\paragraph{Per-cell training.} Following steganalysis-literature standard we train one model per (method, payload) cell: three SRNet checkpoints (LSB / \{low, medium, high\}) and three DCTR ensembles (DCT / \{low, medium, high\}), six trained detectors total. Each detector scores only its own embedding branch; the LSB cells are fanned across rs / sample\_pairs / $\chi^2$-spatial / SRNet, and the DCT cells across $\chi^2$-DCT / $\chi^2$-DCT-tiled / calibration-$\chi^2$ / DCTR -- so within each branch we obtain a clean four-way detector comparison on identical test cells.
-
-\paragraph{Training data and leakage guard.} The learned detectors are trained on a \emph{separate} 3{,}000-group caption-matched corpus (Section~\ref{sec:learnedxval}); the training caption pool excludes all 3{,}000 caption~IDs that appear in the test run. The training-set manifest is hashed (SHA-256, leading 16 hex digits) and embedded in every saved checkpoint; the inference scripts refuse to apply a checkpoint to any run whose manifest hash matches the training hash, programmatically preventing train/test leakage. Encryption is handled symmetrically with the classical analysis: at training time each cover is paired with a randomly chosen encryption variant; at inference time each cover is scored once and the score is fanned out to one row per encryption variant (cover bytes are identical regardless of encryption, so one score per cover is correct).
-
-\paragraph{Real-only-training ablation.} The primary learned-detector training -- \emph{matched training}, file label \texttt{V1} -- uses the same 3-source carrier balance (real + SDXL + FLUX, 1:1:1) as the test set, so SRNet sees all carrier types during training. Any source-invariance observed at inference time could then be either an architectural property of the CNN or an artefact of balanced training exposure. A second training run -- \emph{real-only training}, file label \texttt{V2a} -- trains the same six checkpoints on a real-only corpus of disjoint Flickr30k captions, holding sample count constant; the resulting source-AUC pattern at test time disentangles the two interpretations (\S\ref{sec:v2a}).
-
-\paragraph{Reporting protocol.} The learned-detector contrasts use the same DeLong test, Bonferroni--Holm correction, and $\delta_\text{min}$ thresholds as the classical detectors, with their own 6 (method$\times$payload) strata per RQ. The Bonferroni--Holm family is computed \emph{separately} for the classical and learned detectors; the pre-registered classical-detector correction in Table~\ref{tab:verdicts} is not silently rewritten.
+Two learned detectors are added as an orthogonal cross-validation, one per embedding branch. \textbf{SRNet} (spatial)~\cite{boroumand2019srnet}: 12-block residual network with channel widths matching the published Figure~2 (4.93M parameters), Type~4 residual skip preserved, no TLU, BatchNorm throughout, Adamax (lr $10^{-3}$) with reduce-on-plateau on val~AUC, gradient $L_2$ clip at 1.0, and the D4 dihedral augmentation paired sampler. \textbf{DCTR} (frequency)~\cite{holub2015dctr}: the canonical 1{,}280-dim feature set (64 DCT modes $\times$ 4 cosets $\times$ 5 truncated-absolute-value bins, T=4) at JPEG Q$=$95, fed to a Fisher-LDA bagging ensemble~\cite{fridrich2012srm} (100 estimators, max\_features 0.1, bootstrap). One checkpoint per (method, payload) cell is trained per detector following the steganalysis-literature convention, giving six trained detectors per training configuration. Training data is a separate caption-matched corpus disjoint from the test set by caption~ID, manifest-hashed (SHA-256) and verified against the inference set at runtime to prevent train/test leakage. The same DeLong + Bonferroni--Holm + $\delta_\text{min}$ machinery as for classical detectors is applied to a \emph{separate} 6-stratum learned family, leaving the pre-registered classical family untouched.
 
 \subsection{Statistical Protocol}
 \label{sec:stats}
 
-The unit of analysis is a \emph{stratum}: a (detector $\times$ embedding method $\times$ payload level) cell. For RQ1 and RQ2 we have $6\!\times\!3\!=\!18$ strata each. Within each stratum we compute the area under the ROC curve (AUC) for both carrier groups and the \textbf{paired AUC difference} via the \textbf{DeLong test}~\cite{delong1988}, which exploits the fact that the same covers are scored in both groups; the pairing eliminates between-image variance and substantially increases statistical power.
+The unit of analysis is a \emph{stratum}: a (detector $\times$ embedding method $\times$ payload level) cell. For RQ1 and RQ2 we have $6\!\times\!3\!=\!18$ strata each. Within each stratum we compute the area under the ROC curve (AUC) for both carrier groups and the AUC difference. For \emph{cross-source} contrasts (RQ1, RQ2, RQ3, RQ4) the real, SDXL, and FLUX images are distinct files paired only by caption~ID, not the same image scored twice; DeLong's correlated-ROC variance is designed for ROCs that share cases. We therefore treat the \textbf{caption-clustered bootstrap} (1{,}000 resamples at the caption level) as the test of record for cross-source contrasts and report the \textbf{DeLong} statistic~\cite{delong1988} only as a cross-check; the two procedures agree to $\leq\!10^{-3}$ on every stratum. For RQ5 (plain vs.\ AES-encrypted on identical covers) DeLong's assumptions hold and it is the primary test.
 
 The 18 stratum-level p-values are corrected with \textbf{Bonferroni--Holm} at $\alpha\!=\!0.05$ for the confirmatory RQs (RQ1, RQ2); RQ3 and RQ4 use 95\% confidence intervals; RQ5 uses an equivalence test against a $\pm0.025$ AUC margin. A stratum is declared \textbf{practically significant} only if \emph{both} $p_\text{Holm}\!\leq\!0.05$ \emph{and} $|\Delta_\text{AUC}|\!\geq\!\delta_\text{min}$. The pooled $\Delta_\text{AUC}$ across strata is inverse-variance-weighted.
 
-\paragraph{Two thresholds on $\delta_\text{min}$.} The proposal pre-registered $\delta_\text{min}\!=\!0.05$, calibrated to the Hanley--McNeil minimum-detectable effect at $\alpha\!=\!0.05$, $80\%$ power and $N\!=\!1{,}000$. At the confirmatory $N\!=\!3{,}000$ the same power calculation gives a minimum-detectable effect of $\approx\!0.029$; the sample-size-matched threshold is therefore $\delta_\text{min}\!=\!0.025$. We report verdicts at \emph{both} thresholds: $\delta_\text{min}\!=\!0.05$ remains the \textbf{primary} (pre-registered) outcome, and $\delta_\text{min}\!=\!0.025$ is reported as a \textbf{supplementary} sensitivity analysis. This avoids moving the goalposts after the fact while transparently exposing what the data says under the threshold the larger sample's power actually supports.
+\paragraph{Two thresholds on $\delta_\text{min}$.} The proposal pre-registered $\delta_\text{min}\!=\!0.05$ (Hanley--McNeil minimum-detectable effect at $\alpha\!=\!0.05$, $80\%$ power, $N\!=\!1{,}000$); at the confirmatory $N\!=\!3{,}000$ the post-hoc power-matched threshold is $\delta_\text{min}\!=\!0.025$. We report both: $0.05$ as the primary (pre-registered) outcome, $0.025$ as a supplementary sensitivity analysis. We use ``confirmatory'' for the $N\!=\!3{,}000$ run in the sense of replicating the pre-registered $N\!=\!1{,}000$ analysis at $3\!\times\!$ the sample size, not in the sense of a fresh pre-registration.
 
 The verdict assignment follows the decision rule in Table~\ref{tab:verdictrule}.
 
@@ -410,7 +369,7 @@ $\geq\!1$             & 0              & \emph{trivial}       \\
 
 \subsection{Score-level Sanity Checks (t-test and Wilcoxon)}
 \label{sec:scorelevel}
-The DeLong test operates at the \emph{ROC AUC} level: it asks whether the detector's \emph{ranking ability} differs between two carrier groups. As a complementary sanity check we also run paired \textbf{t-tests} and \textbf{Wilcoxon signed-rank tests} on the \emph{raw detector scores} for the four pre-registered comparisons (real vs.\ SDXL, real vs.\ FLUX, SDXL vs.\ FLUX, plain vs.\ AES-256-CBC), per detector. These score-level tests detect whether the score \emph{distributions} differ even when the ranking-based AUC contrast is null, and report effect sizes (Cohen's $d$ for t-test, $r$ for Wilcoxon). They are reported as supplementary diagnostics in Appendix~\ref{app:t-tests}; DeLong remains the test of record for the verdicts. A score-level shift without an AUC change indicates that detectors recognise the carrier source distribution but do not gain ranking power from the difference -- exactly the pattern we observe for RQ5 below.
+As a complement to the ranking-based DeLong AUC test, paired t-tests and Wilcoxon signed-rank tests on raw detector scores cross-check whether score distributions differ even when AUC is null (full tables in Appendix~\ref{app:t-tests}). DeLong remains the test of record.
 
 \subsection{Supplementary Partial-AUC Analysis}
 \label{sec:pauc}
@@ -422,12 +381,12 @@ Full AUC integrates the ROC curve over all false-positive rates, including regio
 At $N\!=\!1{,}000$ groups per source, the Hanley--McNeil power calculation shows the smallest detectable AUC difference at $\alpha\!=\!0.05$ and $80\%$ power is below the $\delta_\text{min}\!=\!0.05$ threshold for every stratum in RQ1, RQ2 and RQ5. The $N\!=\!3{,}000$ confirmatory run reported here tightens every CI by a factor of $\sqrt{3}\!\approx\!1.73$ and serves as an independent replication of the pre-registered $N\!=\!1{,}000$ findings.
 
 % ============================================================
-\section{Experiments}
+\section{Experimental Setup}
 \label{sec:experiments}
 % ============================================================
 
 \subsection{Run Configuration}
-The full factorial was executed once at $N\!=\!1{,}000$ groups (pre-registered) and again at $N\!=\!3{,}000$ groups (confirmatory). The pipeline (Figure~\ref{fig:pipeline}) is implemented in Python, runs from a frozen \texttt{config.json}, and is reproducible from seed. The active configuration of the $N\!=\!3{,}000$ run is listed in Appendix~\ref{app:config}.
+The full factorial was executed at $N\!=\!1{,}000$ groups (pre-registered) and replicated at $N\!=\!3{,}000$ (confirmatory). The Python pipeline (Fig.~\ref{fig:pipeline}) runs from a frozen configuration and is reproducible from seed; the active configuration is in Appendix~\ref{app:config}.
 
 \begin{figure}[t]
 \centering
@@ -445,7 +404,7 @@ The full factorial was executed once at $N\!=\!1{,}000$ groups (pre-registered) 
 \draw[parrow] (man)  -- (emb);
 \draw[parrow] (emb)  -- (det);
 \draw[parrow] (det)  -- (agg);
-\node[pout, below=0.05cm of data] {real\,+\,ML\\ covers};
+\node[pout, below=0.05cm of data] {real\,+\,AI\\ covers};
 \node[pout, below=0.05cm of man]  {payloads,\\ stego list};
 \node[pout, below=0.05cm of emb]  {stego files,\\ PSNR/SSIM};
 \node[pout, below=0.05cm of det]  {predictions.csv\\ per (cov, stg)};
@@ -455,24 +414,22 @@ The full factorial was executed once at $N\!=\!1{,}000$ groups (pre-registered) 
 \label{fig:pipeline}
 \end{figure}
 
-\paragraph{Matched-training learned-detector run (V1).} A separate 3{,}000-group training run was executed on a rented Vast.ai cloud instance (RTX~5880~Ada) to produce the SRNet and DCTR checkpoints (Section~\ref{sec:learned-detectors}). It uses the same factorial design as the test run (real + ML-A + ML-B carriers, LSB + DCT methods, three payload levels, two encryption modes) but draws caption~IDs from a pool that programmatically excludes every caption~ID in the test run's manifest. Per-checkpoint sample count is $n_\text{train}\!=\!18{,}900$ and $n_\text{val}\!=\!5{,}292$ (1 cover + 2 stego variants per cover-group at 80/20 group-level split). Training-run wall-clock was approximately 8~h end-to-end for $\sim\$$8; the resulting six checkpoints (3 SRNet + 3 DCTR), per-cell training logs, and the SHA-256 manifest hash of the training data are all included in the supplementary deliverables bundle.
+\paragraph{Learned-detector training runs.} Two separate 3{,}000-group training runs were executed on a rented Vast.ai cloud instance (RTX~5880~Ada) for the SRNet and DCTR checkpoints, drawing caption~IDs disjoint from the test set. \emph{Matched training} uses the same 1:1:1 real/SDXL/FLUX factorial as the test run; \emph{real-only training} uses 9{,}000 Flickr30k captions with no AI carriers. Per-checkpoint sample count $n_\text{train}\!=\!18{,}900$, $n_\text{val}\!=\!5{,}292$ in both configurations; wall-clock $\sim\!8$~h each. Twelve checkpoints (3 SRNet + 3 DCTR per training mode) are released.
 
-\paragraph{Real-only-training learned-detector run (V2a).} A second training run with the same sample-count budget but real-only carriers (9{,}000 Flickr30k captions disjoint from both the test run and the matched-training caption set) was executed on the same Vast.ai instance type. The real-only training uses 100\% Flickr30k because the disjoint-from-test COCO caption pool is below the 1.75$\times$ overshoot the download pipeline needs at $n\!=\!9{,}000$; both Flickr30k and COCO are natural-image datasets and the source-invariance hypothesis under test (Section~\ref{sec:v2a}) is dataset-agnostic. Six additional checkpoints (3 SRNet + 3 DCTR, file suffix \texttt{\_v2a}) are produced; per-checkpoint sample counts match matched training.
-
-\subsection{Artefacts Produced}
-The $N\!=\!3{,}000$ test run produced 18{,}000 covers, 108{,}000 stego images, 648{,}000 classical-detector predictions, 19 metrics CSVs, 61 figures, and the per-RQ verdicts in JSON and Markdown. Total wall-clock was approximately 13~h, of which \textasciitilde6~h was cover generation (HF Inference API throughput-bound), \textasciitilde2~h was embedding, \textasciitilde0.5~h was detection, and the remainder was analysis. The analysis-stage cost has since been reduced by an order of magnitude (factor $\sim$560$\times$) by replacing the pure-Python $O(N^2)$ ROC threshold sweep with a numpy sort+cumsum implementation, used throughout the cross-validation analyses of Section~\ref{sec:learnedxval}. Learned-detector inference on the same test corpus adds 108{,}000 prediction rows per detector family ($2\times108{,}000$ for matched training, another $2\times108{,}000$ for real-only training) in separate CSVs that the cross-validation pipeline reads alongside \texttt{predictions.csv}; the parallel \texttt{learned\_shadow/} and \texttt{learned\_shadow\_v2a/} run directories keep the pre-registered classical-detector outputs frozen.
+\subsection{Artefacts}
+The $N\!=\!3{,}000$ test run produced 18{,}000 covers, 108{,}000 stego images, 648{,}000 classical predictions, and per-RQ verdicts (Wall-clock $\sim\!13$~h, mostly cover generation). Learned-detector inference adds $4\times108{,}000$ prediction rows kept parallel to the frozen classical predictions.
 
 % ============================================================
-\section{Carrier-Source Effect Under Classical Detectors}
+\section{Classical-Detector Results}
 \label{sec:results-classical}
-\label{sec:results}        % retain v3 label so deep cross-references resolve
+\label{sec:results}
 % ============================================================
 
 The headline verdicts are summarised in Table~\ref{tab:verdicts}; the rest of this section walks through each RQ with the supporting figures.
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{Verdict summary across the five research questions ($N\!=\!3{,}000$ confirmatory run). Verdicts are reported at \emph{two} practical-significance thresholds: $\delta_\text{min}\!=\!0.05$ is the pre-registered primary; $\delta_\text{min}\!=\!0.025$ is the power-matched supplementary at the actual sample size. Practical-count cells read $n_\text{practical}/n_\text{sig}$ followed by $(+\!,-)$ direction breakdown.}
+\caption{Verdict summary across the five RQs ($N\!=\!3{,}000$) at the pre-registered $\delta_\text{min}\!=\!0.05$ gate and the power-matched supplementary $0.025$ gate. Practical-count cells: $n_\text{practical}/n_\text{sig}$ with $(+\!,-)$ direction breakdown.}
 \label{tab:verdicts}
 \setlength{\tabcolsep}{6pt}\renewcommand{\arraystretch}{1.1}
 \begin{tabular}{@{}l l c c c c c@{}}
@@ -481,7 +438,7 @@ The headline verdicts are summarised in Table~\ref{tab:verdicts}; the rest of th
 \cmidrule(lr){4-5}\cmidrule(lr){6-7}
 \textbf{RQ} & \textbf{Pooled $\Delta$} & \textbf{Holm sig.} & \textbf{Practical} & \textbf{Verdict} & \textbf{Practical} & \textbf{Verdict} \\
 \midrule
-RQ1 real vs ML        & $-0.0129$ & 16/18 & 4/16 (0,$\,$4$-$)  & mixed     & 11/16 (2,$\,$9$-$) & mixed   \\
+RQ1 real vs AI        & $-0.0129$ & 16/18 & 4/16 (0,$\,$4$-$)  & mixed     & 11/16 (2,$\,$9$-$) & mixed   \\
 RQ2 SDXL vs FLUX      & $+0.0004$ & 7/18  & 0/7                & trivial   & 3/7 (2,$\,$1$-$)   & \textbf{mixed} \\
 RQ3 payload $\times$ source & gap shrinks with bpp & ---  & --- & supported & ---                 & supported \\
 RQ4 spatial $-$ freq. & $-0.0013$ & 2/3   & 0/2                & trivial   & 1/2 (0,$\,$1$-$)   & mixed   \\
@@ -496,7 +453,7 @@ RQ2 pAUC              & $+0.0008$ & 7/18  & 1/7                & mixed     & 4/7
 
 \subsection{Headline AUC by Carrier Source and Detector}
 
-Figure~\ref{fig:headline} plots the mean AUC of every detector against each of the three carrier sources. The visual pattern is immediate: for five of six detectors the orange/blue bars (ML carriers) are higher than the dark bars (real photographs). Only the third bar group ($\chi^2$-spatial) reverses this ordering, with real $>$ ML by a small but consistent margin.
+Figure~\ref{fig:headline} plots the mean AUC of every detector against each of the three carrier sources. The visual pattern is immediate: for five of six detectors the orange/blue bars (AI carriers) are higher than the dark bars (real photographs). Only the third bar group ($\chi^2$-spatial) reverses this ordering, with real $>$ AI by a small but consistent margin.
 
 \begin{figure*}[t]
 \centering
@@ -542,24 +499,18 @@ Figure~\ref{fig:headline} plots the mean AUC of every detector against each of t
 % Legend top-left
 \begin{scope}[shift={(0.4, 5.4)}]
   \draw[bargrey] (0,0) rectangle (0.32,0.32); \node[font=\footnotesize\color{umdark}, right=3pt] at (0.32,0.16) {real photographs};
-  \draw[barblue] (4.0,0) rectangle (4.32,0.32); \node[font=\footnotesize\color{umdark}, right=3pt] at (4.32,0.16) {ml\_a (SDXL\,1.0)};
-  \draw[baroran] (8.0,0) rectangle (8.32,0.32); \node[font=\footnotesize\color{umdark}, right=3pt] at (8.32,0.16) {ml\_b (FLUX.1-schnell)};
+  \draw[barblue] (4.0,0) rectangle (4.32,0.32); \node[font=\footnotesize\color{umdark}, right=3pt] at (4.32,0.16) {ai\_a (SDXL\,1.0)};
+  \draw[baroran] (8.0,0) rectangle (8.32,0.32); \node[font=\footnotesize\color{umdark}, right=3pt] at (8.32,0.16) {ai\_b (FLUX.1-schnell)};
 \end{scope}
 \end{tikzpicture}
-\caption{Mean ROC~AUC per detector and carrier source, pooled across payload, encryption and method ($N\!=\!3{,}000$). For five of six detectors the ML bars exceed the real bar (all $\Delta_\text{AUC}\!<\!0$); only $\chi^2$-spatial reverses the ordering (real $>$ ML). Detector ordering left-to-right follows ascending pooled AUC.}
+\caption{Mean ROC~AUC per detector and carrier source, pooled across payload, encryption and method ($N\!=\!3{,}000$). For five of six detectors the AI bars exceed the real bar ($\Delta_\text{AUC}\!<\!0$ for each of these five); $\chi^2$-spatial alone reverses (real $>$ AI). Detector ordering left-to-right follows ascending pooled AUC. Learned-detector counterparts at the same cell are summarised in Section~\ref{sec:learnedxval} and Fig.~\ref{fig:matched-vs-realonly-heatmap}.}
 \label{fig:headline}
 \end{figure*}
 
-\subsection{RQ1 -- Real vs.\ Pooled ML Carriers}
+\subsection{RQ1, Real vs.\ Pooled AI Carriers}
 \label{sec:rq1}
 
-The pooled $\Delta_\text{AUC}\!=\!-0.0129$ (95\%~CI $[-0.0137,-0.0121]$) is small but tightly constrained, with \textbf{16/18 strata} Holm-significant. At the pre-registered $\delta_\text{min}\!=\!0.05$ threshold, \textbf{4 of those 16} strata clear the practical-significance gate, all on the \emph{ML-easier} side: RS/LSB/low ($\Delta\!=\!-0.090$), sample-pairs/LSB/low ($-0.089$), $\chi^2$-DCT-tiled/DCT/low ($-0.060$) and $\chi^2$-DCT/DCT/medium ($-0.051$). Three independent detector families therefore agree on the direction at low-to-medium payload. The primary verdict is \textbf{mixed}: a direction-consistent ML-easier signal at the practical-significance gate but most strata sit inside the trivial band.
-
-At the supplementary $\delta_\text{min}\!=\!0.025$ threshold (Section~\ref{sec:stats}), the practical count rises to \textbf{11/16}: nine ML-easier strata across five detector families (cal-$\chi^2$/dct/high, $\chi^2$-DCT/dct at all three payloads, $\chi^2$-DCT-tiled/dct/low and /medium, RS/LSB/low and /medium, sample-pairs/LSB/low) plus two $\chi^2$-spatial strata on the real-easier side (medium $\Delta\!=\!+0.027$, high $\Delta\!=\!+0.034$). The verdict remains \textbf{mixed}; the carrier-source effect is robust to threshold choice in direction, and at the larger threshold the evidence base is roughly $2.75\!\times\!$ deeper.
-
-The single dissenter is $\chi^2$-spatial: real photographs are \emph{easier} to attack than ML carriers at medium ($\Delta\!=\!+0.027$) and high payload ($+0.034$), both Holm-significant and both clearing the $\delta_\text{min}\!=\!0.025$ threshold; low payload sits inside the trivial band even at 0.025. We return to this reversal in Section~\ref{sec:chi2spatial}.
-
-Figure~\ref{fig:rq1strip} renders the 18 strata as a strip plot, one row per detector. Each detector's three payload-level $\Delta_\text{AUC}$ are connected to expose payload trends. The four dots outside the practical band (RS/LSB/low, sample-pairs/LSB/low, $\chi^2$-DCT-tiled/DCT/low, $\chi^2$-DCT/DCT/medium) belong to three independent detector families, and the three $\chi^2$-spatial dots are the lone real-easier outliers. Table~\ref{tab:rq1meta} aggregates the strip plot per detector via inverse-variance pooling, making the direction-of-effect at the detector-family level easier to read off.
+The pooled $\Delta_\text{AUC}\!=\!-0.0129$ (95\%~CI $[-0.0137,-0.0121]$) is small but tightly constrained, with \textbf{16/18 strata} Holm-significant. At the pre-registered $\delta_\text{min}\!=\!0.05$, \textbf{4 of 16} strata clear the practical-significance gate (RS/LSB/low $-0.090$, sample-pairs/LSB/low $-0.089$, $\chi^2$-DCT-tiled/DCT/low $-0.060$, $\chi^2$-DCT/DCT/medium $-0.051$), all AI-easier across three independent detector families. The primary verdict is \textbf{mixed}: direction-consistent at the gate, most strata inside the trivial band. At the power-matched $\delta_\text{min}\!=\!0.025$ the practical count rises to 11/16 (nine AI-easier across five families plus two $\chi^2$-spatial strata reversed, medium $+0.027$, high $+0.034$); the verdict remains mixed but the evidence base is $\sim\!2.75\times\!$ deeper. The single dissenter $\chi^2$-spatial is mechanistically explained in Section~\ref{sec:chi2spatial}. Figure~\ref{fig:rq1strip} plots the 18 strata; Table~\ref{tab:rq1meta} aggregates by inverse-variance pooling per detector.
 
 \begin{figure}[t]
 \centering
@@ -569,10 +520,6 @@ Figure~\ref{fig:rq1strip} renders the 18 strata as a strip plot, one row per det
   dotmed/.style={circle, draw=umdark!60, fill=umlight!75,   inner sep=0pt, minimum size=4pt, line width=0.25pt},
   dothigh/.style={circle, draw=umdark!60, fill=umorange!85, inner sep=0pt, minimum size=4pt, line width=0.25pt},
 ]
-% x mapping: Δ in [-0.12, +0.06] -> [0, 5.4] cm (multiplier 30)
-% ± 0.025 lives at x = 2.85 / 4.35; ± 0.05 lives at x = 2.1 / 5.1
-% Grey band = supplementary threshold |Δ|<0.025 (the tighter/primary visual band);
-% dotted lines at ±0.05 = pre-registered threshold.
 \fill[umgray!18] (2.85,-2.3) rectangle (4.35,0.10);
 \draw[umdark!70, line width=0.4pt] (3.6,-2.3) -- (3.6,0.30);
 \node[font=\scriptsize\color{umdark!70}, above=1pt] at (3.6,0.30) {0};
@@ -588,7 +535,7 @@ Figure~\ref{fig:rq1strip} renders the 18 strata as a strip plot, one row per det
   \pgfmathsetmacro{\x}{(\v + 0.12) * 30}
   \node[font=\scriptsize\color{umdark!70}, below=1pt] at (\x,-2.3) {\v};
 }
-\node[font=\scriptsize\color{umdark}, below=10pt] at (2.7,-2.3) {$\Delta_\text{AUC}$ (real $-$ pooled ML)};
+\node[font=\scriptsize\color{umdark}, below=10pt] at (2.7,-2.3) {$\Delta_\text{AUC}$ (real $-$ pooled AI)};
 
 \foreach \i/\labl/\dl/\dm/\dh in {%
   0/{cal-$\chi^2$}/-0.0092/-0.0231/-0.0453,
@@ -608,7 +555,6 @@ Figure~\ref{fig:rq1strip} renders the 18 strata as a strip plot, one row per det
   \node[dotmed]  at (\xb,\y) {};
   \node[dothigh] at (\xcc,\y) {};
 }
-% legend (top of plot)
 \node[font=\scriptsize\color{umdark}] at (0.55,0.65) {payload:};
 \node[dotlow]  at (1.30,0.65) {};
 \node[font=\scriptsize\color{umdark}, right=2pt] at (1.30,0.65) {low};
@@ -617,13 +563,13 @@ Figure~\ref{fig:rq1strip} renders the 18 strata as a strip plot, one row per det
 \node[dothigh] at (3.65,0.65) {};
 \node[font=\scriptsize\color{umdark}, right=2pt] at (3.65,0.65) {high};
 \end{tikzpicture}
-\caption{RQ1 -- paired DeLong $\Delta_\text{AUC}$ per stratum (real $-$ pooled ML), $N\!=\!3{,}000$. Each detector row spans its three payload strata. The grey band marks the supplementary trivial zone $|\Delta|\!<\!0.025$ (dashed orange boundaries, power-matched to $N\!=\!3{,}000$); the dotted orange lines at $\pm 0.05$ mark the pre-registered threshold. Eleven dots clear the supplementary gate and four clear the pre-registered one (RS/low, sample-pairs/low, $\chi^2$-DCT-tiled/low, $\chi^2$-DCT/medium), all on the ML-easier side; $\chi^2$-spatial's medium and high strata clear the supplementary gate on the opposite side.}
+\caption{RQ1, paired DeLong $\Delta_\text{AUC}$ per stratum (real $-$ pooled AI), classical detectors. Grey band: supplementary $|\Delta|\!<\!0.025$; dotted lines: pre-registered $\pm 0.05$. Learned-detector counterpart in Fig.~\ref{fig:matched-vs-realonly-heatmap} and Fig.~\ref{fig:learned-payload-trend}.}
 \label{fig:rq1strip}
 \end{figure}
 
 \begin{table}[t]
 \centering\small
-\caption{RQ1 -- per-detector inverse-variance pooled $\Delta_\text{AUC}$ across the three payload strata ($k\!=\!3$). All meta values negative except $\chi^2$-spatial.}
+\caption{RQ1, per-detector inverse-variance pooled $\Delta_\text{AUC}$ across the three payload strata ($k\!=\!3$). All meta values negative except $\chi^2$-spatial.}
 \label{tab:rq1meta}
 \setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.1}
 \begin{tabular}{@{}l r l@{}}
@@ -642,9 +588,9 @@ sample-pairs            & $-0.014$ & $[-0.015, -0.012]$ \\
 \end{tabular}
 \end{table}
 
-\subsection{RQ2 -- SDXL vs.\ FLUX within ML}
+\subsection{RQ2, SDXL vs.\ FLUX within AI}
 
-The pooled $\Delta_\text{AUC}\!=\!+0.0004$ is essentially zero. 7/18 strata are Holm-significant under the larger sample size, and the strata are mixed in direction (four favour SDXL, three FLUX). At the pre-registered $\delta_\text{min}\!=\!0.05$, \textbf{none of the seven Holm-significant strata clear the practical-significance gate} -- the primary verdict is \textbf{trivial} (Figure~\ref{fig:rq2}). At the supplementary $\delta_\text{min}\!=\!0.025$, three strata clear the tighter gate ($\chi^2$-DCT/dct/medium $+0.031$, $\chi^2$-DCT/dct/high $+0.025$, $\chi^2$-spatial/LSB/high $-0.029$), so the verdict shifts to \textbf{mixed}; however, no detector family is unanimous across payloads, so the directional-consistency criterion that would support a "generator effect" claim still fails.
+The pooled $\Delta_\text{AUC}\!=\!+0.0004$ is essentially zero. 7/18 strata are Holm-significant under the larger sample size, and the strata are mixed in direction (four favour SDXL, three FLUX). At the pre-registered $\delta_\text{min}\!=\!0.05$, \textbf{none of the seven Holm-significant strata clear the practical-significance gate}, the primary verdict is \textbf{trivial} (Figure~\ref{fig:rq2}). At the supplementary $\delta_\text{min}\!=\!0.025$, three strata clear the tighter gate ($\chi^2$-DCT/dct/medium $+0.031$, $\chi^2$-DCT/dct/high $+0.025$, $\chi^2$-spatial/LSB/high $-0.029$), so the verdict shifts to \textbf{mixed}; however, no detector family is unanimous across payloads, so the directional-consistency criterion that would support a "generator effect" claim still fails.
 
 \begin{figure}[t]
 \centering
@@ -699,13 +645,13 @@ The pooled $\Delta_\text{AUC}\!=\!+0.0004$ is essentially zero. 7/18 strata are 
 \node[dothigh] at (3.65,0.65) {};
 \node[font=\scriptsize\color{umdark}, right=2pt] at (3.65,0.65) {high};
 \end{tikzpicture}
-\caption{RQ2 -- paired DeLong $\Delta_\text{AUC}$ per stratum (SDXL $-$ FLUX), $N\!=\!3{,}000$. Grey band: supplementary trivial zone $|\Delta|\!<\!0.025$; dotted orange lines: pre-registered $\pm 0.05$ threshold. Every dot sits inside the $\pm 0.05$ pre-registered band; three strata cross the $\pm 0.025$ supplementary band ($\chi^2$-DCT med/high on the right, $\chi^2$-spatial high on the left), but no detector family is unanimous across payloads, so the two diffusion models remain functionally interchangeable in spirit.}
+\caption{RQ2, paired DeLong $\Delta_\text{AUC}$ per stratum (SDXL $-$ FLUX), classical detectors. Grey band: $|\Delta|\!<\!0.025$; dotted lines: pre-registered $\pm 0.05$. No detector family is unanimous across payloads. Learned-detector counterpart in Fig.~\ref{fig:learned-payload-trend}.}
 \label{fig:rq2}
 \end{figure}
 
 \begin{table}[t]
 \centering\small
-\caption{RQ2 -- per-detector inverse-variance pooled $\Delta_\text{AUC}$ (SDXL $-$ FLUX). All CIs are an order of magnitude tighter than $\delta_\text{min}\!=\!0.05$; no detector clears the practical-significance gate.}
+\caption{RQ2, per-detector inverse-variance pooled $\Delta_\text{AUC}$ (SDXL $-$ FLUX). All CIs are an order of magnitude tighter than $\delta_\text{min}\!=\!0.05$; no detector clears the practical-significance gate.}
 \label{tab:rq2meta}
 \setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.1}
 \begin{tabular}{@{}l r l@{}}
@@ -726,9 +672,9 @@ sample-pairs            & $+0.001$ & $[+0.001, +0.002]$ \\
 
 The two diffusion models are functionally interchangeable at the detector level, and the proposal-driven model swap from PixArt-$\alpha$ to FLUX.1-schnell did not bias the result.
 
-\subsection{RQ3 -- Payload Interaction}
+\subsection{RQ3, Payload Interaction}
 
-The real-minus-ML AUC gap is monotone in payload: $-0.0486$ at low (0.05~bpp), $-0.0281$ at medium (0.15~bpp), $-0.0157$ at high (0.30~bpp). The \textbf{magnitude decreases as payload increases}, exactly the regime the steganalysis literature flags as operationally adversarial. A plausible mechanism is that at higher embedding rates the per-pixel modification noise dominates the carrier-source statistical fingerprint, so the signal that distinguishes real from ML carriers is strongest at low payload, where the embedding itself is subtle. Figure~\ref{fig:rq3} visualises the source-by-payload AUC heatmap; the colour gradient is steepest in the low-payload row for the spatial-branch detectors.
+The pooled real$-$AI gap is monotone in payload: $-0.0486 \to -0.0281 \to -0.0157$ at low/medium/high. The carrier-source signal is strongest at low payload, where the embedding is subtle enough that cover-side statistics carry the discriminative weight; at high payload the per-pixel modification noise dominates and the source fingerprint is overwhelmed.
 
 \begin{figure}[t]
 \centering
@@ -741,7 +687,7 @@ The real-minus-ML AUC gap is monotone in payload: $-0.0486$ at low (0.05~bpp), $
 ]
 \def\xL{0}\def\xR{6.4}
 \def\xlow{1.1}\def\xmed{3.2}\def\xhigh{5.3}
-% y-grid: real-ML gap in [-0.12, 0.05] -> y = (val+0.12)*25
+% y-grid: real-AI gap in [-0.12, 0.05] -> y = (val+0.12)*25
 \foreach \v in {-0.10,-0.05,0,0.05} {
   \pgfmathsetmacro{\y}{(\v + 0.12) * 25}
   \draw[umdark!12, line width=0.3pt] (\xL,\y) -- (\xR,\y);
@@ -769,9 +715,9 @@ The real-minus-ML AUC gap is monotone in payload: $-0.0486$ at low (0.05~bpp), $
 \node[font=\scriptsize\color{umdark}, below=2pt] at (\xmed,0)  {medium (0.15)};
 \node[font=\scriptsize\color{umdark}, below=2pt] at (\xhigh,0) {high (0.30)};
 \node[font=\scriptsize\color{umdark}, below=12pt] at (\xmed,0) {payload (bpp)};
-\node[font=\footnotesize\color{umdark}, rotate=90] at (-0.8,2.3) {real $-$ ML gap};
+\node[font=\footnotesize\color{umdark}, rotate=90] at (-0.8,2.3) {real $-$ AI gap};
 
-% 5 ML-easier detector lines (cal-chi2, chi2-DCT, chi2-DCT-tiled, RS, sample_pairs)
+% 5 AI-easier detector lines (cal-chi2, chi2-DCT, chi2-DCT-tiled, RS, sample_pairs)
 \foreach \ll/\mm/\hh in {%
   -0.0092/-0.0231/-0.0453,
   -0.0254/-0.0513/-0.0477,
@@ -812,19 +758,19 @@ The real-minus-ML AUC gap is monotone in payload: $-0.0486$ at low (0.05~bpp), $
 % Legend
 \node[font=\scriptsize\color{umdark}, anchor=west] at (0.0, 4.7) {detectors:};
 \draw[detlineA] (1.05,4.7) -- (1.55,4.7); \node[detmarkA] at (1.30,4.7) {};
-\node[font=\scriptsize\color{umdark}, anchor=west] at (1.60,4.7) {5 ML-easier};
+\node[font=\scriptsize\color{umdark}, anchor=west] at (1.60,4.7) {5 AI-easier};
 \draw[detlineC] (3.20,4.7) -- (3.70,4.7); \node[detmarkC] at (3.45,4.7) {};
 \node[font=\scriptsize\color{umdark}, anchor=west] at (3.75,4.7) {$\chi^2$-spatial};
 \draw[pooledline] (5.10,4.7) -- (5.75,4.7);
 \node[font=\scriptsize\color{umorange}\bfseries, anchor=west] at (5.80,4.7) {pooled};
 \end{tikzpicture}
-\caption{RQ3 -- real-minus-ML AUC gap as a function of payload, per detector. Grey band: supplementary trivial zone $|\text{gap}|\!<\!0.025$; dotted orange lines: pre-registered $\pm 0.05$ threshold. The five ML-easier detectors (light blue) all show shrinking source gap with payload; $\chi^2$-spatial (dashed dark) sits above zero across all three levels and clears the $\pm 0.025$ band at medium and high payload. The pooled gap (bold orange) is monotone in magnitude and clears the $\pm 0.025$ band at all three payloads.}
+\caption{RQ3, real-minus-AI AUC gap vs.\ payload, classical detectors. Grey band: $|\text{gap}|\!<\!0.025$; dotted lines: $\pm 0.05$. Pooled gap shrinks monotonically with payload. Learned-detector counterpart with both training configurations in Fig.~\ref{fig:learned-payload-trend}.}
 \label{fig:rq3}
 \end{figure}
 
 Verdict: \textbf{supported}. The monotone decrease in gap magnitude with payload is the most operationally relevant finding of the study, because low payloads are exactly the regime a forensic analyst cares about (large payloads are easy to detect on either carrier).
 
-\subsection{RQ4 -- Spatial vs.\ Frequency Branch Interaction}
+\subsection{RQ4, Spatial vs.\ Frequency Branch Interaction}
 \label{sec:rq4}
 
 We compute $\Delta\Delta_\text{AUC}\!=\!\text{(spatial gap)}-\text{(frequency gap)}$ per payload level. The pooled estimate is $-0.0013$ (95\%~CI $[-0.0031,+0.0005]$), which spans zero. The per-payload pattern is informative even though the pooled summary is null:
@@ -839,7 +785,7 @@ high   & $-0.008$ & $-0.007$ & $-0.001$ \\
 \end{tabular}
 \end{center}
 
-The spatial branch shows the largest source effect at low payload; the frequency branch dominates at medium payload; both equilibrate at high payload (Figure~\ref{fig:rq4}). This is the same pattern reported at $N\!=\!1{,}000$, but at $3\!\times\!$ the sample the pooled $\Delta\Delta$ tightens enough that the average across payloads is statistically indistinguishable from zero.
+Spatial-branch dominates at low payload, frequency-branch at medium, tie at high (Figure~\ref{fig:rq4}); the per-payload pattern is identical to the $N\!=\!1{,}000$ result, but the larger sample tightens the pooled $\Delta\Delta$ to within zero.
 
 \begin{figure}[t]
 \centering
@@ -855,7 +801,7 @@ The spatial branch shows the largest source effect at low payload; the frequency
   \node[font=\scriptsize\color{umdark!70}, left=1pt] at (\xL,\y) {\v};
 }
 \draw[umdark!75, line width=0.5pt] (\xL,0) -- (\xR,0);
-\node[font=\footnotesize\color{umdark}, rotate=90] at (-0.9,-2) {real $-$ ML gap};
+\node[font=\footnotesize\color{umdark}, rotate=90] at (-0.9,-2) {real $-$ AI gap};
 
 \def\bw{0.55}
 \def\bg{0.15}
@@ -884,16 +830,16 @@ The spatial branch shows the largest source effect at low payload; the frequency
   \node[font=\scriptsize\color{umdark}, right=2pt] at (0.24,0.15) {frequency branch};
 \end{scope}
 \end{tikzpicture}
-\caption{RQ4 -- per-payload spatial vs.\ frequency branch source gap. $\Delta\Delta\!=\!\text{(spatial gap)}-\text{(frequency gap)}$; positive values mean the frequency branch has the larger source effect. The dominant branch flips with payload; pooled across the three payloads the $\Delta\Delta$ tightens to $-0.001$ and is indistinguishable from zero.}
+\caption{RQ4, per-payload spatial vs.\ frequency branch source gap, classical detectors. $\Delta\Delta$ positive $=$ frequency branch has the larger source effect. The dominant branch flips with payload; pooled $\Delta\Delta\!=\!-0.001$. Learned-detector counterpart in Fig.~\ref{fig:learned-payload-trend}.}
 \label{fig:rq4}
 \end{figure}
 
 Verdict: \textbf{trivial}. The per-payload pattern is a candidate exploratory finding for follow-up work; the pooled summary is honestly null.
 
-\subsection{RQ5 -- Encryption Invariance}
+\subsection{RQ5, Encryption Invariance}
 \label{sec:rq5}
 
-All \textbf{54 of 54 strata} fall inside the $\pm0.025$ AUC equivalence margin, and the pooled $\Delta_\text{AUC}$ is essentially zero ($-5.7\!\times\!10^{-7}$). Encryption changes plaintext structure but not embedding distortion, and the detectors react to the latter. Verdict: \textbf{supported}, exactly the expected null (Figure~\ref{fig:rq5}). The learned-detector cross-validation of this result is in Table~\ref{tab:learned-verdicts} (also supported, $|\Delta_\text{AUC}|\!<\!10^{-3}$, 18/18 strata within margin) -- the methodological substitution of random/plain payloads for AES-encrypted real payloads is therefore empirically validated under both detector families.
+All 54/54 strata fall inside the $\pm0.025$ AUC equivalence margin (pooled $|\Delta_\text{AUC}|\!<\!10^{-6}$). Verdict: \textbf{supported}, the expected null (Figure~\ref{fig:rq5}); the learned-detector cross-validation matches (Table~\ref{tab:learned-verdicts}, 18/18 strata within margin), the substitution of random/plain payloads for AES-encrypted real payloads is empirically validated under both detector families.
 
 \begin{figure}[t]
 \centering
@@ -933,92 +879,44 @@ All \textbf{54 of 54 strata} fall inside the $\pm0.025$ AUC equivalence margin, 
 \node[font=\scriptsize\color{umorange}, anchor=south west] at (0.20, 4.40) {equivalence band};
 \node[font=\scriptsize\color{umdark}, anchor=south west] at (3.5,1.2) {$y = x$};
 \end{tikzpicture}
-\caption{RQ5 -- plain vs.\ AES-256-CBC stego AUC, all 54 strata (6 detectors $\times$ 3 sources $\times$ 3 payloads). Every point sits inside the $\pm 0.025$ AUC equivalence band; the detectors react to embedding distortion, not plaintext patterns.}
+\caption{RQ5, plain vs.\ AES-256-CBC stego AUC, all 54 strata (6 detectors $\times$ 3 sources $\times$ 3 payloads). Every point sits inside the $\pm 0.025$ AUC equivalence band; the detectors react to embedding distortion, not plaintext patterns.}
 \label{fig:rq5}
 \end{figure}
 
 The clean negative result also validates the embedding pipeline: a non-null here would have indicated that detectors were reacting to payload-bit regularity rather than to LSB-flip artefacts.
 
-\subsection{Stego Image Quality}
-
-Per-source mean PSNR is 58.2~dB for real, 59.2~dB for SDXL, 59.2~dB for FLUX; mean SSIM is $\geq\!0.999$ across every (source, method, payload) cell. The LSB branch is content-independent (the same number of pixel LSBs is overwritten per image regardless of source), so PSNR matches across sources to three decimals. In the DCT branch a $\sim\!2$~dB per-source PSNR gap appears (Table~\ref{tab:quality}): \emph{real photographs accept more distortion per bit embedded} than diffusion outputs, because the natural images have more non-zero AC coefficients available for embedding and broader quantisation noise floors. This is consistent with the "smoother tone curves" hypothesis we use to interpret RQ1 in Section~\ref{sec:chi2spatial}. The SSIM equivalence rules out any explanation of the AUC contrasts as a perceptual-distortion mismatch.
-
-\begin{table}[t]
-\centering\small
-\caption{Mean stego image PSNR (dB) across the factorial. The LSB (PNG) branch is content-independent by construction; the DCT (JPEG) branch shows a $\sim\!2$~dB per-source gap that aligns with the "smoother tone curves" hypothesis used to interpret RQ1. Every cell is far above the 40~dB visual-imperceptibility floor; mean SSIM is $\geq\!0.999$ throughout.}
-\label{tab:quality}
-\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.1}
-\begin{tabular}{@{}l c c c c c c@{}}
-\toprule
-& \multicolumn{3}{c}{\textbf{LSB (PNG)}} & \multicolumn{3}{c}{\textbf{DCT-LSB (JPEG)}} \\
-\cmidrule(lr){2-4}\cmidrule(lr){5-7}
-\textbf{Payload} & real & ml\_a & ml\_b & real & ml\_a & ml\_b \\
-\midrule
-low (0.05)    & 64.16 & 64.16 & 64.16 & 61.00 & 63.05 & 63.24 \\
-medium (0.15) & 59.38 & 59.38 & 59.38 & 55.83 & 57.74 & 57.72 \\
-high (0.30)   & 56.37 & 56.37 & 56.37 & 52.48 & 54.30 & 54.16 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Supplementary -- Partial AUC at FPR\,$\leq\!0.10$}
-
-The partial-AUC view sharpens every effect (Table~\ref{tab:verdicts}). For RQ1 the pooled pAUC contrast is $-0.0174$ versus $-0.0129$ at full AUC, and \textbf{6 of 12 Holm-significant strata clear the pre-registered $\delta_\text{min}\!=\!0.05$ gate} (versus 4/16 under full AUC); under the power-matched $\delta_\text{min}\!=\!0.025$ the practical count rises to \textbf{9/12}, all ML-easier. Table~\ref{tab:pauc-top} lists the top six strata by $|\Delta\text{-pAUC}|$; effect sizes amplify by a factor of 3--7$\times$ relative to their full-AUC counterparts.
-
-\begin{table}[t]
-\centering\small
-\caption{Top six RQ1 strata by $|\Delta\text{-pAUC}|$ at FPR\,$\leq\!0.10$ ($N\!=\!3{,}000$), with the full-AUC value for comparison. All six strata are Holm-significant at $\alpha\!=\!0.05$ and clear the $\delta_\text{min}\!=\!0.05$ practical-significance gate.}
-\label{tab:pauc-top}
-\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.1}
-\begin{tabular}{@{}l c r r@{}}
-\toprule
-\textbf{Stratum} & \textbf{Method} & \textbf{$\Delta_\text{AUC}$} & \textbf{$\Delta_\text{pAUC}$} \\
-\midrule
-sample-pairs / low    & LSB & $-0.089$ & $\boldsymbol{-0.296}$ \\
-RS / low              & LSB & $-0.090$ & $-0.156$ \\
-sample-pairs / medium & LSB & $-0.022$ & $-0.109$ \\
-RS / medium           & LSB & $-0.030$ & $-0.092$ \\
-$\chi^2$-DCT-tiled / medium & DCT & $-0.039$ & $-0.064$ \\
-$\chi^2$-DCT / high   & DCT & $-0.048$ & $-0.057$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The RQ1 verdict therefore strengthens from mixed to \textbf{supported} at both thresholds once we restrict to the operationally relevant left tail. For RQ2 the verdict is mixed at both thresholds (1/7 practical at 0.05, 4/7 at 0.025), but the practical strata under pAUC remain mixed in direction, so the SDXL-vs-FLUX null is robust to the choice of metric and threshold. Crucially, every $\chi^2$-spatial pAUC contrast has $|\Delta|\!\leq\!0.007$ and none is Holm-significant at either threshold: the full-AUC reversal we observed for that detector \emph{dissolves} in the operational FPR regime.
-
-\paragraph{Bridge to cross-validation.} The pre-registered six-detector verdicts are complete. Section~\ref{sec:learnedxval} now re-runs the same DeLong + Bonferroni--Holm + $\delta_\text{min}$ protocol on a fundamentally different class of detectors (two learned baselines, SRNet and DCTR) trained on a separate, matched dataset, in two complementary configurations: \emph{matched training} (the pre-registered learned cross-validation) and \emph{real-only training} (an in-paper ablation that holds AI carriers out of training to address how training-set composition shapes the learned-detector findings).
+\subsection{Stego Image Quality and Supplementary Partial-AUC}
+Per-source mean PSNR (factorial mean across method/payload/encryption) is $58$--$59$~dB (real $58.2$~dB, SDXL/FLUX $59.2$~dB; SSIM $\geq\!0.999$ everywhere), well above the imperceptibility floor and ruling out distortion-mismatch as an AUC-contrast explanation; the DCT branch shows a $\sim\!2$~dB per-source gap consistent with the RQ1 interpretation (Appendix~\ref{app:quality} for full table). The partial-AUC view at FPR\,$\leq\!0.10$ (Appendix~\ref{app:pauc}) sharpens every effect: the RQ1 pooled $\Delta_\text{pAUC}\!=\!-0.0174$ (vs.\ $-0.0129$ at full AUC) and 6 of 12 Holm-significant strata clear the pre-registered $\delta_\text{min}\!=\!0.05$ gate, strengthening the RQ1 verdict from mixed to \textbf{supported}. Conversely, every $\chi^2$-spatial pAUC contrast has $|\Delta|\!\leq\!0.007$ and is non-significant, the full-AUC reversal we observed for that detector \emph{dissolves} in the operational FPR regime, which we revisit in Section~\ref{sec:chi2spatial}.
 
 % ============================================================
-\section{Cross-Validation with Learned Detectors}
+\section{Learned-Detector Cross-Validation}
 \label{sec:learnedxval}
 % ============================================================
 
-This section applies the pre-registered statistical protocol of Section~\ref{sec:stats} (paired DeLong, Bonferroni--Holm at $\alpha\!=\!0.05$, $\delta_\text{min}$ thresholds at 0.05 primary / 0.025 supplementary, equivalence test at $\pm 0.025$ for RQ5) to two state-of-the-art learned detectors -- SRNet (spatial) and DCTR (frequency) -- as an independent replication of the classical findings on an orthogonal detector family. The Bonferroni--Holm family is computed separately for the six learned-detector strata, leaving the pre-registered classical-detector correction (Table~\ref{tab:verdicts}) untouched.
+This section applies the pre-registered statistical protocol of Section~\ref{sec:stats} (paired DeLong, Bonferroni--Holm at $\alpha\!=\!0.05$, $\delta_\text{min}$ thresholds at 0.05 primary / 0.025 supplementary, equivalence test at $\pm 0.025$ for RQ5) to two state-of-the-art learned detectors, SRNet (spatial) and DCTR (frequency), as an independent replication of the classical findings on an orthogonal detector family. The Bonferroni--Holm family is computed separately for the six learned-detector strata, leaving the pre-registered classical-detector correction (Table~\ref{tab:verdicts}) untouched.
 
 \paragraph{Two complementary training configurations.} We report two learned-detector training runs that share architecture, hyperparameters, and per-checkpoint sample budget but differ in their training-corpus carrier distribution:
 
 \begin{itemize}
-\item \textbf{Matched training} (file label \texttt{V1}): the training corpus's carrier-source distribution matches the test corpus's (real + SDXL + FLUX, 1:1:1). \emph{Question answered}: given equal training exposure to all carrier sources, do learned detectors show source-correlated performance differences on the test set?
-\item \textbf{Real-only training} (file label \texttt{V2a}): the training corpus is restricted to real Flickr30k captions; the AI sources are held out from training but still appear in the test set. \emph{Question answered}: if the detector is trained without seeing the AI carrier sources at all (the realistic deployment scenario where AI carriers post-date the training corpus), does it still generalise to them?
+\item \textbf{Matched training}: the training corpus's carrier-source distribution matches the test corpus's (real + SDXL + FLUX, 1:1:1). \emph{Question answered}: given equal training exposure to all carrier sources, do learned detectors show source-correlated performance differences on the test set?
+\item \textbf{Real-only training}: the training corpus is restricted to real Flickr30k captions; the AI sources are held out from training but still appear in the test set. \emph{Question answered}: if the detector is trained without seeing the AI carrier sources at all (the realistic deployment scenario where AI carriers post-date the training corpus), does it still generalise to them?
 \end{itemize}
 
 \noindent Neither configuration is `the' learned-detector analysis: matched training is the pre-registered confirmatory cross-validation of the classical findings under a controlled, equal-exposure regime; real-only training is a within-paper ablation that disentangles architectural source-invariance from balanced-training-exposure artefact in the matched-training result. The contrast between the two is what supports the strongest claim in this section.
 
-Throughout this section we use the descriptive names; the \texttt{V1}/\texttt{V2a} labels survive in the supplementary file paths (\texttt{runs/.../learned\_shadow/} vs \texttt{learned\_shadow\_v2a/}, \texttt{models/training\_v1/} vs \texttt{training\_v2a/}) for backwards compatibility with the reproduction artefacts.
-
 \subsection{Training Outcomes and Test-Set AUCs (matched training)}
 \label{sec:v1-train}
 
-The matched-training corpus is the 3{,}000-caption source-balanced run of Section~\ref{sec:experiments} (real + SDXL + FLUX, 1:1:1; per-checkpoint $n_\text{train}\!=\!18{,}900$, $n_\text{val}\!=\!5{,}292$). All six checkpoints converged within budget. Validation AUCs: SRNet $\{0.9989, 0.9988, 0.9990\}$ at LSB / \{low, medium, high\}; DCTR $\{0.6174, 0.7949, 0.9363\}$ at DCT / \{low, medium, high\}. Applying the checkpoints as-is to the held-out test set (leakage-guarded by manifest hash; Section~\ref{sec:learned-detectors}) gives the per-source AUCs of Table~\ref{tab:learned-headline-auc}. SRNet saturates the LSB-detection task at AUC$\geq$0.997 across all carriers, payloads and encryption modes -- substantially above the strongest classical LSB detector (sample\_pairs at 0.93 overall). DCTR sits at AUC 0.81 overall, between $\chi^2$-DCT-tiled (0.85) and $\chi^2$-DCT (0.76); its per-cell range from 0.62 (low payload) to 0.94 (high payload) tracks the payload signal cleanly.
+The matched-training corpus is the 3{,}000-caption source-balanced run of Section~\ref{sec:experiments} (real + SDXL + FLUX, 1:1:1; per-checkpoint $n_\text{train}\!=\!18{,}900$, $n_\text{val}\!=\!5{,}292$). All six checkpoints converged within budget. Validation AUCs: SRNet $\{0.9989, 0.9988, 0.9990\}$ at LSB / \{low, medium, high\}; DCTR $\{0.6174, 0.7949, 0.9363\}$ at DCT / \{low, medium, high\}. Applying the checkpoints as-is to the held-out test set (leakage-guarded by manifest hash; Section~\ref{sec:learned-detectors}) gives the per-source AUCs of Table~\ref{tab:learned-headline-auc}. SRNet saturates the LSB-detection task at AUC$\geq$0.997 across all carriers, payloads and encryption modes, substantially above the strongest classical LSB detector (sample\_pairs at 0.93 overall). DCTR sits at AUC 0.81 overall, between $\chi^2$-DCT-tiled (0.85) and $\chi^2$-DCT (0.76); its per-cell range from 0.62 (low payload) to 0.94 (high payload) tracks the payload signal cleanly.
 
 \begin{table}[!htbp]
 \centering\footnotesize
-\caption{Matched-training (V1) learned-detector AUC on the test run, per carrier source. ML-A$=$SDXL, ML-B$=$FLUX. Encryption averaged within each cell (per-encryption agree to $\leq\!0.001$). Overall: SRNet 0.998, DCTR 0.814.}
+\caption{Matched-training learned-detector test AUC per (detector, payload, carrier). AI-A$=$SDXL, AI-B$=$FLUX; encryption averaged. Overall: SRNet 0.998, DCTR 0.814.}
 \label{tab:learned-headline-auc}
 \setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.05}
 \begin{tabular}{@{}llrrr@{}}
 \toprule
-\textbf{Det.} & \textbf{Cell} & \textbf{Real} & \textbf{ML-A} & \textbf{ML-B} \\
+\textbf{Det.} & \textbf{Cell} & \textbf{Real} & \textbf{AI-A} & \textbf{AI-B} \\
 \midrule
 SRNet & low     & 0.9990 & 0.9965 & 0.9985 \\
 SRNet & medium  & 0.9992 & 0.9981 & 0.9981 \\
@@ -1036,194 +934,119 @@ Table~\ref{tab:learned-verdicts} and the matched visual in Figure~\ref{fig:learn
 
 \begin{table}[!htbp]
 \centering\footnotesize
-\caption{Matched-training (V1) cross-validation verdicts. Classical and learned $\Delta_\text{AUC}$ inverse-variance pooled within each detector family.}
+\caption{Cross-validation verdicts. Classical and learned pooled $\Delta_\text{AUC}$ per RQ; matched-training-learned column.}
 \label{tab:learned-verdicts}
-\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}
-\begin{tabular}{@{}llll@{}}
+\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{}lccl@{}}
 \toprule
 \textbf{RQ} & \textbf{Classical $\Delta$} & \textbf{Learned $\Delta$} & \textbf{Verdict} \\
 \midrule
-RQ1 real vs.\ ML        & $-0.0129$ mixed     & $+0.0012$ trivial   & \textbf{Contradicts$^\star$} \\
-RQ2 SDXL vs.\ FLUX      & $+0.0004$ trivial   & $-0.0002$ trivial   & Corroborates \\
-RQ3 payload$\times$src  & $-0.0157$ supp.     & $-0.0068$ mixed     & Refines (1/2 mag.) \\
-RQ4 spatial vs.\ freq.  & $-0.0013$ trivial   & $+0.0159$ trivial   & Corroborates \\
-RQ5 encr.\ invariance   & $\approx 0$ supp.   & $\approx 0$ supp.   & \textbf{Corroborates} \\
+RQ1     & $-0.0129$ mix.   & $+0.0012$ triv.  & Contradicts$^\star$ \\
+RQ2     & $+0.0004$ triv.  & $-0.0002$ triv.  & Corrob.\ \\
+RQ3     & $-0.0157$ supp.  & $-0.0068$ mix.   & Refines (1/2) \\
+RQ4     & $-0.0013$ triv.  & $+0.0159$ triv.  & Corrob.\ \\
+RQ5     & $\approx 0$ supp.\ & $\approx 0$ supp.\ & Corrob.\ \\
 \bottomrule
 \end{tabular}\\[1pt]
-{\scriptsize $^\star$\,pooling artefact -- see \S\ref{sec:disc-rq1-revisited}.}
+{\scriptsize $^\star$\,inverse-variance pooling artefact (SRNet at ceiling dominates the pool); per-detector reading, DCTR alone gives $-0.030$, corroborating classical.}
 \end{table}
 
 \begin{figure}[!htbp]
 \centering
 \begin{tikzpicture}[
-  classDot/.style={circle, draw=umdark, fill=umdark, inner sep=1.5pt},
-  learnDot/.style={circle, draw=umorange, fill=umorange, inner sep=1.5pt},
-  conn/.style={line width=0.4pt, color=umgray!70},
+  classDot/.style ={circle,    draw=umdark,   fill=umdark,   inner sep=1.5pt},
+  learnDot/.style ={circle,    draw=umorange, fill=umorange, inner sep=1.5pt},
+  learnSq/.style  ={rectangle, draw=umlight!90!black, fill=umlight, inner sep=1.8pt, line width=0.3pt},
+  conn/.style ={line width=0.4pt, color=umgray!70},
   zeroL/.style={dashed, line width=0.3pt, color=umgray!60},
 ]
-\def\xmin{-3.5}
-\def\xmax{2.0}
+% x-axis: extended to fit V2a values (max ~+0.25). Scale = Delta * 18 cm-per-unit.
+% Visible range: Delta in [-0.10, +0.28] -> x in [-1.8, +5.04].
 \def\rowH{0.55}
-\draw[zeroL] (0,-0.3) -- (0,5*\rowH+0.2);
-\foreach \v in {-0.03,-0.02,-0.01,0,0.01,0.02} {
-  \pgfmathsetmacro{\xx}{\v * 100}
-  \draw[umgray!30, line width=0.2pt] (\xx,-0.25) -- (\xx,5*\rowH+0.1);
+\def\xmin{-1.8}
+\def\xmax{5.30}
+\draw[zeroL] (0,-0.3) -- (0,5*\rowH+0.20);
+% Practical-significance threshold band ±0.05 lightly tinted (so V2a markers' significance is visible)
+\fill[umorange!12] (-0.9,-0.30) rectangle (0.9,5*\rowH+0.10);
+\foreach \v in {-0.10,-0.05,0,0.05,0.10,0.15,0.20,0.25} {
+  \pgfmathsetmacro{\xx}{\v * 18}
+  \draw[umgray!25, line width=0.2pt] (\xx,-0.25) -- (\xx,5*\rowH+0.05);
   \node[font=\scriptsize\color{umdark!75}, anchor=north] at (\xx,-0.30) {\v};
 }
-\node[font=\footnotesize\color{umdark}] at (-0.5,-0.80) {$\Delta_\text{AUC}$ (negative $=$ real harder)};
-\foreach \i/\rq/\cdelta/\ldelta/\vdt in {%
-  1/RQ1/-0.0129/+0.0012/{Contradicts$^\star$},
-  2/RQ2/+0.0004/-0.0002/{Corroborates},
-  3/RQ3/-0.0157/-0.0068/{Refines},
-  4/RQ4/-0.0013/+0.0159/{Corroborates},
-  5/RQ5/0.0000/0.0000/{Corroborates}%
+\node[font=\footnotesize\color{umdark}] at (1.7,-0.80) {$\Delta_\text{AUC}$ (real $-$ pooled AI)};
+% RQ rows: classical (dark dot), matched-learned (orange dot), real-only-learned (light square).
+% RQ3 V2a value chosen as the high-payload representative (+0.213) since per-payload mixed.
+\foreach \i/\rq/\cdelta/\ldelta/\vdelta in {%
+  1/RQ1/-0.0129/+0.0012/+0.247,
+  2/RQ2/+0.0004/-0.0002/-0.069,
+  3/RQ3/-0.0157/-0.0068/+0.162,
+  4/RQ4/-0.0013/+0.0159/+0.220,
+  5/RQ5/0.0000/0.0000/+0.001%
 } {
   \pgfmathsetmacro{\yy}{(5-\i) * \rowH}
-  \pgfmathsetmacro{\cx}{\cdelta * 100}
-  \pgfmathsetmacro{\lx}{\ldelta * 100}
-  \node[font=\footnotesize\color{umdark}, anchor=east] at (\xmin-0.1,\yy) {\rq};
-  \draw[conn] (\cx,\yy) -- (\lx,\yy);
+  \pgfmathsetmacro{\cx}{\cdelta * 18}
+  \pgfmathsetmacro{\lx}{\ldelta * 18}
+  \pgfmathsetmacro{\vx}{\vdelta * 18}
+  \node[font=\footnotesize\color{umdark}, anchor=east] at (\xmin-0.10,\yy) {\rq};
+  \draw[conn] (\cx,\yy) -- (\vx,\yy);
   \node[classDot] at (\cx,\yy) {};
   \node[learnDot] at (\lx,\yy) {};
-  \node[font=\scriptsize\color{umgray}, anchor=west] at (\xmax+0.2,\yy) {\vdt};
+  \node[learnSq]  at (\vx,\yy) {};
 }
-\node[classDot] at (-2.0,5*\rowH+0.70) {};
-\node[font=\footnotesize\color{umdark}, anchor=west] at (-1.9,5*\rowH+0.70) {classical};
-\node[learnDot] at (0.0,5*\rowH+0.70) {};
-\node[font=\footnotesize\color{umdark}, anchor=west] at (0.1,5*\rowH+0.70) {learned (V1)};
+% Legend
+\node[classDot] at (-1.5,5*\rowH+0.80) {};
+\node[font=\scriptsize\color{umdark}, anchor=west] at (-1.40,5*\rowH+0.80) {classical};
+\node[learnDot] at (0.4,5*\rowH+0.80) {};
+\node[font=\scriptsize\color{umdark}, anchor=west] at (0.50,5*\rowH+0.80) {learned (matched)};
+\node[learnSq]  at (3.0,5*\rowH+0.80) {};
+\node[font=\scriptsize\color{umdark}, anchor=west] at (3.10,5*\rowH+0.80) {learned (real-only)};
+% Trivial-band caption
+\node[font=\scriptsize\color{umorange!90!black}, anchor=south] at (0,5*\rowH+0.10) {$\pm 0.05$};
 \end{tikzpicture}
-\caption{Cross-validation verdicts visualised. Each row is one RQ; dark dot is the classical pooled $\Delta_\text{AUC}$, orange dot is the matched-training-learned (V1) pooled $\Delta_\text{AUC}$. RQ3 keeps direction at half the magnitude; RQ2/4/5 stack near zero; RQ1 sign-flips at small magnitude -- the within-family Figure~\ref{fig:within-family} below resolves this as a pooling artefact, not a genuine reversal. A real-only-training (V2a) panel of the same chart appears as Figure~\ref{fig:verdict-matrix-three-way}.}
+\caption{Cross-validation verdicts per RQ across three detector configurations: classical (dark circle), matched-training learned (orange circle), real-only-training learned (light square). The orange band marks the pre-registered $\pm 0.05$ practical-significance gate. Real-only training pushes RQ1, RQ2, and RQ4 well outside the band, the central real-only finding, while classical and matched-training agree inside it. RQ3's real-only marker is the high-payload representative ($+0.162$ pooled over the per-payload values $\{+0.053,+0.220,+0.213\}$).}
 \label{fig:learned-verdicts}
 \end{figure}
 
-\subsection{Within-Family Per-Source AUC at the Hardest Cell}
-\label{sec:within-family}
-
-Each detector scores only its own embedding branch, so within each branch we have a clean four-way comparison (3 classical + 1 learned) on identical test cells. Figure~\ref{fig:within-family} plots the per-source AUC at the low-payload + plain-encryption cell -- the regime with most detection headroom ($n\!=\!6{,}000$ stegos $+$ $6{,}000$ covers per cell). In the DCT branch DCTR sits squarely between its classical peers in magnitude and source ordering; in the LSB branch SRNet is the only working detector whose three source-bars are visually indistinguishable.
-
-\begin{figure*}[!htbp]
-\centering
-\begin{tikzpicture}[
-  bardark/.style={draw=umdark,   fill=umdark!75, line width=0.25pt},
-  barblue/.style={draw=umlight,  fill=umlight!70, line width=0.25pt},
-  baroran/.style={draw=umorange, fill=umorange!80, line width=0.25pt},
-]
-\def\yscale{10}
-\def\bw{0.36}
-\def\bg{0.06}
-\foreach \v in {0.5,0.6,0.7,0.8,0.9,1.0} {
-  \pgfmathsetmacro{\y}{(\v - 0.5) * \yscale}
-  \draw[umdark!12, line width=0.3pt] (0,\y) -- (16,\y);
-  \node[font=\scriptsize\color{umdark!70}, anchor=east] at (-0.05,\y) {\v};
-}
-\draw[umdark!75, line width=0.5pt] (0,0) -- (16,0);
-\node[font=\footnotesize\color{umdark}, rotate=90] at (-0.8,2.5) {ROC AUC (low payload, plain)};
-\node[font=\small\bfseries\color{umdark}] at (3.35, 5.5) {LSB branch};
-\foreach \i/\name/\real/\mla/\mlb in {%
-  0/{rs}/0.856/0.941/0.952,
-  1/{samp-pairs}/0.883/0.974/0.971,
-  2/{$\chi^2$-spat.}/0.541/0.530/0.533,
-  3/{SRNet (V1)}/0.999/0.997/0.998%
-} {
-  \pgfmathsetmacro{\xc}{0.8 + \i*1.70}
-  \pgfmathsetmacro{\xa}{\xc - 1.5*\bw - \bg}
-  \pgfmathsetmacro{\xb}{\xc - 0.5*\bw}
-  \pgfmathsetmacro{\xcc}{\xc + 0.5*\bw + \bg}
-  \pgfmathsetmacro{\hreal}{(\real - 0.5) * \yscale}
-  \pgfmathsetmacro{\hmla}{(\mla - 0.5) * \yscale}
-  \pgfmathsetmacro{\hmlb}{(\mlb - 0.5) * \yscale}
-  \draw[bardark] (\xa,0)  rectangle (\xa+\bw,\hreal);
-  \draw[barblue] (\xb,0)  rectangle (\xb+\bw,\hmla);
-  \draw[baroran] (\xcc,0) rectangle (\xcc+\bw,\hmlb);
-  \node[font=\tiny\color{umdark}, below=2pt] at (\xc,0) {\name};
-}
-\draw[umgray!40, line width=0.4pt, dashed] (7.6, -0.5) -- (7.6, 5.2);
-\node[font=\small\bfseries\color{umdark}] at (10.85, 5.5) {DCT branch};
-\foreach \i/\name/\real/\mla/\mlb in {%
-  0/{$\chi^2$-DCT}/0.581/0.620/0.605,
-  1/{$\chi^2$-DCTt}/0.635/0.702/0.724,
-  2/{cal-$\chi^2$}/0.519/0.528/0.531,
-  3/{DCTR (V1)}/0.605/0.645/0.623%
-} {
-  \pgfmathsetmacro{\xc}{8.3 + \i*1.70}
-  \pgfmathsetmacro{\xa}{\xc - 1.5*\bw - \bg}
-  \pgfmathsetmacro{\xb}{\xc - 0.5*\bw}
-  \pgfmathsetmacro{\xcc}{\xc + 0.5*\bw + \bg}
-  \pgfmathsetmacro{\hreal}{(\real - 0.5) * \yscale}
-  \pgfmathsetmacro{\hmla}{(\mla - 0.5) * \yscale}
-  \pgfmathsetmacro{\hmlb}{(\mlb - 0.5) * \yscale}
-  \draw[bardark] (\xa,0)  rectangle (\xa+\bw,\hreal);
-  \draw[barblue] (\xb,0)  rectangle (\xb+\bw,\hmla);
-  \draw[baroran] (\xcc,0) rectangle (\xcc+\bw,\hmlb);
-  \node[font=\tiny\color{umdark}, below=2pt] at (\xc,0) {\name};
-}
-\begin{scope}[shift={(11.5, 5.4)}]
-  \draw[bardark] (0,0) rectangle (0.30,0.30);
-  \node[font=\scriptsize\color{umdark}, anchor=west] at (0.32,0.15) {real};
-  \draw[barblue] (1.20,0) rectangle (1.50,0.30);
-  \node[font=\scriptsize\color{umdark}, anchor=west] at (1.52,0.15) {ml\_a (SDXL)};
-  \draw[baroran] (3.30,0) rectangle (3.60,0.30);
-  \node[font=\scriptsize\color{umdark}, anchor=west] at (3.62,0.15) {ml\_b (FLUX)};
-\end{scope}
-\end{tikzpicture}
-\caption{Within-family per-source AUC at the low-payload, plain-encryption cell ($n\!=\!6{,}000$ stegos $+$ $6{,}000$ covers per cell, the regime with most detection headroom). Each detector group has three bars (real / ml\_a / ml\_b). \textbf{DCT branch (right):} DCTR replicates its classical peers' source pattern in both magnitude and ordering (ml\_a $>$ ml\_b $>$ real, range $\sim$0.04). \textbf{LSB branch (left):} the two working classical detectors show real-as-lowest with range $\sim$0.09; SRNet's three bars are visually indistinguishable at AUC $\sim$0.998. $\chi^2$-spatial and calibration-$\chi^2$ are near-random at this cell (AUC $\!<\!0.55$); their small source range is uninformative.}
-\label{fig:within-family}
-\end{figure*}
-
-\textbf{DCTR sits squarely in its family} -- range 0.041, ordering ml\_a $>$ ml\_b $>$ real, signed gap $-0.030$; the learned frequency detector replicates the classical RQ1 inside its branch. \textbf{SRNet is the LSB-family outlier} at ceiling: working classical peers show source range $\sim$0.09 with real-harder direction, SRNet shows 0.003. The task is genuinely hard for the classical peers (best classical AUC 0.93, not near ceiling) so the difference cannot be ``too easy''; but SRNet at 0.999 has so little residual error budget that source-correlated errors cannot register \emph{under the matched-training distribution}. The real-only-training ablation (Section~\ref{sec:v2a}) breaks this tie by changing the training distribution while holding everything else constant.
+\paragraph{Within-family per-source AUC at the hardest cell.} At the low-payload + plain-encryption cell (most detection headroom), DCTR sits squarely within its classical DCT-branch peers (range $0.041$, ordering ai\_a~$>$~ai\_b~$>$~real, signed gap $-0.030$), corroborating the classical RQ1 inside that branch. SRNet, by contrast, is the LSB-family outlier at ceiling: its three source-bars are visually indistinguishable at AUC $\sim\!0.998$ while its working classical peers (RS, sample-pairs) show source range $\sim\!0.09$ with real-harder direction. The task is genuinely hard for the classical peers (best classical AUC $0.93$), so the difference is not a too-easy artefact, SRNet at $0.999$ simply has so little residual error budget that source-correlated errors cannot register \emph{under the matched-training distribution}. The real-only ablation below breaks this tie.
 
 \subsection{Real-Only Training Ablation (real-only training)}
 \label{sec:v2a}
 
 To disentangle architectural source-invariance from balanced-training-exposure artefact in the matched-training SRNet result, a second training run was executed with the same per-checkpoint sample-count budget but a real-only carrier corpus (9{,}000 Flickr30k captions disjoint from both the matched-training caption set and the test set; Section~\ref{sec:experiments}). The real-only checkpoints see no AI-generated carriers during training; their per-source AUC at test time then exposes whether (a) SRNet's source-invariance survives zero-shot transfer to AI carriers (architectural), or (b) drops on AI carriers when not trained on them (training-balance artefact). Either outcome is a clean result. The matched-vs-real-only contrast at per-(detector, payload, source) granularity is rendered as a heatmap in Figure~\ref{fig:matched-vs-realonly-heatmap}; the per-payload comparison is in Table~\ref{tab:v1-vs-v2a}.
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
 \centering
 \begin{tikzpicture}[
-  % Heat-cell colour: linear interpolation from red (low) to green (high)
-  % via the umdark/umlight/umorange palette is not natural, so use a
-  % brand-tinted red->amber->green ramp:
-  %   AUC 0.50 -> umorange   (poorest)
-  %   AUC 0.75 -> umorange!40
-  %   AUC 0.90 -> umlight!50
-  %   AUC 1.00 -> umlight   (best)
   cellbase/.style={draw=umdark!70, line width=0.4pt},
 ]
-% Helper: given AUC value v, define a fill colour name and text colour.
-% We use TikZ \pgfmathsetmacro to map and let user pick a colour for each cell.
-% Two 6x3 grids side by side: rows = (detector x payload), cols = (real, ml_a, ml_b).
-% Cell w x h = 1.2 x 0.55 cm; row label takes the leftmost 1.7 cm.
+% Two 6x3 grids stacked vertically so each panel can render at native column width
+% without \resizebox shrinking. Rows = (detector x payload), cols = (real, ai_a, ai_b).
 
-\def\cw{1.2}   % cell width
-\def\ch{0.55}  % cell height
-\def\rowlbl{1.65} % row-label width
-\def\panelgap{0.7}
+\def\cw{1.55}     % cell width  (native, no resizebox)
+\def\ch{0.55}     % cell height
+\def\rowlbl{2.10} % left margin for row labels
+\def\paneldy{5.20} % vertical offset from panel 0 to panel 1 (downward); large enough
+                   % for panel-1 title to clear panel-0 bottom row + breathing room
 
-\foreach \panel/\panelX/\title in {0/0/{Matched training (V1)}, 1/{8.95}/{Real-only training (V2a)}} {
-  \pgfmathsetmacro{\px}{\panelX}
-  \node[font=\footnotesize\bfseries\color{umdark}] at (\px+\rowlbl+1.5*\cw, 3.7*\ch+0.65) {\title};
-  % Column headers
+% --- Both panels: titles + column headers (pushed well above cells)
+% Cell-grid top of each panel is at \py + 1.65cm (3 rows above midline x \ch = 3*0.55).
+% Column header at \py + 2.20cm  (0.55cm above cell top)
+% Panel title  at \py + 2.85cm  (0.65cm above header)
+\foreach \panel/\panelY/\title in {0/0/{Matched training}, 1/{-\paneldy}/{Real-only training}} {
+  \pgfmathsetmacro{\py}{\panelY}
+  \node[font=\footnotesize\bfseries\color{umdark}] at (\rowlbl+1.5*\cw, \py+2.85) {\title};
   \foreach \j/\src in {0/Real, 1/SDXL, 2/FLUX} {
-    \pgfmathsetmacro{\xx}{\px+\rowlbl+\j*\cw+\cw/2}
-    \node[font=\scriptsize\color{umdark}] at (\xx, 3.2*\ch) {\src};
+    \pgfmathsetmacro{\xx}{\rowlbl+\j*\cw+\cw/2}
+    \node[font=\footnotesize\color{umdark}] at (\xx, \py+2.20) {\src};
+  }
+  \foreach \r/\lbl in {0/{SRNet / low}, 1/{SRNet / medium}, 2/{SRNet / high},
+                        3/{DCTR / low}, 4/{DCTR / medium}, 5/{DCTR / high}} {
+    \pgfmathsetmacro{\yy}{\py+(2.5-\r)*\ch}
+    \node[font=\footnotesize\color{umdark}, anchor=east] at (\rowlbl-0.10, \yy) {\lbl};
   }
 }
 
-% Per-cell data: panel, row, col, AUC value.  Panel 0 = matched (V1), Panel 1 = real-only (V2a).
-% Row order: SRNet/low, SRNet/medium, SRNet/high, DCTR/low, DCTR/medium, DCTR/high (top->bottom).
-\foreach \panel/\panelX in {0/0, 1/{8.95}} {
-  \pgfmathsetmacro{\px}{\panelX}
-  % Row labels (panel 0 only, shared visually)
-  \ifnum\panel=0
-    \foreach \r/\lbl in {0/{SRNet / low}, 1/{SRNet / medium}, 2/{SRNet / high},
-                          3/{DCTR / low}, 4/{DCTR / medium}, 5/{DCTR / high}} {
-      \pgfmathsetmacro{\yy}{(2.5-\r)*\ch}
-      \node[font=\scriptsize\color{umdark}, anchor=east] at (\px+\rowlbl-0.05, \yy) {\lbl};
-    }
-  \fi
-}
-
-% Cell data: panel, row, col, AUC.
+% --- Cells: \panel, \row, \col, \value. Panel 0 = matched (V1), Panel 1 = real-only (V2a).
 \foreach \p/\r/\c/\v in {%
   0/0/0/0.999, 0/0/1/0.997, 0/0/2/0.998,
   0/1/0/0.999, 0/1/1/0.998, 0/1/2/0.998,
@@ -1238,59 +1061,109 @@ To disentangle architectural source-invariance from balanced-training-exposure a
   1/4/0/0.613, 1/4/1/0.560, 1/4/2/0.568,
   1/5/0/0.701, 1/5/1/0.612, 1/5/2/0.621%
 } {
-  \pgfmathsetmacro{\panelX}{\p*8.95}
-  \pgfmathsetmacro{\xx}{\panelX+\rowlbl+\c*\cw}
-  \pgfmathsetmacro{\yy}{(2.5-\r)*\ch-\ch/2}
-  % Map AUC to colour: <=0.55 -> heavy umorange; 0.55-0.75 -> umorange!~50; 0.75-0.90 -> umlight!50; 0.90-1.0 -> umlight strong.
-  % Compute a "good-ness" intensity 0..100 from AUC in [0.5, 1.0]:
-  \pgfmathsetmacro{\pct}{int(100*(\v-0.5)/0.5)}
-  % If v < 0.7 use umorange-shaded, else umlight-shaded.
-  \pgfmathsetmacro{\isLow}{ifthenelse(\v<0.70, 1, 0)}
-  \pgfmathsetmacro{\textcolor}{ifthenelse(\v<0.70||\v>0.95, 0, 1)}
+  \pgfmathsetmacro{\panelY}{-\p*\paneldy}
+  \pgfmathsetmacro{\xx}{\rowlbl+\c*\cw}
+  \pgfmathsetmacro{\yy}{\panelY+(2.5-\r)*\ch-\ch/2}
   \ifdim\v pt<0.70pt
-    \pgfmathsetmacro{\fillpct}{int(85-(\v-0.5)*180)} % 0.5 -> 85, 0.7 -> 49
+    \pgfmathsetmacro{\fillpct}{int(85-(\v-0.5)*180)}
     \fill[umorange!\fillpct, cellbase] (\xx,\yy) rectangle (\xx+\cw,\yy+\ch);
   \else
-    \pgfmathsetmacro{\fillpct}{int(20+(\v-0.7)*200)} % 0.7 -> 20, 1.0 -> 80
+    \pgfmathsetmacro{\fillpct}{int(20+(\v-0.7)*200)}
     \fill[umlight!\fillpct, cellbase] (\xx,\yy) rectangle (\xx+\cw,\yy+\ch);
   \fi
   \draw[cellbase] (\xx,\yy) rectangle (\xx+\cw,\yy+\ch);
-  \ifdim\v pt<0.70pt
-    \node[font=\scriptsize\color{umdark}, anchor=center] at (\xx+\cw/2,\yy+\ch/2) {\v};
-  \else
-    \node[font=\scriptsize\color{umdark}, anchor=center] at (\xx+\cw/2,\yy+\ch/2) {\v};
-  \fi
+  \node[font=\footnotesize\color{umdark}, anchor=center] at (\xx+\cw/2,\yy+\ch/2) {\v};
 }
 
-% Bottom caption-line: colour bar legend
-\begin{scope}[shift={(0,-1.0)}]
-  \node[font=\scriptsize\color{umdark}, anchor=east] at (0.0,0) {AUC scale:};
+% --- Colour-bar legend (below the lower panel)
+\begin{scope}[shift={(0, -\paneldy - 2.40)}]
+  \node[font=\scriptsize\color{umdark}, anchor=west] at (0.0,0) {AUC scale:};
   \foreach \i/\auc in {0/0.5, 1/0.6, 2/0.7, 3/0.8, 4/0.9, 5/1.0} {
-    \pgfmathsetmacro{\xx}{0.15 + \i*1.7}
+    \pgfmathsetmacro{\xx}{1.20 + \i*0.95}
     \ifdim\auc pt<0.70pt
       \pgfmathsetmacro{\pct}{int(85-(\auc-0.5)*180)}
-      \fill[umorange!\pct] (\xx,-0.18) rectangle (\xx+1.6,0.18);
+      \fill[umorange!\pct] (\xx,-0.16) rectangle (\xx+0.92,0.16);
     \else
       \pgfmathsetmacro{\pct}{int(20+(\auc-0.7)*200)}
-      \fill[umlight!\pct] (\xx,-0.18) rectangle (\xx+1.6,0.18);
+      \fill[umlight!\pct] (\xx,-0.16) rectangle (\xx+0.92,0.16);
     \fi
-    \draw[umdark!50, line width=0.3pt] (\xx,-0.18) rectangle (\xx+1.6,0.18);
-    \node[font=\scriptsize\color{umdark}] at (\xx+0.8,-0.42) {\auc};
+    \draw[umdark!50, line width=0.3pt] (\xx,-0.16) rectangle (\xx+0.92,0.16);
+    \node[font=\scriptsize\color{umdark}] at (\xx+0.46,-0.40) {\auc};
   }
 \end{scope}
 \end{tikzpicture}
-\caption{Per-(detector, payload, source) test AUC under matched (V1, left) vs real-only (V2a, right) training. Cells are coloured by AUC (orange-tinted below 0.70 indicating poor detection, blue-tinted above 0.70 indicating good detection). Under matched training every cell is high; under real-only training the SRNet ml\_a / ml\_b cells at medium and high payload collapse to orange (AUC 0.55--0.71), while the real column stays blue (AUC 0.99). DCTR shows the same pattern at smaller absolute magnitude. The heatmap form makes the cover-source-mismatch effect visually immediate: orange blocks materialise only in the columns the model never saw at training time.}
+\caption{Per-(detector, payload, source) test AUC under matched training (top) vs real-only training (bottom). Orange blocks (AUC $\!<\!0.7$) materialise only in the AI columns the real-only model never saw at training time; the real column stays blue throughout.}
 \label{fig:matched-vs-realonly-heatmap}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[
+  v1srnet/.style ={line width=0.6pt, draw=umlight!85, dashed},
+  v1dctr/.style  ={line width=0.6pt, draw=umdark!75,  dashed},
+  v2srnet/.style ={line width=1.0pt, draw=umorange},
+  v2dctr/.style  ={line width=1.0pt, draw=umdark},
+  mkV1S/.style ={circle,    draw=umlight!90!black, fill=umlight!60, inner sep=0pt, minimum size=3.4pt, line width=0.2pt},
+  mkV1D/.style ={circle,    draw=umdark!80,        fill=umdark!50,  inner sep=0pt, minimum size=3.4pt, line width=0.2pt},
+  mkV2S/.style ={rectangle, draw=umorange!90!black, fill=umorange!80, inner sep=0pt, minimum size=3.6pt, line width=0.25pt},
+  mkV2D/.style ={rectangle, draw=umdark!95,         fill=umdark!75,   inner sep=0pt, minimum size=3.6pt, line width=0.25pt},
+]
+\def\xL{0}\def\xR{6.0}
+\def\xlow{0.9}\def\xmed{3.0}\def\xhigh{5.1}
+% y: Delta in [-0.05, +0.45] -> y = (val + 0.05) * 10
+\foreach \v in {-0.05,0,0.05,0.10,0.20,0.30,0.40} {
+  \pgfmathsetmacro{\y}{(\v + 0.05) * 10}
+  \draw[umdark!12, line width=0.3pt] (\xL,\y) -- (\xR,\y);
+  \node[font=\scriptsize\color{umdark!70}, left=1pt] at (\xL,\y) {\v};
+}
+% zero line
+\pgfmathsetmacro{\yzero}{(0+0.05)*10}
+\draw[umdark!70, line width=0.4pt] (\xL,\yzero) -- (\xR,\yzero);
+% ±0.05 reference (dotted orange)
+\pgfmathsetmacro{\yfp}{(0.05+0.05)*10}
+\draw[umorange!55, line width=0.35pt, dotted] (\xL,\yfp) -- (\xR,\yfp);
+\node[font=\tiny\color{umorange!75}, right=1pt] at (\xR,\yfp) {$+0.05$};
+% x labels
+\node[font=\scriptsize\color{umdark}, below=2pt] at (\xlow,0)  {low};
+\node[font=\scriptsize\color{umdark}, below=2pt] at (\xmed,0)  {medium};
+\node[font=\scriptsize\color{umdark}, below=2pt] at (\xhigh,0) {high};
+\node[font=\scriptsize\color{umdark}, below=12pt] at (\xmed,0) {payload};
+\node[font=\footnotesize\color{umdark}, rotate=90] at (-0.8,2.5) {$\Delta_\text{AUC}$ (real $-$ pooled AI)};
+% Lines, drawn back-to-front: V1 first (faded dashed), V2a on top (solid).
+% V1 SRNet (LSB-branch, matched): +0.0015, +0.0011, +0.0013 (Table~\ref{tab:learned-headline-auc}, RQ1 deltas)
+\pgfmathsetmacro{\yas}{(0.0015+0.05)*10}\pgfmathsetmacro{\ybs}{(0.0011+0.05)*10}\pgfmathsetmacro{\ycs}{(0.0013+0.05)*10}
+\draw[v1srnet] (\xlow,\yas) -- (\xmed,\ybs) -- (\xhigh,\ycs);
+\node[mkV1S] at (\xlow,\yas){};\node[mkV1S] at (\xmed,\ybs){};\node[mkV1S] at (\xhigh,\ycs){};
+% V1 DCTR (DCT-branch, matched): -0.030, -0.028, -0.015
+\pgfmathsetmacro{\yad}{(-0.030+0.05)*10}\pgfmathsetmacro{\ybd}{(-0.0275+0.05)*10}\pgfmathsetmacro{\ycd}{(-0.0147+0.05)*10}
+\draw[v1dctr] (\xlow,\yad) -- (\xmed,\ybd) -- (\xhigh,\ycd);
+\node[mkV1D] at (\xlow,\yad){};\node[mkV1D] at (\xmed,\ybd){};\node[mkV1D] at (\xhigh,\ycd){};
+% V2a SRNet (real-only): +0.088, +0.391, +0.341 (Table~\ref{tab:v1-vs-v2a})
+\pgfmathsetmacro{\YaS}{(0.088+0.05)*10}\pgfmathsetmacro{\YbS}{(0.391+0.05)*10}\pgfmathsetmacro{\YcS}{(0.341+0.05)*10}
+\draw[v2srnet] (\xlow,\YaS) -- (\xmed,\YbS) -- (\xhigh,\YcS);
+\node[mkV2S] at (\xlow,\YaS){};\node[mkV2S] at (\xmed,\YbS){};\node[mkV2S] at (\xhigh,\YcS){};
+% V2a DCTR (real-only): +0.017, +0.049, +0.0845
+\pgfmathsetmacro{\YaD}{(0.017+0.05)*10}\pgfmathsetmacro{\YbD}{(0.049+0.05)*10}\pgfmathsetmacro{\YcD}{(0.0845+0.05)*10}
+\draw[v2dctr] (\xlow,\YaD) -- (\xmed,\YbD) -- (\xhigh,\YcD);
+\node[mkV2D] at (\xlow,\YaD){};\node[mkV2D] at (\xmed,\YbD){};\node[mkV2D] at (\xhigh,\YcD){};
+% End-of-line labels
+\node[font=\scriptsize\color{umorange}, right=2pt] at (\xhigh,\YcS) {SRNet (real-only)};
+\node[font=\scriptsize\color{umdark}, right=2pt] at (\xhigh,\YcD) {DCTR (real-only)};
+\node[font=\scriptsize\color{umlight!90!black}, right=2pt] at (\xhigh,\ycs) {SRNet (matched)};
+\node[font=\scriptsize\color{umdark!75}, right=2pt] at (\xhigh,\ycd-0.1) {DCTR (matched)};
+\end{tikzpicture}
+\caption{Learned-detector payload trend, parallel to Fig.~\ref{fig:rq3}. Matched-training detectors (dashed, light markers) sit near zero, SRNet at ceiling, DCTR slightly real-harder. Real-only training (solid, square markers) flips direction and inflates the gap by $5$--$300\times$: SRNet peaks at medium payload (real-easier by $+0.39$~AUC), DCTR grows monotonically with payload.}
+\label{fig:learned-payload-trend}
 \end{figure}
 
 \begin{table}[!htbp]
 \centering\footnotesize
-\caption{Real-only training (V2a): per-(detector, payload) validation AUC and per-source test AUC at the plain-encryption cell. ``Val'' is the held-out-of-training-corpus AUC; the three source columns are AUC on the held-out test corpus (108{,}000 stegos $+$ covers). DCTR also carries an out-of-bag estimate $E_\text{OOB}$ of the minimum total detection error at equal priors, computed by the same FLD-ensemble convention as Holub \& Fridrich~\cite{holub2015dctr} Table~V.  See Figure~\ref{fig:dctr-eoob-ladder} for the visualisation.}
+\caption{Real-only training: held-out-of-training-corpus AUC (``Val'') and per-source test-corpus AUC at the plain-encryption cell. DCTR also carries an $E_\text{OOB}$ ensemble residual (see Fig.~\ref{fig:dctr-eoob-ladder}).}
 \label{tab:v2a-results}
 \setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.05}
 \begin{tabular}{@{}llccccc@{}}
 \toprule
-\textbf{Det.} & \textbf{Payload} & \textbf{Val} & \textbf{$E_\text{OOB}$} & \textbf{Real} & \textbf{ML-A} & \textbf{ML-B} \\
+\textbf{Det.} & \textbf{Payload} & \textbf{Val} & \textbf{$E_\text{OOB}$} & \textbf{Real} & \textbf{AI-A} & \textbf{AI-B} \\
 \midrule
 SRNet & low    & 1.0000 & --       & 0.992 & 0.883 & 0.925 \\
 SRNet & medium & 1.0000 & --       & 0.986 & 0.547 & 0.644 \\
@@ -1304,13 +1177,13 @@ DCTR  & high   & 0.9562 & 0.1012   & 0.701 & 0.612 & 0.621 \\
 
 \begin{table}[!htbp]
 \centering\footnotesize
-\caption{Matched-training (V1: 1:1:1 real/SDXL/FLUX) vs.\ real-only training (V2a) -- per-source test AUC at the plain-encryption cell, contrasted directly. The matched-training numbers are the same predictions used in Table~\ref{tab:learned-headline-auc} (Section~\ref{sec:learnedxval}) and Figure~\ref{fig:within-family}. Bold entries mark drops $\geq 0.10$ from matched to real-only training -- the diagnostic of training-balance dependence.}
+\caption{Matched vs.\ real-only training: per-source test AUC at the plain-encryption cell. Bold marks drops $\geq 0.10$ from matched $\to$ real-only, the training-balance signature.}
 \label{tab:v1-vs-v2a}
 \setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.05}
 \begin{tabular}{@{}ll | ccc | ccc@{}}
 \toprule
-& & \multicolumn{3}{c}{\textbf{matched (V1)}} & \multicolumn{3}{c}{\textbf{real-only (V2a)}} \\
-\textbf{Det.} & \textbf{Payload} & Real & ML-A & ML-B & Real & ML-A & ML-B \\
+& & \multicolumn{3}{c}{\textbf{matched training}} & \multicolumn{3}{c}{\textbf{real-only training}} \\
+\textbf{Det.} & \textbf{Payload} & Real & AI-A & AI-B & Real & AI-A & AI-B \\
 \midrule
 SRNet & low    & 0.999 & 0.997 & 0.998 & 0.992 & \textbf{0.883} & \textbf{0.925} \\
 SRNet & medium & 0.999 & 0.998 & 0.998 & 0.986 & \textbf{0.547} & \textbf{0.644} \\
@@ -1322,10 +1195,11 @@ DCTR  & high   & 0.930 & 0.958 & 0.932 & 0.701 & \textbf{0.612} & \textbf{0.621}
 \end{tabular}
 \end{table}
 
-\paragraph{Verdict from the matched-vs-real-only contrast: training-balance artefact, decisively.} Real-only-trained SRNet retains near-perfect detection on the carrier source it was trained on (real, AUC 0.99 across all three payload levels) but \emph{collapses on the unseen AI sources}, dropping to AUC 0.55--0.71 on ML-A (SDXL) and 0.64--0.93 on ML-B (FLUX) -- a $0.26$--$0.45$~AUC gap relative to its same-payload performance on real photographs.  The matched-training SRNet per-source flatness (range $\sim$0.003 at every cell, Table~\ref{tab:v1-vs-v2a}) is therefore \emph{not} architectural source-invariance: it is a consequence of training on a 1:1:1 carrier mix that included the test-time AI sources. When the training mix is removed, the deep spatial CNN reveals a substantial real-vs-AI generalisation gap consistent with the cover-source-mismatch literature~\cite{giboulot2020csm,mallet2024csm,mereur2024deepfake}. DCTR shows the same pattern at smaller absolute magnitude: the matched-training small ML-easier ordering (ml\_a $>$ real by 0.02--0.04) flips under real-only training to real-easier (real $>$ ml\_a/ml\_b by 0.02--0.09) and overall AUC drops on every cell, confirming that the matched-training DCTR per-source pattern was also a training-balance artefact rather than an intrinsic feature of the DCTR feature set.
+\paragraph{Verdict from the matched-vs-real-only contrast: training-balance artefact, decisively.} Real-only-trained SRNet retains near-perfect detection on the carrier source it was trained on (real, AUC 0.99 across all three payload levels) but \emph{collapses on the unseen AI sources}, dropping to AUC 0.55--0.71 on AI-A (SDXL) and 0.64--0.93 on AI-B (FLUX), a $0.26$--$0.45$~AUC gap relative to its same-payload performance on real photographs.  The matched-training SRNet per-source flatness (range $\sim$0.003 at every cell, Table~\ref{tab:v1-vs-v2a}) is therefore \emph{not} architectural source-invariance: it is a consequence of training on a 1:1:1 carrier mix that included the test-time AI sources. When the training mix is removed, the deep spatial CNN reveals a substantial real-vs-AI generalisation gap consistent with the cover-source-mismatch literature~\cite{giboulot2020csm,mallet2024csm,mereur2024deepfake}. DCTR shows the same pattern at smaller absolute magnitude: the matched-training small AI-easier ordering (ai\_a $>$ real by 0.02--0.04) flips under real-only training to real-easier (real $>$ ai\_a/ai\_b by 0.02--0.09) and overall AUC drops on every cell, confirming that the matched-training DCTR per-source pattern was also a training-balance artefact rather than an intrinsic feature of the DCTR feature set. (Both training configurations use a single seed (\texttt{4242}); see Section~\ref{sec:limitations} for the single-seed and Flickr-only-vs-mixed-test-corpus caveats.)
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
 \centering
+\resizebox{\columnwidth}{!}{%
 \begin{tikzpicture}[
   barEoob/.style ={draw=umdark,  fill=umdark!75,  line width=0.25pt},
   barTest/.style ={draw=umorange,fill=umorange!85,line width=0.25pt},
@@ -1370,18 +1244,19 @@ DCTR  & high   & 0.930 & 0.958 & 0.932 & 0.701 & \textbf{0.612} & \textbf{0.621}
   \draw[barEoob] (0,0) rectangle (0.32,0.32);
   \node[font=\scriptsize\color{umdark}, right=3pt] at (0.32,0.16) {$E_\mathrm{OOB}$ (training-time, OOB ensemble residual)};
   \draw[barTest] (0,-0.5) rectangle (0.32,-0.18);
-  \node[font=\scriptsize\color{umdark}, right=3pt] at (0.32,-0.34) {test-set $P_E^{\min}$ (real + ML carriers, OOD on ML)};
+  \node[font=\scriptsize\color{umdark}, right=3pt] at (0.32,-0.34) {test-set $P_E^{\min}$ (real + AI carriers, OOD on AI)};
   \draw[barVal]  (0,-1.0) rectangle (0.32,-0.68);
   \node[font=\scriptsize\color{umdark}, right=3pt] at (0.32,-0.84) {$1-\mathrm{val\_AUC}$ (held-out of training, proxy)};
 \end{scope}
 \node[font=\footnotesize\color{umdark}, below=8pt] at (5.5,-2.3) {payload level};
-\end{tikzpicture}
-\caption{DCTR under real-only training: three error metrics by payload. $E_\mathrm{OOB}$ (dark) is the training-time out-of-bag ensemble residual (Holub \& Fridrich~\cite{holub2015dctr} convention, computed post-training by deterministic re-fit). Test-set $P_E^{\min}$ (orange) is the operational detection error on the held-out test corpus (real + ML carriers). $1-\mathrm{val\_AUC}$ (light) is a held-out-of-training proxy for $P_E$ on the in-distribution carriers (real only). Test-set $P_E^{\min}$ is uniformly worse than $E_\mathrm{OOB}$ because the test corpus contains ML carriers the real-only-trained DCTR never saw -- the cover-source-mismatch effect manifest at the operational metric.}
+\end{tikzpicture}}
+\caption{DCTR under real-only training: training-time $E_\mathrm{OOB}$ (dark), in-distribution validation proxy $1\!-\!\mathrm{val\_AUC}$ (light), and operational test-set $P_E^{\min}$ on a real$+$AI corpus (orange). The gap between dark and orange is the cover-source-mismatch effect at the operational metric.}
 \label{fig:dctr-eoob-ladder}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
 \centering
+\resizebox{\columnwidth}{!}{%
 \begin{tikzpicture}[
   covermk/.style={circle, draw=umdark, fill=umlight!70, line width=0.4pt, minimum size=8pt, inner sep=0pt},
   stegomk/.style={circle, draw=umdark, fill=umorange!85, line width=0.4pt, minimum size=8pt, inner sep=0pt},
@@ -1389,7 +1264,7 @@ DCTR  & high   & 0.930 & 0.958 & 0.932 & 0.701 & \textbf{0.612} & \textbf{0.621}
 ]
 % Three rows: real (top), SDXL (middle), FLUX (bottom).
 % Per row, plot the cover-mean (blue circle) and stego-mean (orange circle) on a [0,1] axis,
-% with an arrow connecting them showing the "shift" (which collapses on ML carriers).
+% with an arrow connecting them showing the "shift" (which collapses on AI carriers).
 
 % X-axis: 0 -> 0 cm, 1 -> 11 cm
 \foreach \v in {0,0.25,0.5,0.75,1.0} {
@@ -1429,107 +1304,34 @@ DCTR  & high   & 0.930 & 0.958 & 0.932 & 0.701 & \textbf{0.612} & \textbf{0.621}
   \draw[shiftarr] (8.6,0) -- (9.6,0);
   \node[font=\scriptsize\color{umdark}, right=3pt] at (9.6,0) {cover$\to$stego shift};
 \end{scope}
-\end{tikzpicture}
-\caption{Real-only-trained SRNet, medium payload, plain encryption: cover-mean and stego-mean score per carrier source, with the arrow showing the cover-to-stego shift. On real carriers the shift is 0.95 (clean separation, AUC 0.986). On SDXL the model assigns covers a near-1.0 stego score because diffusion-decoder noise patterns trigger the LSB-perturbation detector; the shift collapses to 0.05 and AUC drops to 0.547. On FLUX the same mechanism applies more weakly (shift 0.21, AUC 0.644). Per-payload, low-payload AUC stays higher (0.88--0.93) because the tighter decision boundary of the low-payload checkpoint still admits separation; the collapse only manifests at medium / high payload, where the model has learned features that respond to high-frequency content in general. This is structurally consistent with the $\chi^2$-spatial cover-side variance-inflation of Section~\ref{sec:chi2spatial}: both detectors register diffusion-decoder noise as a stego-like signal on the cover side.}
+\end{tikzpicture}}
+\caption{Real-only-trained SRNet, medium payload: cover- and stego-mean scores per carrier source; the arrow is the cover-to-stego shift. On real carriers separation is clean (shift 0.95); on AI carriers diffusion noise pushes covers into the stego region and separation collapses to 0.05 (SDXL) / 0.21 (FLUX).}
 \label{fig:v2a-srnet-mechanism}
 \end{figure}
 
-\paragraph{Implication for RQ1.} Re-running the cross-validation pipeline on the real-only predictions (\texttt{runs/.../learned\_shadow\_v2a/}) flips four of the five RQ verdicts at the learned-detector family level: RQ1 from trivial ($\Delta\!=\!+0.0012$) to supported with $\Delta\!=\!+0.2473$ (CI $[+0.245,+0.250]$); RQ2 from trivial to supported with $\Delta\!=\!-0.0689$; RQ4 (spatial vs.\ frequency branch contrast) from trivial to supported with $\Delta\!=\!+0.2195$; RQ3 retains the mixed verdict but the per-payload real-minus-ML gaps grow from $\{-0.014, -0.013, -0.007\}$ to $\{+0.053, +0.220, +0.213\}$. RQ5 (encryption invariance) is unchanged at $\Delta\!\approx\!0$ as expected -- an encryption ablation does not depend on training-set carrier composition.
+\paragraph{Implication for RQ1.} Re-running the cross-validation pipeline on the real-only predictions flips four of the five RQ verdicts at the learned-detector family level: RQ1 from trivial ($\Delta\!=\!+0.0012$) to supported with $\Delta\!=\!+0.2473$ (CI $[+0.245,+0.250]$); RQ2 from trivial to supported with $\Delta\!=\!-0.0689$; RQ4 (spatial vs.\ frequency branch contrast) from trivial to supported with $\Delta\!=\!+0.2195$; RQ3 retains the mixed verdict but the per-payload real-minus-AI gaps grow from $\{-0.014, -0.013, -0.007\}$ to $\{+0.053, +0.220, +0.213\}$. RQ5 (encryption invariance) is unchanged at $\Delta\!\approx\!0$ as expected, an encryption ablation does not depend on training-set carrier composition.
 
-\paragraph{Mechanism of the real-only medium/high-payload collapse on ML carriers.} Real-only-trained SRNet on ML carriers is worst at medium payload (AUC 0.55 on ML-A) and recovers only partially at high payload (0.59), rather than improving monotonically with payload as the standard expectation predicts. A per-(payload, source, label) decomposition of the SRNet score distribution (Figure~\ref{fig:v2a-srnet-mechanism}) explains this directly: at medium and high payload, the real-only-trained SRNet assigns ML \emph{covers} a near-saturated stego score (cover-mean 0.79--0.95) almost indistinguishable from the score it assigns ML \emph{stegos} (stego-mean 1.000); cover-stego separation collapses to a shift of 0.05--0.27 on the [0,1] score axis and AUC drops accordingly. On real carriers the same checkpoint behaves normally: cover-mean 0.030, stego-mean 0.978, shift 0.95. The real-only-trained medium checkpoint was trained to discriminate ``real cover'' from ``real cover $+$ 15\,\% LSB perturbation,'' and at test time it interprets ML covers' diffusion-decoder noise patterns as if they were the perturbation signal it was trained to detect. The same effect appears more weakly at high payload (cover-mean 0.91 on ML-A) and is largely absent at low payload (cover-mean 0.16 on ML-A) -- the lower-payload checkpoint's tighter decision boundary still admits separation. This is structurally consistent with the cover-side variance-inflation mechanism we identify for the $\chi^2$-spatial detector (Section~\ref{sec:chi2spatial}): both detectors register diffusion-decoder noise as a stego-like signal on the cover side, and both consequently lose discrimination power on ML carriers in ways the same detectors applied to real carriers do not. A finer-grained analysis of which SRNet layer activations drive this is a natural follow-up.
+\paragraph{Mechanism of the real-only medium/high-payload collapse on AI carriers.} The per-(payload, source, label) SRNet score decomposition (Fig.~\ref{fig:v2a-srnet-mechanism}) shows the failure mode directly: at medium and high payload, real-only-trained SRNet assigns AI \emph{covers} a near-saturated stego score (0.79--0.95) almost indistinguishable from the score on AI \emph{stegos} (1.000); the cover-stego shift on AI carriers collapses to $0.05$--$0.27$ (vs.\ $0.95$ on real). The medium checkpoint was trained to separate ``real cover'' from ``real cover $+$ 15\,\% LSB perturbation,'' and at test time it interprets AI covers' diffusion-decoder noise patterns as the perturbation it was trained to detect. The effect is weaker at high payload and largely absent at low payload, where the tighter decision boundary still admits separation. Structurally this matches the cover-side variance-inflation mechanism we identify for $\chi^2$-spatial in Section~\ref{sec:chi2spatial}, both detectors register diffusion-decoder noise as a stego-like signal on the cover side.
 
 \subsection{Strongest-Detector Comparison}
 
 The best-vs-best AUC (learned vs.\ strongest same-branch classical detector, averaged over encryption) reveals a branch-asymmetric picture: in the \textbf{LSB branch} SRNet beats sample\_pairs by $\{+0.065, +0.010, +0.001\}$ at \{low, medium, high\} payload (advantage shrinks as the classical detector approaches the ceiling); in the \textbf{DCT branch} our tile-local $\chi^2$-DCT-tiled variant (Section~\ref{sec:tiled}) outperforms DCTR by $\{+0.047, +0.109, +0.058\}$ across the same payload cells. The takeaway for detector selection: a deep spatial CNN is the right tool for LSB, but frequency-domain steganalysis remains a regime where a well-designed classical detector still dominates.
 
-\paragraph{Provenance.} The training-set caption manifests (matched and real-only; file labels V1 and V2a), model checkpoints, per-cell training logs, and the leakage-guard SHA-256 hashes are included in the supplementary deliverables bundle. The classical-detector predictions, the matched- and real-only-trained learned-detector predictions, and the verdict tables in this section are all reproducible from the manifests $+$ the seed (\texttt{4242}).
+\paragraph{Provenance.} The training-set caption manifests (matched and real-only), model checkpoints, per-cell training logs, and the leakage-guard SHA-256 hashes are included in the supplementary deliverables bundle. The classical-detector predictions, the matched- and real-only-trained learned-detector predictions, and the verdict tables in this section are all reproducible from the manifests $+$ the seed (\texttt{4242}).
 
 % ============================================================
-\section{Discussion}
-\label{sec:discussion}
-% ============================================================
-
-We discuss each research question in turn and then develop the two secondary contributions in detail.
-
-\subsection{Real vs.\ ML Carriers (RQ1)}
-
-The headline finding -- ML carriers are easier to attack than real photographs -- is small in absolute magnitude but very tightly constrained. Under the full-AUC view the pooled $\Delta_\text{AUC}\!=\!-0.013$ corresponds to a forensic analyst correctly ranking an ML stego above its matched cover with probability about 1.3~percentage points higher than the same analyst would correctly rank a photographic stego above its cover. Under the operationally screened pAUC view this rises to roughly 1.7~percentage points, with the four practically-relevant low-payload strata reaching 9~percentage points on full AUC and \emph{30~percentage points} on pAUC. The implication is that a steganalyst deploying classical detectors against modern diffusion carriers should expect detection to be \emph{easier}, not harder -- contrary to the intuitive worry that synthetic images would hide better. We attribute this to the smoother histogram and DCT structure of diffusion-decoder outputs, which (1) makes LSB-induced histogram balance easier to detect with RS- and sample-pairs-style estimators, and (2) leaves cleaner low-FPR ROC tails. The single exception, $\chi^2$-spatial, is discussed mechanistically in Section~\ref{sec:chi2spatial}. The next subsection unpacks how this RQ1 finding generalises (or not) to the learned-detector family.
-
-\subsection{RQ1 Revisited: Source-Sensitivity is Detector-Family-Dependent}
-\label{sec:disc-rq1-revisited}
-
-The cross-validation Table~\ref{tab:learned-verdicts} reports RQ1 as ``contradicts'' for the matched-training learned-detector family: classical pooled $\Delta_\text{AUC}\!=\!-0.013$ vs.\ learned pooled $\Delta_\text{AUC}\!=\!+0.001$. Taken at face value this is a sign flip and would unsettle the RQ1 narrative. Three observations correct that reading.
-
-\paragraph{The pooled learned $\Delta$ is dominated by saturated SRNet.} Inverse-variance pooling weights each stratum by $1/\sigma^2$. SRNet's per-cell variance is microscopic ($\sigma\!\sim\!10^{-3}$) because every score is near 1.0; DCTR's per-cell variance is two orders of magnitude larger. The pooled $+0.001$ is therefore essentially the SRNet estimate, with DCTR contributing $<\!5\%$ of the weight. Reading per-detector: SRNet gives $+0.001$ (essentially zero, sign undefined at ceiling), DCTR gives $-0.030$ (same direction and order-of-magnitude as the classical pooled $-0.013$). DCTR \emph{corroborates} the classical RQ1 inside the DCT branch; it is the classical pattern, observed once more by a learned detector with a completely different feature backbone (LDA ensemble over 1{,}280-dim DCTR features vs.\ hand-crafted $\chi^2$ on pairs-of-values).
-
-\paragraph{SRNet's source range is at the ceiling of measurability.} The within-family fair comparison in Figure~\ref{fig:within-family} shows that the two working classical LSB detectors (rs, sample\_pairs) place the real-vs-ML AUC gap at $-0.089$ to $-0.091$ at the low/plain cell, with per-source AUC ranges of $\sim$0.09. SRNet at the same cell yields per-source range 0.003 with a gap of $+0.002$. The categorical difference cannot be dismissed as ``the task was too easy'' -- the same task is hard for SRNet's classical peers (best classical AUC 0.93, not near ceiling). However, SRNet at AUC 0.999 has so little residual error budget that source-correlated errors cannot register at this measurement granularity. The real-only-training ablation (Section~\ref{sec:v2a}) was designed precisely to break the tie between the two interpretations; the conclusion below incorporates the outcome.
-
-\paragraph{Revised RQ1 reading.} The carrier-source effect of RQ1 is real and reproducible \emph{when the detector has room to register it}. The DCT family unambiguously sees real-as-harder across three classical detectors and one learned detector. The spatial family sees real-as-harder across two classical detectors; the third classical detector ($\chi^2$-spatial) reverses this and the reversal dissolves under pAUC (Section~\ref{sec:chi2spatial}); under matched training SRNet abstracts the signal away. The corrected academic claim is therefore: \emph{the carrier-source effect of RQ1 is a property of the detector family, not the carrier alone; it is observable wherever a detector has both genuine sensitivity to the embedding distortion and headroom above the ceiling}. The real-only-training ablation (\S\ref{sec:v2a}) further establishes that the matched-training SRNet's apparent per-source flatness was a training-balance artefact, not an architectural property of the deep CNN: when SRNet is trained on real photographs only, the real-vs-ML AUC gap re-emerges at $+0.247$ pooled and up to $+0.44$ at the medium/high-payload cells -- a dramatic confirmation that the deep spatial detector does \emph{not} intrinsically generalise across carrier sources without seeing them at training time.
-
-\subsection{SDXL vs.\ FLUX (RQ2)}
-
-Within ML carriers we find no practical difference between SDXL and FLUX.1-schnell. The two diffusion models share an autoencoder-decoder pipeline with similar low-frequency smoothing, and although their training data and architectures differ they appear to converge to a very similar carrier statistic from the steganalysis detector's perspective. The 0.0004 pooled $\Delta$ is two orders of magnitude smaller than the RQ1 effect, confirming that the RQ1 carrier-source signal is a real-vs-synthetic distinction rather than a model-family idiosyncrasy. This is also the reason the unplanned PixArt-$\alpha$\,$\to$\,FLUX.1-schnell migration does not threaten the validity of the comparison: an effect this small would be invisible to any reasonable diffusion-family swap.
-
-\subsection{Payload Interaction (RQ3)}
-
-The monotone decrease of the source gap with payload is mechanistically interpretable: at high payload, every detector is dominated by the embedding-induced perturbation, which is identical across carrier groups; the carrier-source fingerprint is overwhelmed. At low payload the embedding signal is subtle, so the cover-side statistics carry proportionally more discriminative weight, and any carrier-source asymmetry shows up at the detector. This is exactly the regime a real steganalyst cares about, because low payloads are the only regime where classical detectors operate non-trivially; the implication is that the \emph{practical} carrier-source effect is larger than the pooled-average suggests.
-
-\subsection{Branch Interaction (RQ4)}
-\label{sec:rq4discussion}
-
-The verdict shift from "mixed" at $N\!=\!1{,}000$ to "trivial" at $N\!=\!3{,}000$ deserves a careful read. The per-payload pattern is identical at both sample sizes: spatial branch dominates the source effect at low payload, frequency branch at medium, tie at high. What changed is the \emph{pooled} estimate across payloads. Two effects combined:
-\begin{enumerate}
-\item Increasing $N$ tightens CIs; the 1{,}000-group pooled CI included $+0.015$, the 3{,}000-group pooled CI does not.
-\item The 6th detector ($\chi^2$-DCT-tiled, Section~\ref{sec:tiled}) entered the frequency-branch average with a larger ML-easier gap than the other DCT detectors, pulling the frequency branch's average gap down (more negative) and closing the spatial-minus-frequency contrast.
-\end{enumerate}
-We read the corrected verdict as an \emph{honesty} signal: there is no universally preferable branch for distinguishing real from ML carriers; the dominant branch depends on payload. This is a more useful operational message than ``spatial is better'' or ``frequency is better'' would have been, because it tells a deployer what to optimise for in each payload regime.
-
-\subsection{Synthesis Across the Four Contributions}
-
-The five-RQ classical analysis (\S\ref{sec:results-classical}) and the learned-detector cross-validation (\S\ref{sec:learnedxval}) together establish that the real-vs-diffusion carrier-source effect is real, small in pooled magnitude, sharply concentrated at low payload and at the operational left-tail of the ROC, and \emph{detector-family dependent} -- present and direction-consistent in three of four classical detectors and in the hand-crafted DCT learned detector, abstracted away in the deep spatial CNN, and reversed in one classical detector that under-performs its peers on a separate axis. The two detector-side findings of Section~\ref{sec:detector-side} are not incidental: the tile-local $\chi^2$-DCT proposal (\S\ref{sec:tiled}) is what \emph{flipped} the RQ4 branch contrast from ``mixed'' at $N=1{,}000$ to ``trivial'' at $N=3{,}000$ by tightening the frequency-branch average, and the $\chi^2$-spatial reversal analysis (\S\ref{sec:chi2spatial}) is what reduced an apparent ``contradicts'' finding to an artefact of operationally-irrelevant high-FPR behaviour. Detector engineering and the substantive scientific finding are therefore not separable contributions in this corpus -- they are two sides of the same investigation.
-
-% ============================================================
-\section{Detector-Side Findings}
+\section{Detector-Level Contributions}
 \label{sec:detector-side}
 % ============================================================
 
-The five RQs and the cross-validation evaluate the carrier-source effect using detectors that we treat as fixed instruments.  Two by-products of that evaluation are themselves contributions to the steganalysis literature, independent of the carrier-source question: a tile-local variant of the Westfeld pairs-of-values test that out-performs every classical DCT detector in our pipeline (\S\ref{sec:tiled}), and a mechanistic account of why the $\chi^2$-spatial detector inverts the carrier-source ordering reported by every other detector in our suite (\S\ref{sec:chi2spatial}).
+The five RQs and the cross-validation evaluate the carrier-source effect using detectors that we treat as fixed instruments.  Two by-products of that evaluation are themselves contributions to the steganalysis literature, independent of the carrier-source question: a tile-local variant of the Westfeld pairs-of-values test that out-performs every classical DCT detector in our pipeline (\S\ref{sec:tiled}), and a candidate mechanism for why the $\chi^2$-spatial detector inverts the carrier-source ordering reported by every other detector in our suite (an inversion that is operationally negligible under pAUC; \S\ref{sec:chi2spatial}).
 
 % ----------------------------------------------------------------
 \subsection{Tile-Local $\chi^2$-DCT Detector}
 \label{sec:tiled}
 % ----------------------------------------------------------------
 
-The strongest frequency-branch detector in our pipeline is not the textbook global Westfeld $\chi^2$-DCT but a \textbf{tile-local variant} we introduce. The image's $8\!\times\!8$ DCT-block grid is partitioned into a coarse $T\!\times\!T$ grid of disjoint tiles ($T\!=\!2$ in our runs, giving four tiles); the Westfeld pairs-of-values $\chi^2$ statistic is computed independently within each tile's non-zero AC coefficients, and the \textbf{maximum} per-tile $-\chi^2/(df\!-\!1)$ is returned as the image-level score (Listing~\ref{lst:tiled}).
-
-\begin{lstlisting}[label={lst:tiled},caption={Tile-local $\chi^2$-DCT detector. Partition the DCT-block grid into $T\!\times\!T$ disjoint tiles, evaluate the Westfeld test inside each, and return the max per-tile underflow-free score.}]
-def chi_square_dct_tiled_score(jpeg_bytes: bytes, *, tiles: int = 2) -> float:
-    dct = luminance_coefficients(read_dct_jpeg(jpeg_bytes))  # (Bh, Bw, 8, 8)
-    bh, bw = dct.shape[:2]
-    best = None
-    for ti in range(tiles):
-        r0, r1 = (bh * ti) // tiles, (bh * (ti + 1)) // tiles
-        for tj in range(tiles):
-            c0, c1 = (bw * tj) // tiles, (bw * (tj + 1)) // tiles
-            tile = dct[r0:r1, c0:c1]
-            ac = tile[..., _AC_MASK_8x8].ravel()
-            ac = ac[ac != 0]
-            if ac.size == 0:
-                continue
-            pairs = _build_pairs(_count_ac_frequencies(ac.astype(int)))
-            chi_stat, pair_count = 0.0, 0
-            for n_lo, n_hi in pairs:
-                total = n_lo + n_hi
-                if total == 0: continue
-                exp = total / 2.0
-                chi_stat += ((n_lo - exp) ** 2) / exp
-                pair_count += 1
-            if pair_count <= 1: continue
-            score = -float(chi_stat) / (pair_count - 1)
-            if best is None or score > best:
-                best = score
-    return 0.0 if best is None else best
-\end{lstlisting}
+The strongest frequency-branch detector in our pipeline is not the textbook global Westfeld $\chi^2$-DCT but a \textbf{tile-local variant} we introduce. The image's $8\!\times\!8$ DCT-block grid is partitioned into a coarse $T\!\times\!T$ grid of disjoint tiles ($T\!=\!2$ in our runs, giving four tiles); the Westfeld pairs-of-values $\chi^2$ statistic is computed independently within each tile's non-zero AC coefficients, and the \textbf{maximum} per-tile $-\chi^2/(df\!-\!1)$ is returned as the image-level score.
 
 Overall (pooled-payload) AUC is \textbf{0.855}, well above the global $\chi^2$-DCT at 0.756 and behind only the strongest spatial-branch detectors RS (0.967) and sample-pairs (0.973). Figure~\ref{fig:tiled} shows the per-stratum AUC and the ROC curve at medium payload, where the difference between the global and tiled variants is most visible.
 
@@ -1549,7 +1351,7 @@ Overall (pooled-payload) AUC is \textbf{0.855}, well above the global $\chi^2$-D
 \toprule
 & \multicolumn{3}{c}{\textbf{$\chi^2$-DCT (global)}} & \multicolumn{3}{c}{\textbf{$\chi^2$-DCT-tiled (ours)}} \\
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
-\textbf{Payload} & real & ml\_a & ml\_b & real & ml\_a & ml\_b \\
+\textbf{Payload} & real & ai\_a & ai\_b & real & ai\_a & ai\_b \\
 \midrule
 low    & 0.581 & 0.620 & 0.605 & 0.635 & 0.703 & 0.724 \\
 medium & 0.727 & 0.806 & 0.775 & 0.886 & 0.936 & 0.941 \\
@@ -1560,23 +1362,31 @@ high   & 0.893 & 0.960 & 0.935 & 0.993 & 0.997 & 0.998 \\
 
 \paragraph{Why does tiling help?} DCT statistics are not spatially uniform across either photographic or diffusion carriers. Textured regions and smooth regions produce very different per-block pairs-of-values histograms. The global detector mixes all blocks into one histogram, which has two effects on the test statistic: (1)~the central-limit averaging hides any localised stego signal, and (2)~the carrier's natural inter-region heterogeneity inflates the cover-side $\chi^2$ noise floor. Tiling separates these regions before applying the test, and max-pooling exposes the tile with the strongest stego-like evidence. The mechanism is the same as Westfeld and Pfitzmann's original sliding-window suggestion~\cite{westfeld1999chi} for detecting \emph{sequential} embedding, but our tiles are coarser and disjoint, which keeps tile-level $\chi^2$ counts large enough to be stable.
 
-\paragraph{Literature support.} Local chi-square variants appear in several places. Westfeld and Pfitzmann themselves discuss a sliding-window form for sequential payloads~\cite{westfeld1999chi}; Provos's outguess paper~\cite{provos2001outguess} notes that the global PoV test loses power as embedding becomes more local; the broader steganalysis literature on \emph{block-wise} or \emph{regional} features (e.g.\ rich-model and DCTR-style approaches~\cite{fridrich2012srm,holub2015dctr}) is essentially built on the same insight at a finer granularity. The tile-local Westfeld $\chi^2$ as we implement it -- a coarse $2\!\times\!2$ disjoint partition with max-pooling, returning the underflow-free $-\chi^2/df$ score -- is a simple and, to our knowledge, under-tested combination of those ingredients.
+\paragraph{Literature support.} Local chi-square variants appear in several places. Westfeld and Pfitzmann themselves discuss a sliding-window form for sequential payloads~\cite{westfeld1999chi}; Provos's outguess paper~\cite{provos2001outguess} notes that the global PoV test loses power as embedding becomes more local; the broader steganalysis literature on \emph{block-wise} or \emph{regional} features (e.g.\ rich-model and DCTR-style approaches~\cite{fridrich2012srm,holub2015dctr}) is essentially built on the same insight at a finer granularity. The tile-local Westfeld $\chi^2$ as we implement it, a coarse $2\!\times\!2$ disjoint partition with max-pooling, returning the underflow-free $-\chi^2/df$ score, is a simple and, to our knowledge, under-tested combination of those ingredients.
 
-\paragraph{Caveats.} Three properties of the present evaluation bound the generality of the result.  \textit{(i)}~Max-pooling raises false-positive risk: the detector's score on a cover image is the noisiest of $T^2$ $\chi^2$ samples, which can exceed the global $\chi^2$ on the same image.  Our paired-AUC framework controls for this in the within-corpus contrast but a deployed setting would need explicit recalibration against natural-image false-positive rates.  \textit{(ii)}~Tile-size dependence is untested in this paper: we did not sweep $T$.  \textit{(iii)}~The tile-local detector is the only DCT-branch detector that retains a practical-significance signal on ML carriers at low payload (\S\ref{sec:rq1}), so the gain may be specific to the spatial-heterogeneity regime characteristic of diffusion-decoder outputs and not necessarily generalise to BOSSBase-style camera covers.
+\paragraph{Caveats.} Two properties of the within-corpus result remain after the BOSSBase validation below.  \textit{(i)}~Max-pooling raises false-positive risk: the detector's score on a cover image is the noisiest of $T^2$ $\chi^2$ samples, which can exceed the global $\chi^2$ on the same image.  Paired-AUC controls for this in the within-corpus contrast but a deployed setting would need explicit recalibration against natural-image false-positive rates.  \textit{(ii)}~Adaptive (DCT-domain content-driven) embeddings such as J-UNIWARD~\cite{holub2014uniward} and the histogram-preserving OutGuess~\cite{provos2001outguess} (see Section~\ref{sec:tiled-validation}) lie outside the scope of a pairs-of-values test by construction; the result is bounded to non-adaptive DCT-LSB-style embedders.
 
-\paragraph{Recommended validation experiments.}
+\paragraph{Validation on BOSSBase.}
 \label{sec:tiled-validation}
-We propose five experiments to establish the tile-local detector beyond the present corpus.  A reference implementation of the experiment runners is provided in the supplementary code under \texttt{scripts/experiments/tiled\_chi2\_validation/}.  Each script is self-contained and accepts an arbitrary test-run directory via \texttt{--run}; both the present caption-matched corpus and a BOSSBase~\cite{bas2011boss} import (via the bundled \texttt{import\_bossbase.py} helper) are first-class targets.  Every experiment reports two metrics in its results CSV: ROC-AUC (consistent with the present paper) and $P_E^\text{min} = \tfrac{1}{2}\min_\tau (\text{FPR}(\tau) + \text{FNR}(\tau))$, the operational error rate reported by the Fridrich classical-detector papers~\cite{fridrich2001lsb,fridrich2003calib} and by the DCTR evaluation~\cite{holub2015dctr} as the trained-ensemble estimate $E_\text{OOB}$.  Reporting both makes the results directly cross-comparable to either body of literature.
+To probe whether the gain transfers off the caption-matched corpus, the detector was re-evaluated on BOSSBase~1.01~\cite{bas2011boss} (10{,}000 covers, 120{,}000 stegos at six bpnzAC payloads $\times$ two encryption modes), at both Q$=$75 and Q$=$95 and against two non-adaptive DCT-LSB embedders, JSteg and OutGuess~\cite{provos2001outguess}.  Mean AUC and mean $P_E^{\min}$ over the 12 (payload$\times$encryption) cells per (Q, embedder, detector) are reported in Table~\ref{tab:bossbase-tile-local}.  On JSteg the tile-local detector beats the global $\chi^2$ by $+0.086$--$0.090$~AUC at both quality factors, with $P_E^{\min}$ dropping from $\sim 0.24$--$0.29$ to $\sim 0.13$--$0.19$: the within-corpus gain reproduces on the canonical benchmark.  On OutGuess all three $\chi^2$-DCT variants collapse to AUC~$\approx 0.50$ as expected from the histogram-preservation property; the sliding-window $\chi^2$ retains a small ($\sim 0.58$~AUC) residual signal, plausibly because OutGuess's random correction path leaves a non-uniform residual at the window scale, but this is not operationally useful.  The BOSSBase $T$-sweep over $T\!\in\!\{1,2,3,4,6,8\}$ (collapsed across the 12 payload$\times$encryption cells, JSteg, max-pool) shows the AUC continues to climb past our caption-matched-corpus choice of $T\!=\!2$: at Q$=$75 the per-$T$ AUCs are $\{0.76, 0.85, 0.89, 0.90, 0.90, 0.85\}$ (peak $T\!=\!4$); at Q$=$95, $\{0.82, 0.90, 0.93, 0.95, 0.97, 0.95\}$ (peak $T\!=\!6$). The $T\!=\!2$ headline configuration is therefore conservative on BOSSBase; the optimum drifts to $T\!\approx\!4$--$6$, and a future-work cross-payload $T$-sweep on the caption-matched corpus would test whether the same drift holds on diffusion carriers.
 
-\begin{enumerate}
-\item \textbf{Tile-size sweep ($T$-sweep).} Compare $T\!\in\!\{1,2,3,4,6,8\}$ on the present test corpus and (if available) on BOSSBase.  $T\!=\!1$ recovers the global Westfeld detector; an interior optimum at $T\!=\!2$ or $T\!=\!3$ would confirm that the gain is not monotone with finer tiling.  Expected output: AUC vs.\ $T$ at each (method, payload) cell.
-\item \textbf{Cross-payload tile-size invariance.}  Repeat experiment~1 stratified by payload level.  An optimal $T$ that drifts with payload would indicate that the tile size is selecting a particular spatial frequency of carrier heterogeneity rather than a universal grain.
-\item \textbf{Pooling-rule ablation.}  Replace max-pooling with mean, top-$k$ mean, and median.  Max-pooling is the natural choice for a sparse-localised stego signal; mean is the natural choice if heterogeneity averages out.  An ablation reveals which assumption the data supports.
-\item \textbf{Comparison against literature baselines.}  On the same BOSSBase cells, evaluate the tile-local $\chi^2$ alongside the sliding-window $\chi^2$ of Westfeld and Pfitzmann~\cite{westfeld1999chi} and a rich-model baseline (SRM~\cite{fridrich2012srm} or DCTR~\cite{holub2015dctr}).  Positions the contribution against published precedent.
-\item \textbf{JPEG-quality sweep.}  Re-embed the test covers at $Q\!\in\!\{75,85,90,95,98\}$ and re-score with both global and tile-local detectors.  Tests whether the gain is JPEG-quality-dependent.  Most expensive of the five (requires re-embedding) but the only one that probes the standard pipeline-design dimension.
-\end{enumerate}
-
-Each experiment is independently runnable; the entry-point script writes a status block to \texttt{logs/tiled\_validation/} on completion.  The five together form a coherent follow-up study of the tile-local proposal at roughly 1 day of laptop CPU plus a small Vast.ai instance for the JPEG-quality sweep.
+\begin{table}[!t]
+\centering\footnotesize
+\caption{BOSSBase~1.01: mean AUC and $P_E^{\min}$ over 12 (payload$\times$encryption) cells per (Q, embedder, detector). Bold marks tile-local beating global $\chi^2$ on JSteg by $0.086$--$0.090$~AUC; both at chance on the histogram-preserving OutGuess.}
+\label{tab:bossbase-tile-local}
+\begin{tabular}{llcccc}
+\toprule
+ & & \multicolumn{2}{c}{AUC} & \multicolumn{2}{c}{$P_E^{\min}$} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Q & embedder & global & tile-local & global & tile-local \\
+\midrule
+75 & JSteg    & 0.764 & \textbf{0.854} & 0.286 & \textbf{0.192} \\
+95 & JSteg    & 0.816 & \textbf{0.902} & 0.237 & \textbf{0.134} \\
+75 & OutGuess & 0.502 & 0.500 & 0.498 & 0.496 \\
+95 & OutGuess & 0.507 & 0.507 & 0.494 & 0.493 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 % ----------------------------------------------------------------
 \subsection{The $\chi^2$-Spatial Reversal}
@@ -1585,17 +1395,19 @@ Each experiment is independently runnable; the entry-point script writes a statu
 
 The single detector that reverses the RQ1 direction is the spatial Westfeld $\chi^2$. At medium and high payload, real photographs are easier to attack than diffusion generated carriers by 0.027--0.034~AUC, both Holm-significant. The reversal is robust to the $3\!\times\!$ sample size and persists across both SDXL and FLUX.
 
-\paragraph{Mechanism -- direct test.} The Westfeld $\chi^2$ test asks how far the cover's $(2k,\,2k\!+\!1)$ pixel-bit pair counts deviate from equality. To probe the mechanism we ran a falsifying cover-only test: on all 9{,}000 cover images we computed the PoV imbalance
+\paragraph{Mechanism, direct test.} The Westfeld $\chi^2$ test asks how far the cover's $(2k,\,2k\!+\!1)$ pixel-bit pair counts deviate from equality. To probe the mechanism we ran a falsifying cover-only test: on all 9{,}000 cover images we computed the PoV imbalance
 \begin{equation}
 S(c) = \sum_{k=0}^{127} |n_{2k}(c) - n_{2k+1}(c)|
 \label{eq:pov-imbalance}
 \end{equation}
-\noindent and the cover-side chi-square score (Figure~\ref{fig:pov}, Appendix~\ref{app:pov}).
+\noindent and the cover-side chi-square score (per-source distribution in Appendix~\ref{app:pov}).
 
-The result \emph{falsifies} the naive ``smoother diffusion outputs $\Rightarrow$ lower cover-side $\chi^2_\text{stat}$'' story. The data show the opposite: ML covers have \emph{slightly higher} PoV imbalance than real photographs (medians: real 9{,}698, ml\_a 10{,}272, ml\_b 11{,}649; paired Wilcoxon $p\!<\!10^{-9}$ both directions). The cover-side chi-square score is also more negative (i.e.\ more imbalanced) on ML carriers (medians: real $-4.03$, ml\_a $-4.93$, ml\_b $-6.27$). Diffusion outputs are not more balanced in this sense.
+The result \emph{falsifies} the naive ``smoother diffusion outputs $\Rightarrow$ lower cover-side $\chi^2_\text{stat}$'' story. The data show the opposite: AI covers have \emph{slightly higher} PoV imbalance than real photographs (medians: real 9{,}698, ai\_a 10{,}272, ai\_b 11{,}649; paired Wilcoxon $p\!<\!10^{-9}$ both directions). The cover-side chi-square score is also more negative (i.e.\ more imbalanced) on AI carriers (medians: real $-4.03$, ai\_a $-4.93$, ai\_b $-6.27$). Diffusion outputs are not more balanced in this sense.
 
-\paragraph{Mechanism -- corrected.} What \emph{does} reverse the AUC is the cover-side score \emph{variance}, not the mean. Cover-side $\chi^2$-spatial score standard deviations are 37.5 (real), 54.4 (ml\_a), 43.0 (ml\_b). At high payload the median cover$\to$stego score shift is in fact \textbf{larger} on ml\_b ($+2.97$) than on real ($+1.95$), but the cover distribution on ML carriers is so much wider that the Cohen's $d$ of cover-vs-stego separation drops from $d\!=\!0.26$ (real) to $d\!=\!0.21$ (ml\_a) and $d\!=\!0.22$ (ml\_b). Interpretation: diffusion outputs have a more \emph{heterogeneous} histogram distribution -- some images are very flat, others very textured -- producing a wider cover-side score distribution that overlaps more with the stego-side distribution, dropping AUC.
+\paragraph{Mechanism, corrected.} What \emph{does} reverse the AUC is the cover-side score \emph{variance}, not the mean. Cover-side $\chi^2$-spatial score standard deviations are 37.5 (real), 54.4 (ai\_a), 43.0 (ai\_b). At high payload the median cover$\to$stego score shift is in fact \textbf{larger} on ai\_b ($+2.97$) than on real ($+1.95$), but the cover distribution on AI carriers is so much wider that the Cohen's $d$ of cover-vs-stego separation drops from $d\!=\!0.26$ (real) to $d\!=\!0.21$ (ai\_a) and $d\!=\!0.22$ (ai\_b). Interpretation: diffusion outputs have a more \emph{heterogeneous} histogram distribution, some images are very flat, others very textured, producing a wider cover-side score distribution that overlaps more with the stego-side distribution, dropping AUC.
 
+% Fig 16 (PoV box plot) MOVED to appendix; data summary already in prose above + Table~\ref{tab:appendix-pov}.
+\iffalse
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
@@ -1618,8 +1430,8 @@ The result \emph{falsifies} the naive ``smoother diffusion outputs $\Rightarrow$
 % per-source rows (S values in thousands)
 \foreach \name/\yc/\pa/\qa/\meda/\qb/\pb in {%
   {real}/2.4/6.13/7.42/9.70/14.05/21.49,
-  {ml\_a}/1.6/6.79/8.18/10.27/14.52/25.48,
-  {ml\_b}/0.8/6.93/8.64/11.65/16.42/23.97%
+  {ai\_a}/1.6/6.79/8.18/10.27/14.52/25.48,
+  {ai\_b}/0.8/6.93/8.64/11.65/16.42/23.97%
 } {
   \pgfmathsetmacro{\xpa}{(\pa-4)*0.313}
   \pgfmathsetmacro{\xqa}{(\qa-4)*0.313}
@@ -1648,8 +1460,8 @@ The result \emph{falsifies} the naive ``smoother diffusion outputs $\Rightarrow$
 \node[font=\scriptsize\color{umdark}, below=10pt] at (3.7,-0.18) {score (closer to 0 = more balanced)};
 \foreach \name/\yc/\pa/\qa/\meda/\qb/\pb in {%
   {real}/2.4/-23.78/-9.00/-4.03/-2.27/-1.47,
-  {ml\_a}/1.6/-36.27/-10.75/-4.93/-2.87/-1.91,
-  {ml\_b}/0.8/-25.48/-12.58/-6.27/-3.36/-1.96%
+  {ai\_a}/1.6/-36.27/-10.75/-4.93/-2.87/-1.91,
+  {ai\_b}/0.8/-25.48/-12.58/-6.27/-3.36/-1.96%
 } {
   \pgfmathsetmacro{\xpa}{(\pa+40)*0.18}
   \pgfmathsetmacro{\xqa}{(\qa+40)*0.18}
@@ -1665,47 +1477,51 @@ The result \emph{falsifies} the naive ``smoother diffusion outputs $\Rightarrow$
 }
 \end{scope}
 \end{tikzpicture}
-\caption{Cover-only diagnostic for the $\chi^2$-spatial reversal ($n\!=\!3{,}000$ per source). Box = Q1--Q3, whisker = p10--p90, orange line = median. Panel (a): PoV imbalance $S$ from Eq.~\ref{eq:pov-imbalance}; the naive hypothesis predicted ML\,$<$\,real, but real has the \emph{lowest} median (Wilcoxon $p\!<\!10^{-9}$). Panel (b): cover-side $\chi^2$-spatial score; medians track $S$, but the ML distributions are visibly wider (real std 37.5, ml\_a 54.4, ml\_b 43.0). The wider cover-side score distribution is what overwhelms the per-image stego shift and drops the AUC.}
+\caption{Cover-only diagnostic for the $\chi^2$-spatial reversal ($n\!=\!3{,}000$ per source). Box = Q1--Q3, whisker = p10--p90, orange line = median. Panel (a): PoV imbalance $S$ from Eq.~\ref{eq:pov-imbalance}; the naive hypothesis predicted AI\,$<$\,real, but real has the \emph{lowest} median (Wilcoxon $p\!<\!10^{-9}$). Panel (b): cover-side $\chi^2$-spatial score; medians track $S$, but the AI distributions are visibly wider (real std 37.5, ai\_a 54.4, ai\_b 43.0). The wider cover-side score distribution is what overwhelms the per-image stego shift and drops the AUC.}
 \label{fig:pov}
 \end{figure}
+\fi
 
-\paragraph{Why other detectors are unaffected.} RS analysis and Sample Pairs do not test pair-of-values balance directly; they reason about local pixel-group regularity (RS) or adjacent-pair multiset statistics (SPA). Neither is dominated by the marginal histogram, so the diffusion-decoder heterogeneity does not flip their direction. The DCT-branch detectors operate in frequency space, where diffusion outputs have if anything \emph{more} histogram structure than photographs (due to the JPEG re-encode step), and there the ML-easier direction holds with the largest practical-significance effects.
+\paragraph{Why other detectors are unaffected.} RS analysis and Sample Pairs do not test pair-of-values balance directly; they reason about local pixel-group regularity (RS) or adjacent-pair multiset statistics (SPA). Neither is dominated by the marginal histogram, so the diffusion-decoder heterogeneity does not flip their direction. The DCT-branch detectors operate in frequency space, where diffusion outputs have if anything \emph{more} histogram structure than photographs (due to the JPEG re-encode step), and there the AI-easier direction holds with the largest practical-significance effects.
 
 \paragraph{Where the reversal lives.} Crucially, the reversal is a \emph{full-AUC} artefact. Under the partial-AUC view at FPR\,$\leq\!0.10$, all three $\chi^2$-spatial strata have $|\Delta_\text{pAUC}|\!\leq\!0.007$ and none reaches Holm significance. The diffusion-flatness fingerprint lives in the high-FPR tail of the ROC curve, the region where a real steganalyst would never operate. In other words: the reversal is mathematically real but operationally negligible. We report it as a mechanistic observation rather than as a counter-example to RQ1's main direction.
 
 \paragraph{Generalisation.} A natural follow-up is to extend the carrier-source set to additional diffusion families (Stable Diffusion~3, FLUX.1-dev, Midjourney) to check that the cover-side variance-inflation effect is a general property of latent-diffusion decoders rather than an SDXL-or-FLUX idiosyncrasy. We leave this to future work.
 
 % ============================================================
+\section{Discussion}
+\label{sec:discussion}
+% ============================================================
+
+\paragraph{RQ1, and why the learned ``contradicts'' is a pooling artefact.} The pooled classical $\Delta_\text{AUC}\!=\!-0.013$ (up to 9~pp at low-payload strata and 30~pp under pAUC) is the headline effect: classical steganalysis on diffusion carriers is \emph{easier}, not harder. The matched-training learned ``contradicts'' verdict is an inverse-variance pooling artefact: SRNet's per-cell variance is so small at ceiling ($\sigma\!\sim\!10^{-3}$) that the pool is essentially the SRNet number, while DCTR alone gives $-0.030$, corroborating the classical direction. The real-only ablation closes the question: SRNet trained without AI carriers re-opens the gap at $+0.247$ pooled and up to $+0.44$ at medium/high payload (\S\ref{sec:v2a}).
+
+\paragraph{RQ2--RQ5.} \textbf{RQ2}: no practical SDXL-vs-FLUX difference ($\Delta\!=\!0.0004$), so the PixArt-$\alpha\!\to$\,FLUX swap is inconsequential. \textbf{RQ3}: the gap shrinks monotonically with payload because the embedding perturbation overwhelms the cover-side fingerprint at high payload, so the practical effect is larger than the pooled average in the low-payload regime an operational steganalyst cares about. \textbf{RQ4}: the per-payload pattern (spatial-easier at low, frequency-easier at medium, tie at high) is identical at $N\!=\!1{,}000$ and $N\!=\!3{,}000$; the pooled estimate slips from ``mixed'' to ``trivial'' because the tile-local $\chi^2$-DCT detector tightened the frequency-branch average. \textbf{RQ5}: both ``plain'' and AES payloads are maximum-entropy at the bit level, so the null confirms the seeded-RNG proxy is interchangeable with a properly-encrypted payload.
+
+\paragraph{Synthesis.} The carrier-source effect is real, small in pooled magnitude, concentrated at low payload and the operational left-tail of the ROC, and \emph{detector-family dependent}: present in three of four classical detectors and in DCTR, reversed in $\chi^2$-spatial (dissolves under pAUC, \S\ref{sec:chi2spatial}), and abstracted away in matched-training SRNet but recovered (and amplified $5$--$300\times$) under real-only training.
+
+% ============================================================
 \section{Limitations}
 \label{sec:limitations}
 % ============================================================
 
-\paragraph{Pre-registered deviations.} Two changes from the proposal are acknowledged: \textit{(i)}~ML-B was migrated from PixArt-$\alpha$~\cite{pixart2023} to FLUX.1-schnell~\cite{flux2024} because the former lost HF Inference API support during Phase~2; \textit{(ii)}~payload fill rates were lowered from $\{0.25,0.50,0.75\}$ to $\{0.05,0.15,0.30\}$~bpp to avoid detector saturation. Both changes are documented in the run config and the slides. The first does not affect the RQ design (still two diffusion families with caption-matched outputs); the second strengthens the comparison by placing the experiment in a more operationally realistic regime.
+\paragraph{Pre-registered deviations.} AI-B was migrated from PixArt-$\alpha$~\cite{pixart2023} to FLUX.1-schnell~\cite{flux2024} (HF Inference API lost PixArt support mid-run); payload rates were lowered from $\{0.25,0.50,0.75\}$ to $\{0.05,0.15,0.30\}$~bpp to avoid detector saturation, both improvements rather than threats to the RQ design.
 
-\paragraph{Scope bounds.} Two generator families only; we cannot disentangle architecture from training data in RQ2. Grayscale only; colour information is intentionally removed for closer comparability with BOSSBase~\cite{bas2011boss} and the published detectors, but a colour study would be informative. The \emph{primary} (pre-registered) Bonferroni--Holm family contains only the six classical training-free detectors; the learned baselines (SRNet and DCTR) are reported with a separate Bonferroni--Holm correction over their own 6-stratum family in Section~\ref{sec:learnedxval} so the pre-registered correction in Table~\ref{tab:verdicts} is preserved exactly. RQ4 pools an asymmetric set (three spatial vs.\ three frequency detectors after adding the tile-local variant); the branch contrast accounts for this in its inverse-variance weighting.
+\paragraph{Scope bounds.} (i)~Two generator families only; we cannot disentangle architecture from training data in RQ2. (ii)~Grayscale, for comparability with BOSSBase~\cite{bas2011boss}. (iii)~The pre-registered Bonferroni--Holm family is the six classical detectors; learned detectors carry a separate 6-stratum correction so the pre-registered correction is preserved. (iv)~Results are scoped to \emph{non-adaptive} LSB-replacement embeddings (spatial LSB on PNG, JSteg-style DCT-LSB on JPEG~Q=95); modern adaptive embeddings (J-UNIWARD~\cite{holub2014uniward}, HILL~\cite{li2014hill}, MiPOD~\cite{sedighi2016mipod}, UED~\cite{guo2014ued}) are out of scope by construction, the pairs-of-values signature the $\chi^2$ family targets is precisely what adaptive distortion functions preserve, and fixing a content-agnostic embedding isolates the carrier as the experimental variable. The complementary axis (AI carriers under adaptive embeddings) is M\'ereur~et~al.~\cite{mereur2024deepfake}'s study; the two together bracket the deepfake-as-carrier question across detector family and embedding adaptivity.
 
-\paragraph{Embedding-family scope.} Every result in this paper is reported for \emph{non-adaptive} LSB-replacement embeddings: spatial LSB on PNG and JSteg-style DCT-LSB on JPEG~Q=95. Modern content-adaptive JPEG embeddings such as J-UNIWARD~\cite{holub2014uniward}, S-UNIWARD~\cite{holub2014uniward}, UED~\cite{guo2014ued} and their spatial-domain counterparts (HILL~\cite{li2014hill}, MiPOD~\cite{sedighi2016mipod}) are not tested. This is a deliberate design choice with two consequences. \emph{(i)~Detector-side:} the $\chi^2$-family detectors that drive five of our six pre-registered findings are obsoleted \emph{by construction} on adaptive embeddings -- the pairs-of-values signature they target is precisely what an adaptive distortion function is designed to preserve -- so an apples-to-apples comparison across the $\chi^2$ family requires a non-adaptive embedding, and the tile-local $\chi^2$-DCT contribution (Section~\ref{sec:tiled}) is intrinsically scoped to that family. \emph{(ii)~Carrier-source:} fixing the embedding to a content-agnostic rule isolates the carrier as the experimental variable; an adaptive embedding's distortion function would itself respond to carrier statistics (textured regions are preferred and diffusion outputs differ from photographs in their texture distribution), entangling ``real-vs-ML detectability gap'' with ``embedding-adapted-to-carrier'' in ways the present factorial cannot disentangle. Our findings therefore do not transfer to adaptive embeddings without re-testing; the orthogonal axis -- AI carriers under adaptive embeddings -- has been studied by M\'ereur~\textit{et~al.}~\cite{mereur2024deepfake} using HILL / S-UNIWARD / MiPOD at 0.4~bpp against an SRMQ1 + low-complexity-linear-classifier feature set and an EfficientNet-v2 deep classifier on a 15-generator pool (GAN- and diffusion-based, including SDXL but not FLUX). The two studies are complementary along three axes: detector family (training-free $\chi^2$ + caption-matched-trained SRNet/DCTR here vs.\ feature-set-trained classifiers there), embedding family (non-adaptive LSB here vs.\ adaptive STC-coded distortion-minimisation there), and dataset design (caption-matched factorial here vs.\ unpaired generator pools there); together they bracket the deepfake-as-carrier question across detector training regime and embedding adaptivity.
+\paragraph{Frequency-branch compression-history confound.} The real images are distributed as JPEG and re-saved at Q=95 for the frequency branch, while the AI covers are pristine PIL outputs saved once at Q=95 (Section~\ref{sec:dataset}). The DCT-domain detectors ($\chi^2$-DCT, tile-local $\chi^2$-DCT, calibration-$\chi^2$) operate on quantised AC coefficients, exactly the domain where prior-compression statistics live; part of the frequency-branch real-vs-AI gap could therefore be a double-vs-single compression artefact rather than a carrier-source effect. The spatial branch (lossless PNG storage) is immune, and the $\chi^2$-spatial variance-inflation mechanism (\S\ref{sec:chi2spatial}) operates on pixel-pair histograms not on JPEG quantisation, so the spatial-side results stand. The BOSSBase frequency-branch validation (Section~\ref{sec:tiled-validation}) uses a single embedding pipeline on a uniformly-sourced corpus and is therefore free of this confound; readers should weight the frequency-branch caption-matched results accordingly.
 
-\paragraph{Learned-detector caveats.} Three caveats accompany the supplementary learned-detector analysis. \textit{(i)} A single training-set random seed (\texttt{4242}) is used for both matched and real-only training; we do not report multi-seed variability of the learned-AUC estimates. The headline real-only finding -- 0.26--0.45 AUC drop on AI carriers when SRNet is trained real-only -- rests on a large, mechanistically explained structural effect (\S\ref{sec:v2a}: cover-side score saturation on ML carriers when the trained checkpoint interprets diffusion noise as LSB perturbation) and is not expected to be seed-dependent in direction; the absolute magnitude may shift by a few hundredths across seeds. A three-seed re-run of the real-only SRNet training would tighten the AUC point estimates with error bars but would not change the qualitative conclusion. \textit{(ii)} The DCTR feature extractor uses the 8{,}000-dim variant of Holub \& Fridrich~\cite{holub2015dctr} interpreted as 64 modes $\times$ 25 phases (5$\times$5 alignment subset) $\times$ 5 truncated bins; the exact phase decomposition that yields the paper's headline 8{,}000 count is somewhat ambiguous from the paper text alone, and our interpretation is one of several defensible reconstructions. \textit{(iii)} SRNet is trained on caption-matched data, not on BOSSBase; this is the academically preferable choice for our cover-source-mismatch-aware design, but it makes our AUC numbers not directly comparable to literature SRNet figures on BOSSBase.
+\paragraph{Learned-detector caveats.} A single training seed (\texttt{4242}); multi-seed variability is not reported (the headline real-only effect is large enough, $0.26$--$0.45$~AUC, that direction is robust, only absolute magnitude could shift). SRNet is trained on caption-matched data, not BOSSBase, so our AUC numbers are not directly comparable to literature SRNet figures. Finally, real-only training draws captions from Flickr30k only, while the test corpus mixes COCO and Flickr30k captions: the ``no AI carriers'' manipulation is therefore partially confounded with a Flickr-only-vs-mixed dataset shift. The magnitude of the observed gap (up to $+0.45$~AUC on AI carriers, $0.00$ on real carriers) is well beyond any plausible cross-natural-image-dataset shift at the upper end, so the bulk of the effect is the carrier-source manipulation; cells at the lower end of the $0.26$--$0.45$ range carry more of this confound.
 
-\paragraph{Engineering caveats.} The analysis pipeline's ROC computation is implemented as a pure-Python $O(N^2)$ scan over per-threshold confusion-matrix updates ([src/evaluation/metrics.py]); for 648{,}000 predictions this took roughly six wall-clock hours on a single CPU. A vectorised \texttt{sklearn.metrics.roc\_curve} equivalent would complete the same work in seconds. The result is correct; the cost is excessive. This is flagged as a Phase~3 cleanup item.
+\paragraph{Pooling-saturation caveat.} The inverse-variance pooled estimates we report assume strata are independent, which is violated because the 18 strata are computed on the same images. We therefore caveat pooled CIs as descriptive precision only; the per-stratum DeLong table (Appendix~\ref{app:rq1-delong}) is the trustworthy artifact. A second pathology of inverse-variance pooling is that detectors with saturated near-zero per-stratum variance dominate the weighted mean: in the classical pool, RS and sample-pairs carry most of the weight; in the matched-training learned pool, the same effect lets SRNet at AUC~$\sim 0.998$ ($\sigma\!\sim\!10^{-3}$) determine the sign of the pooled $\Delta$, which is why we read RQ1 verdicts at the per-detector level (\S\ref{sec:discussion}) rather than from the pool.
 
 % ============================================================
 \section{Conclusion and Future Work}
 \label{sec:conclusion}
 % ============================================================
 
-We ran a study across 6 detectors, 2 embedding methods, 3 payload levels, and 2 encryption conditions on 3{,}000 caption-matched image groups (108{,}000 stego images, 648{,}000 classical-detector predictions) to ask whether the carrier source -- real photograph vs.\ a diffusion generated one -- changes how detectable LSB steganography is under matched embedding. Five of six training-free detectors agree that diffusion carriers are slightly easier to attack than photographs, with the gap concentrated at low payload (RQ1, RQ3); the two diffusion models we tested are interchangeable at the detector level (RQ2); the source effect is statistically similar across spatial and frequency embedding branches once pooled (RQ4); and AES-256-CBC encryption of the payload has no measurable detectability effect (RQ5). The partial AUC analysis at FPR\,$\leq\!0.10$ amplifies every RQ1 effect by 3--7$\times$ and lifts the verdict from mixed to supported. We then cross-validated on two learned baselines from a fundamentally different class of detectors (SRNet for the spatial branch, DCTR for the frequency branch), both trained on a separate, matched dataset in two complementary configurations -- \emph{matched training} (1:1:1 real/SDXL/FLUX) and \emph{real-only training} (AI carriers held out). Matched training corroborates RQ2, RQ4 and RQ5 directly, refines RQ3 to roughly half the classical magnitude in the same direction, and clarifies RQ1: DCTR (a hand-crafted frequency feature set scored by an LDA ensemble) reproduces the classical real-harder pattern at $\Delta_\text{AUC}\!\approx\!-0.030$ within its branch, while SRNet (a deep spatial CNN, saturated at AUC $\geq 0.997$ under matched training) abstracts the source signal away. The matched-vs-real-only contrast (\S\ref{sec:v2a}) shows that this matched-training source-invariance comes from the balanced training mix rather than anything architectural: SRNet trained without AI carriers in its training mix loses 0.26--0.45~AUC on the ML test sources, exposing a substantial carrier-source generalisation gap once the training-mix protection is removed.
+Across 3{,}000 caption-matched image groups (108{,}000 stegos, 648{,}000 classical predictions) we find that diffusion carriers are slightly easier to attack than photographs under non-adaptive LSB embedding (RQ1, RQ3), the two diffusion models tested are interchangeable at the detector level (RQ2), the source effect is similar across embedding branches once pooled (RQ4), and AES-256-CBC encryption has no measurable detectability effect (RQ5). The pAUC view at FPR\,$\leq\!0.10$ amplifies the RQ1 effect $3$--$7\times$ and lifts the verdict from mixed to supported. Cross-validation on SRNet and DCTR corroborates RQ2--RQ5 and clarifies RQ1: DCTR reproduces the classical real-harder pattern within its branch, while matched-training SRNet abstracts the source signal away at ceiling. The real-only ablation shows this abstraction is a training-mix artefact, removing AI carriers from training opens a $0.26$--$0.45$~AUC gap on AI test carriers (smaller end partially confounded by a Flickr-only-vs-mixed dataset shift, see Section~\ref{sec:limitations}), ruling out architectural source-invariance for SRNet. Two detector-side contributions follow up the analysis: a \textbf{tile-local Westfeld $\chi^2$ variant} that out-performs the global PoV detector and is independently validated on BOSSBase~1.01 ($+0.09$~AUC on JSteg at Q$=$75 and Q$=$95), and a candidate cover-side variance-inflation mechanism for the \textbf{$\chi^2$-spatial reversal}, an effect that is itself operationally negligible (dissolves under pAUC). Operationally, classical detectors against diffusion carriers should do at least as well as against ordinary photographs, and substantially better at low embedding rates in the operationally screened FPR regime.
 
-Two secondary contributions warrant follow-up:
-\begin{itemize}
-\item the \textbf{tile-local Westfeld $\chi^2$ variant}, which out-performs the global PoV detector by a wide margin on our data and is a natural candidate for a stand-alone validation against established steganalysis benchmarks;
-\item the mechanistic account of the \textbf{$\chi^2$-spatial reversal} as a high-FPR diffusion-decoder fingerprint, which the pAUC analysis confirms is operationally negligible.
-\end{itemize}
-
-Operationally, our conclusion is that a steganalyst deploying classical detectors against diffusion generated carriers should expect to do at least as well as against ordinary photographs, and substantially better at low embedding rates in the operationally screened FPR regime.
-
-\paragraph{Future work.} Two concrete one-day extensions reuse the existing pipeline: a \textbf{lower-payload tier} (0.01 / 0.02~bpp) via \texttt{rerun\_with\_existing\_covers.py}, expected to widen the source gap on RS and sample-pairs; and a \textbf{tile-size sweep} for $\chi^2$-DCT-tiled on BOSSBase~\cite{bas2011boss}, $T\!\in\!\{1,2,3,4,6,8\}$, to validate the tile-local detector against the field's reference dataset. The PoV-imbalance measurement (Equation~\ref{eq:pov-imbalance}) was originally planned as future work but is now reported inline (Section~\ref{sec:chi2spatial}); it falsified the naive smoothness hypothesis and surfaced a cover-side-variance mechanism that future work could probe further. The learned-baseline extension flagged in earlier drafts (``adding an SRNet-style learned baseline to close the most prominent reviewer concern'') is now fully integrated as the cross-validation analysis of Section~\ref{sec:learnedxval}, run in two complementary configurations: \emph{matched training} (pre-registered confirmatory cross-validation) and \emph{real-only training} (in-paper ablation). The matched-vs-real-only contrast (\S\ref{sec:v2a}) resolves the architectural-vs-balanced-training ambiguity decisively in favour of the latter: removing AI carriers from training opens a $0.26$--$0.45$~AUC gap on AI test carriers, ruling out architectural source-invariance for SRNet. Medium-effort extensions include a JPEG-quality sweep, a colour-mode study (YCbCr-Y), a multi-seed sensitivity analysis of the learned-detector AUCs, and applying SRNet to the DCT branch (decompressed JPEG inputs) to give a same-architecture spatial-vs-frequency learned comparison.
+\paragraph{Future work.} A lower-payload tier ($0.01$/$0.02$~bpp) on the existing pipeline would widen the source gap on RS and sample-pairs; medium-effort extensions include a JPEG-quality sweep, a YCbCr-Y colour-mode study, multi-seed sensitivity analysis of the learned-detector AUCs, applying SRNet to the DCT branch for a same-architecture spatial-vs-frequency comparison, and extending the carrier-source set to additional diffusion families (SD3, FLUX.1-dev, Midjourney) to check generality of the cover-side variance-inflation effect. A larger extension would replace the non-adaptive LSB/JSteg embeddings with content-adaptive ones (J-UNIWARD~\cite{holub2014uniward}, S-UNIWARD~\cite{holub2014uniward}, HILL~\cite{li2014hill}, MiPOD~\cite{sedighi2016mipod}, UED~\cite{guo2014ued}) at matched bpp; this would extend the carrier-source question to the embedding family used in modern operational steganography and require swapping the $\chi^2$ detector suite for adaptive-aware learned detectors (SRMQ1, EfficientNet-v2) per M\'ereur~et~al.~\cite{mereur2024deepfake}.
 
 % ============================================================
 \clearpage
@@ -1736,8 +1552,8 @@ in \textit{Proc.\ 3rd Int.\ Workshop Information Hiding}, LNCS 1768, pp.~61--76,
 
 \bibitem{fridrich2001lsb}
 J.~Fridrich, M.~Goljan, and R.~Du,
-``Reliable detection of LSB steganography in color and grayscale images,''
-\textit{IEEE Multimedia}, vol.~8, no.~4, pp.~22--28, 2001.
+``Detecting LSB steganography in color and gray-scale images,''
+\textit{IEEE MultiMedia}, vol.~8, no.~4, pp.~22--28, 2001.
 
 \bibitem{dumitrescu2003sp}
 S.~Dumitrescu, X.~Wu, and Z.~Wang,
@@ -1807,16 +1623,6 @@ R.~Corvi, D.~Cozzolino, G.~Zingarini, G.~Poggi, K.~Nagano, and L.~Verdoliva,
 ``On the detection of synthetic images generated by diffusion models,''
 in \textit{Proc.\ IEEE ICASSP}, pp.~1--5, 2023.
 
-\bibitem{hou2021gan}
-J.~Hou, S.~Marra, F.~Marra, M.~Iuliani, and L.~Verdoliva,
-``Survey of GAN-generated image detection methods,''
-\textit{arXiv:2102.12158}, 2021.
-
-\bibitem{rossler2019fake}
-A.~R\"ossler, D.~Cozzolino, L.~Verdoliva, C.~Riess, J.~Thies, and M.~Nie{\ss}ner,
-``FaceForensics++: Learning to detect manipulated facial images,''
-in \textit{Proc.\ ICCV}, pp.~1--11, 2019.
-
 \bibitem{sdxl2023}
 D.~Podell et al.,
 ``SDXL: Improving latent diffusion models for high-resolution image synthesis,''
@@ -1848,16 +1654,6 @@ P.~Young, A.~Lai, M.~Hodosh, and J.~Hockenmaier,
 P.~Bas, T.~Filler, and T.~Pevn\'{y},
 ``Break our steganographic system: The ins and outs of organizing BOSS,''
 in \textit{Proc.\ 13th Int.\ Conf.\ Information Hiding}, LNCS 6958, pp.~59--70, 2011.
-
-\bibitem{zhang2011fsim}
-L.~Zhang, L.~Zhang, X.~Mou, and D.~Zhang,
-``FSIM: A feature similarity index for image quality assessment,''
-\textit{IEEE Trans.\ Image Process.}, vol.~20, no.~8, pp.~2378--2386, 2011.
-
-\bibitem{mittal2012brisque}
-A.~Mittal, A.~K.~Moorthy, and A.~C.~Bovik,
-``No-reference image quality assessment in the spatial domain,''
-\textit{IEEE Trans.\ Image Process.}, vol.~21, no.~12, pp.~4695--4708, 2012.
 
 \bibitem{holub2014uniward}
 V.~Holub, J.~Fridrich, and T.~Denemark,
@@ -1892,30 +1688,82 @@ V.~Sedighi, R.~Cogranne, and J.~Fridrich,
 \renewcommand{\thesection}{\Alph{section}}
 \setcounter{section}{0}
 
-\section{Run Configuration}
-\label{app:config}
-The active configuration of the $N\!=\!3{,}000$ confirmatory run, as stored in \texttt{runs/prototype\_full\_20260513\_005357\_p8765/.meta.json}:
-\begin{lstlisting}[language=,basicstyle=\ttfamily\small,frame=single,framerule=0pt,backgroundcolor=\color{codebg}]
-{
-  "profile":             "prototype_full",
-  "engine":              "inference_api",
-  "n_groups":            3000,
-  "active_methods":      ["lsb", "dct"],
-  "active_payload_levels": ["low", "medium", "high"],
-  "payload_fill_rates":  {"low": 0.05,
-                          "medium": 0.15,
-                          "high": 0.30},
-  "active_encryption":   ["plain", "encrypted"],
-  "active_detectors":    ["rs",
-                          "chi_square_spatial",
-                          "sample_pairs",
-                          "chi_square_dct",
-                          "chi_square_dct_tiled",
-                          "calibration_chi_square"],
-  "jpeg_quality":        95,
-  "payload_mode":        "random"
-}
+\section{Tile-Local $\chi^2$-DCT Detector (Reference Implementation)}
+\label{app:tiled-code}
+Listing~\ref{lst:tiled} gives the reference implementation of the tile-local $\chi^2$-DCT detector introduced in Section~\ref{sec:tiled}. The DCT-block grid is partitioned into $T\!\times\!T$ disjoint tiles, the Westfeld pairs-of-values $\chi^2$ statistic is evaluated within each tile's non-zero AC coefficients, and the per-tile maximum of the underflow-free $-\chi^2/(df\!-\!1)$ score is returned.
+\begin{lstlisting}[label={lst:tiled},caption={Tile-local $\chi^2$-DCT detector. Partition the DCT-block grid into $T\!\times\!T$ disjoint tiles, evaluate the Westfeld test inside each, and return the max per-tile underflow-free score.}]
+def chi_square_dct_tiled_score(jpeg_bytes: bytes, *, tiles: int = 2) -> float:
+    dct = luminance_coefficients(read_dct_jpeg(jpeg_bytes))
+    bh, bw = dct.shape[:2]
+    best = None
+    for ti in range(tiles):
+        r0, r1 = (bh * ti) // tiles, (bh * (ti + 1)) // tiles
+        for tj in range(tiles):
+            c0, c1 = (bw * tj) // tiles, (bw * (tj + 1)) // tiles
+            tile = dct[r0:r1, c0:c1]
+            ac = tile[..., _AC_MASK_8x8].ravel()
+            ac = ac[ac != 0]
+            if ac.size == 0:
+                continue
+            pairs = _build_pairs(_count_ac_frequencies(ac.astype(int)))
+            chi_stat, pair_count = 0.0, 0
+            for n_lo, n_hi in pairs:
+                total = n_lo + n_hi
+                if total == 0: continue
+                exp = total / 2.0
+                chi_stat += ((n_lo - exp) ** 2) / exp
+                pair_count += 1
+            if pair_count <= 1: continue
+            score = -float(chi_stat) / (pair_count - 1)
+            if best is None or score > best:
+                best = score
+    return 0.0 if best is None else best
 \end{lstlisting}
+
+\section{Stego Image Quality (PSNR table)}
+\label{app:quality}
+Per-source mean PSNR is 58.2~dB for real, 59.2~dB for SDXL, 59.2~dB for FLUX; mean SSIM is $\geq\!0.999$ across every (source, method, payload) cell. The LSB branch is content-independent (the same number of pixel LSBs is overwritten per image regardless of source), so PSNR matches across sources to three decimals. In the DCT branch a $\sim\!2$~dB per-source gap appears: \emph{real photographs accept more distortion per bit embedded} than diffusion outputs, because the natural images have more non-zero AC coefficients available for embedding and broader quantisation noise floors. SSIM equivalence rules out any explanation of the AUC contrasts as a perceptual-distortion mismatch.
+
+\begin{table}[!htbp]
+\centering\small
+\caption{Mean stego PSNR (dB) across the factorial. The DCT branch shows a $\sim\!2$~dB per-source gap; all cells are well above the 40~dB imperceptibility floor (mean SSIM $\geq\!0.999$).}
+\label{tab:quality}
+\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{@{}l c c c c c c@{}}
+\toprule
+& \multicolumn{3}{c}{\textbf{LSB (PNG)}} & \multicolumn{3}{c}{\textbf{DCT-LSB (JPEG)}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+\textbf{Payload} & real & ai\_a & ai\_b & real & ai\_a & ai\_b \\
+\midrule
+low (0.05)    & 64.16 & 64.16 & 64.16 & 61.00 & 63.05 & 63.24 \\
+medium (0.15) & 59.38 & 59.38 & 59.38 & 55.83 & 57.74 & 57.72 \\
+high (0.30)   & 56.37 & 56.37 & 56.37 & 52.48 & 54.30 & 54.16 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Supplementary Partial-AUC at FPR\,$\leq\!0.10$}
+\label{app:pauc}
+The partial-AUC view sharpens every effect (Table~\ref{tab:verdicts}). For RQ1 the pooled pAUC contrast is $-0.0174$ (vs.\ $-0.0129$ at full AUC), and 6 of 12 Holm-significant strata clear the pre-registered $\delta_\text{min}\!=\!0.05$ gate (vs.\ 4/16 at full AUC); under the power-matched $\delta_\text{min}\!=\!0.025$ the practical count rises to 9/12, all AI-easier. Table~\ref{tab:pauc-top} lists the top six strata by $|\Delta\text{-pAUC}|$; effect sizes amplify $3$--$7\times$ relative to their full-AUC counterparts. For RQ2 the verdict remains mixed at both thresholds and mixed in direction. Every $\chi^2$-spatial pAUC contrast has $|\Delta|\!\leq\!0.007$ and none is Holm-significant: the full-AUC reversal for that detector dissolves in the operational FPR regime.
+
+\begin{table}[!htbp]
+\centering\small
+\caption{Top six RQ1 strata by $|\Delta\text{-pAUC}|$ at FPR\,$\leq\!0.10$; all six are Holm-significant and clear the $\delta_\text{min}\!=\!0.05$ gate.}
+\label{tab:pauc-top}
+\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{@{}l c r r@{}}
+\toprule
+\textbf{Stratum} & \textbf{Method} & \textbf{$\Delta_\text{AUC}$} & \textbf{$\Delta_\text{pAUC}$} \\
+\midrule
+sample-pairs / low    & LSB & $-0.089$ & $\boldsymbol{-0.296}$ \\
+RS / low              & LSB & $-0.090$ & $-0.156$ \\
+sample-pairs / medium & LSB & $-0.022$ & $-0.109$ \\
+RS / medium           & LSB & $-0.030$ & $-0.092$ \\
+$\chi^2$-DCT-tiled / medium & DCT & $-0.039$ & $-0.064$ \\
+$\chi^2$-DCT / high   & DCT & $-0.048$ & $-0.057$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Per-stratum DeLong Contrasts (RQ1)}
 \label{app:rq1-delong}
@@ -1923,12 +1771,12 @@ Table~\ref{tab:appendix-rq1} gives the full 18-stratum DeLong table for RQ1, inc
 
 \begin{table*}[h]
 \centering\footnotesize
-\caption{RQ1 -- per-stratum paired DeLong contrast (real $-$ pooled ML), $N\!=\!3{,}000$.}
+\caption{RQ1, per-stratum paired DeLong contrast (real $-$ pooled AI), $N\!=\!3{,}000$.}
 \label{tab:appendix-rq1}
 \setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}
 \begin{tabular}{@{}l l l c c c r r r r r@{}}
 \toprule
-\textbf{Detector} & \textbf{Mth} & \textbf{Payload} & \textbf{AUC\,real} & \textbf{AUC\,ml\_a} & \textbf{AUC\,ml\_b} & \textbf{$\Delta$} & \textbf{CI\textsubscript{lo}} & \textbf{CI\textsubscript{hi}} & \textbf{$p$} & \textbf{$p_\text{Holm}$} \\
+\textbf{Detector} & \textbf{Mth} & \textbf{Payload} & \textbf{AUC\,real} & \textbf{AUC\,ai\_a} & \textbf{AUC\,ai\_b} & \textbf{$\Delta$} & \textbf{CI\textsubscript{lo}} & \textbf{CI\textsubscript{hi}} & \textbf{$p$} & \textbf{$p_\text{Holm}$} \\
 \midrule
 cal-$\chi^2$         & DCT & low    & 0.519 & 0.528 & 0.531 & $-0.009$ & $-0.022$ & $+0.003$ & $1.5\!\times\!10^{-1}$ & $2.1\!\times\!10^{-1}$ \\
 cal-$\chi^2$         & DCT & med    & 0.550 & 0.577 & 0.580 & $-0.023$ & $-0.036$ & $-0.011$ & $3.0\!\times\!10^{-4}$ & $1.0\!\times\!10^{-3}$ \\
@@ -1958,7 +1806,7 @@ Table~\ref{tab:appendix-rq2} gives the analogous 18-stratum DeLong table for RQ2
 
 \begin{table*}[h]
 \centering\footnotesize
-\caption{RQ2 -- per-stratum paired DeLong contrast (SDXL $-$ FLUX), $N\!=\!3{,}000$.}
+\caption{RQ2, per-stratum paired DeLong contrast (SDXL $-$ FLUX), $N\!=\!3{,}000$.}
 \label{tab:appendix-rq2}
 \setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}
 \begin{tabular}{@{}l l l c c r r r r r@{}}
@@ -1993,7 +1841,7 @@ Table~\ref{tab:appendix-pauc} gives the 18-stratum McClish-normalised partial AU
 
 \begin{table}[!htbp]
 \centering\footnotesize
-\caption{RQ1 -- per-stratum partial AUC contrast at FPR\,$\leq\!0.10$ (real $-$ pooled ML).}
+\caption{RQ1, per-stratum partial AUC contrast at FPR\,$\leq\!0.10$ (real $-$ pooled AI).}
 \label{tab:appendix-pauc}
 \setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}
 \begin{tabular}{@{}l l l r r r@{}}
@@ -2097,7 +1945,7 @@ plain vs AES   & sample-pairs       & 27\,000 & $1.68\!\times\!10^{8}$ & $<\!10^
 
 \section{Cover-only PoV Imbalance Diagnostic}
 \label{app:pov}
-Table~\ref{tab:appendix-pov} reports the full per-source distribution of the cover-only PoV imbalance $S$ from Equation~\ref{eq:pov-imbalance} ($n\!=\!3{,}000$ covers per source, no embedding) and the paired Wilcoxon signed-rank tests against the caption-matched real baseline. The same data drives Figure~\ref{fig:pov} in Section~\ref{sec:chi2spatial}.
+Table~\ref{tab:appendix-pov} reports the full per-source distribution of the cover-only PoV imbalance $S$ from Equation~\ref{eq:pov-imbalance} ($n\!=\!3{,}000$ covers per source, no embedding) and the paired Wilcoxon signed-rank tests against the caption-matched real baseline. This is the data summary referenced from Section~\ref{sec:chi2spatial}.
 
 \begin{table}[!htbp]
 \centering\footnotesize
@@ -2109,20 +1957,25 @@ Table~\ref{tab:appendix-pov} reports the full per-source distribution of the cov
 \textbf{Source} & \textbf{Q1} & \textbf{median} & \textbf{Q3} & \textbf{mean} & \textbf{std} \\
 \midrule
 real  & $7{,}418$ & $9{,}698$  & $14{,}051$ & $13{,}003$ & $11{,}945$ \\
-ml\_a & $8{,}181$ & $10{,}272$ & $14{,}520$ & $15{,}532$ & $18{,}166$ \\
-ml\_b & $8{,}644$ & $11{,}649$ & $16{,}424$ & $15{,}003$ & $14{,}128$ \\
+ai\_a & $8{,}181$ & $10{,}272$ & $14{,}520$ & $15{,}532$ & $18{,}166$ \\
+ai\_b & $8{,}644$ & $11{,}649$ & $16{,}424$ & $15{,}003$ & $14{,}128$ \\
 \midrule
-\multicolumn{6}{@{}l@{}}{\textit{Paired Wilcoxon (signed-rank), one-sided real $>$ ML:}} \\
-real vs ml\_a & \multicolumn{5}{@{}l@{}}{$W\!=\!1.95\!\times\!10^{6}$, $p\!=\!4.0\!\times\!10^{-10}$, median diff $\!=\!-653$} \\
-real vs ml\_b & \multicolumn{5}{@{}l@{}}{$W\!=\!1.69\!\times\!10^{6}$, $p\!=\!3.6\!\times\!10^{-32}$, median diff $\!=\!-1{,}518$} \\
+\multicolumn{6}{@{}l@{}}{\textit{Paired Wilcoxon (signed-rank), one-sided real $>$ AI:}} \\
+real vs ai\_a & \multicolumn{5}{@{}l@{}}{$W\!=\!1.95\!\times\!10^{6}$, $p\!=\!4.0\!\times\!10^{-10}$, median diff $\!=\!-653$} \\
+real vs ai\_b & \multicolumn{5}{@{}l@{}}{$W\!=\!1.69\!\times\!10^{6}$, $p\!=\!3.6\!\times\!10^{-32}$, median diff $\!=\!-1{,}518$} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The signed differences are both negative: the naive hypothesis (real $>$ ML) is rejected with overwhelming significance. ML covers have \emph{slightly higher} median PoV imbalance than real covers, with paired effect $|d_z|\!=\!0.12$. The variance is also higher on ML covers (std $11.9\!\times\!10^{3}$ real vs $18.2\!\times\!10^{3}$ ml\_a vs $14.1\!\times\!10^{3}$ ml\_b), and the cover-side $\chi^2$-spatial score variance follows the same ordering (std $37.5$, $54.4$, $43.0$). See Section~\ref{sec:chi2spatial} for the corrected mechanism.
+The signed differences are both negative: the naive hypothesis (real $>$ AI) is rejected with overwhelming significance. AI covers have \emph{slightly higher} median PoV imbalance than real covers, with paired effect $|d_z|\!=\!0.12$. The variance is also higher on AI covers (std $11.9\!\times\!10^{3}$ real vs $18.2\!\times\!10^{3}$ ai\_a vs $14.1\!\times\!10^{3}$ ai\_b), and the cover-side $\chi^2$-spatial score variance follows the same ordering (std $37.5$, $54.4$, $43.0$). See Section~\ref{sec:chi2spatial} for the corrected mechanism.
 
-\section{Reproducibility}
+\section{Reproducibility and Run Configuration}
 \label{app:reproducibility}
-The full pipeline is open source, seeded at every stage (split, payload, embedding, ML generation), and idempotent (re-runs skip work already on disk). Every run lives in \texttt{runs/<id>/} with a frozen \texttt{config.json}; the figure and table numbers in Section~\ref{sec:results} can be regenerated from \texttt{predictions.csv} alone. The repository contains 245 automated tests covering detectors, embedders, RQ verdict logic, and the analysis pipeline. The supplementary partial-AUC analysis is run separately via \texttt{scripts/compute\_pauc\_analysis.py}, which uses the same predictions as the primary analysis.
+\label{app:config}
+The full pipeline, including the frozen $N\!=\!3{,}000$ run configuration (active detectors, embedding methods, payload fill rates, JPEG quality, and seeds), the per-cell predictions, the verdict tables, and 245 automated tests covering detectors, embedders, RQ verdict logic, and the analysis pipeline, is available at:
+\begin{center}
+\url{https://gitlab.maastrichtuniversity.nl/m2-2_group02/m2-2_steganography}
+\end{center}
+\noindent Every run is seeded at every stage (split, payload, embedding, AI generation) and idempotent; every figure and table in this paper can be regenerated from the supplied predictions and manifests.
 
 \end{document}
