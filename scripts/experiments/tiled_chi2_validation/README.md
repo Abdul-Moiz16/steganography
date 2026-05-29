@@ -10,6 +10,21 @@ Each experiment writes results under `runs/tiled_validation/<exp_id>/`.
 Plots use the v4 paper's brand palette (umdark / umlight / umorange /
 umgray) so they drop straight into the paper if needed.
 
+## Results (BOSSBase 1.01)
+
+The full BOSSBase validation has been executed and is shipped under
+`runs/tiled_validation/bossbase_q{75,95}_{jsteg,outguess}/`. Headline:
+
+- **JSteg**: tile-local beats global χ² by **+0.086--0.090 AUC** at both
+  Q=75 and Q=95 (P_E^min: 0.286→0.192 at Q=75, 0.237→0.134 at Q=95).
+- **T-sweep finding**: T=2 is conservative; the AUC continues to rise past
+  T=2 on BOSSBase, with peaks at T=4 (Q=75, AUC=0.900) and T=6 (Q=95,
+  AUC=0.965).
+- **OutGuess** (histogram-preserving): all three χ²-DCT variants collapse
+  to AUC ≈ 0.50 as expected; the documented scope-bound of the proposal.
+
+These numbers are reported in Section VII.A and Table 11 of the v4 paper.
+
 ## What each experiment tests
 
 | # | Script | Question answered |
