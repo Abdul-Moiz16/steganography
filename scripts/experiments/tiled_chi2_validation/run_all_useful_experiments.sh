@@ -34,9 +34,12 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$REPO_ROOT"
 
-PY="venv312/bin/python"
+# Default to the laptop's venv layout; honour PY env var so Vast.ai-style
+# boxes with /venv/main/bin/python can be used without code changes.
+PY="${PY:-venv312/bin/python}"
 if [[ ! -x "$PY" ]]; then
-    echo "ERROR: $PY not found.  Activate the project's Python 3.12 venv first." >&2
+    echo "ERROR: $PY not found.  Activate the project's Python 3.12 venv first," >&2
+    echo "or set PY=<path-to-python> (e.g. PY=/venv/main/bin/python)." >&2
     exit 1
 fi
 

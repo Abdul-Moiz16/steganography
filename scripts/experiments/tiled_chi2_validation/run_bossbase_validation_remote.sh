@@ -100,7 +100,7 @@ for Q in 95 75; do
 
         # --- Phase B: run exp1-4 against this corpus ---
         banner "Phase B ($TAG): exp1-4 on $RUN_DIR (elapsed $(elapsed))"
-        bash scripts/experiments/tiled_chi2_validation/run_all_useful_experiments.sh \
+        PY="$PY" bash scripts/experiments/tiled_chi2_validation/run_all_useful_experiments.sh \
             "$RUN_DIR" \
             --payload-levels p005 p010 p020 p030 p040 p050 \
             --sources real \
