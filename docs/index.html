@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Does the Source of Carrier Image Affect Steganographic Detectability?</title>
+  <meta name="description" content="A research study comparing how easily hidden data is detected in real photographs versus AI-generated images.">
+  <style>
+    :root {
+      --navy: #1b2a4a;
+      --navy-light: #2c3e63;
+      --orange: #e8632c;
+      --bg: #f7f8fa;
+      --text: #1f2733;
+      --muted: #5b6573;
+      --card: #ffffff;
+      --border: #e3e7ee;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 0 20px; }
+
+    /* Hero */
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 56px 0 48px;
+      text-align: center;
+    }
+    header .tag {
+      display: inline-block;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--orange);
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    header h1 {
+      font-size: 28px;
+      line-height: 1.25;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    header p.sub { color: #c7cedd; font-size: 16px; max-width: 600px; margin: 0 auto; }
+
+    /* Sections */
+    section { padding: 40px 0; border-bottom: 1px solid var(--border); }
+    section .label {
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--orange);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    section h2 {
+      font-size: 22px;
+      color: var(--navy);
+      margin-bottom: 16px;
+      line-height: 1.3;
+    }
+    p { margin-bottom: 14px; color: var(--text); }
+    .muted { color: var(--muted); }
+    .lead { font-size: 17px; }
+
+    /* Solution highlight */
+    .headline {
+      background: var(--navy);
+      color: #fff;
+      border-radius: 12px;
+      padding: 26px;
+      margin: 4px 0;
+    }
+    .headline .big { font-size: 19px; font-weight: 600; line-height: 1.45; color:#fff; margin:0; }
+    .headline .big em { color: var(--orange); font-style: normal; }
+
+    /* Cards */
+    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .card h3 { font-size: 15px; color: var(--navy); margin-bottom: 6px; }
+    .card p { font-size: 14px; color: var(--muted); margin: 0; }
+
+    /* Figure */
+    figure { margin: 8px 0; }
+    figure img {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; text-align: center; }
+
+    /* Steps */
+    .steps { list-style: none; counter-reset: step; }
+    .steps li {
+      position: relative;
+      padding: 4px 0 16px 44px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .steps li strong { color: var(--text); }
+    .steps li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0; top: 2px;
+      width: 28px; height: 28px;
+      background: var(--orange);
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700;
+    }
+
+    /* FAQ */
+    details {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0;
+      margin-bottom: 10px;
+    }
+    summary {
+      cursor: pointer;
+      padding: 14px 18px;
+      font-weight: 600;
+      color: var(--navy);
+      font-size: 15px;
+      list-style: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; float: right; color: var(--orange); font-size: 20px; line-height: 1; }
+    details[open] summary::after { content: "\2013"; }
+    details .answer { padding: 0 18px 16px; color: var(--muted); font-size: 14px; }
+
+    /* Buttons */
+    .btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+    .btn {
+      display: inline-block;
+      background: var(--orange);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      padding: 12px 22px;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #d2531f; }
+    .btn.secondary { background: var(--navy-light); }
+    .btn.secondary:hover { background: var(--navy); }
+
+    /* Team */
+    .team { display: flex; flex-wrap: wrap; gap: 8px; }
+    .team span {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 14px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 28px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 560px) {
+      header h1 { font-size: 23px; }
+      .cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="wrap">
+      <span class="tag">Project 2.2 &middot; Maastricht University</span>
+      <h1>Does the Source of Carrier Image Affect Steganographic Detectability?</h1>
+      <p class="sub">Comparing how easily hidden data is detected in real photographs versus AI-generated images.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- PROBLEM -->
+    <section id="problem">
+      <div class="label">The Problem</div>
+      <h2>Can detection tools built for real photos still catch hidden data in AI-generated images?</h2>
+      <p class="lead">Steganography hides secret data inside ordinary-looking images. The tools that detect it &mdash; steganalysis &mdash; were all built and validated on <strong>real photographs</strong>.</p>
+      <p>But today, a huge share of images online aren't real &mdash; they're generated by AI models like Stable Diffusion and FLUX. Nobody had systematically tested whether existing detection tools still work when the carrier is an AI-generated image. That's the gap we set out to close.</p>
+    </section>
+
+    <!-- SOLUTION -->
+    <section id="solution">
+      <div class="label">The Solution</div>
+      <h2>Yes &mdash; the carrier source changes detectability.</h2>
+      <div class="headline">
+        <p class="big">Across five detectors and 36,000 hidden-data images, AI-generated carriers were generally <em>easier</em> to detect than real photos &mdash; though the direction depends on the detector.</p>
+      </div>
+      <p class="muted" style="margin-top:18px;">The likely reason: AI images lack the natural sensor noise real cameras produce. Hidden bits normally hide inside that noise &mdash; without it, they stand out.</p>
+    </section>
+
+    <!-- KEY FIGURE -->
+    <section id="figure">
+      <div class="label">The Evidence</div>
+      <h2>Detection accuracy by carrier source</h2>
+      <figure>
+        <img src="assets/headline_chart.png" alt="Detection accuracy (AUC) by carrier source and detector">
+        <figcaption>Mean detection accuracy (ROC&nbsp;AUC) per detector, split by carrier source. Higher&nbsp;= easier to detect.</figcaption>
+      </figure>
+    </section>
+
+    <!-- FINDINGS -->
+    <section id="findings">
+      <div class="label">Key Findings</div>
+      <h2>What the data shows</h2>
+      <div class="cards">
+        <div class="card"><h3>Carrier source matters</h3><p>4 of 5 detectors found AI-generated images easier to attack than real photos.</p></div>
+        <div class="card"><h3>It depends on the detector</h3><p>One spatial detector flipped the other way &mdash; the effect isn't uniform.</p></div>
+        <div class="card"><h3>Embedding stays invisible</h3><p>All stego images passed the visual-quality floor (PSNR&nbsp;&gt;&nbsp;50&nbsp;dB, SSIM&nbsp;&ge;&nbsp;0.998).</p></div>
+        <div class="card"><h3>Encryption is invisible</h3><p>AES-encrypting the payload had no detectable effect on any detector.</p></div>
+      </div>
+    </section>
+
+    <!-- BENEFIT -->
+    <section id="benefit">
+      <div class="label">Why It Matters</div>
+      <h2>Detection tools can't be blindly trusted across image sources.</h2>
+      <p>A steganalysis tool calibrated on real photographs behaves differently on AI-generated content. As AI images flood the internet, this has a counter-intuitive implication: <strong>AI carriers may be a weakness, not a strength, for hidden communication.</strong></p>
+      <p class="muted">We deliver these conclusions through a fully reproducible, open-source pipeline &mdash; so anyone can re-run the experiments and verify the results.</p>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section id="method">
+      <div class="label">How It Works</div>
+      <h2>A five-stage steganalysis pipeline</h2>
+      <ol class="steps">
+        <li><strong>Carriers:</strong> 1,000 caption-matched groups &mdash; real photos (COCO/Flickr30k), SDXL, and FLUX.</li>
+        <li><strong>Embedding:</strong> hide data via spatial LSB (PNG) and frequency DCT-LSB (JPEG), plain and AES-encrypted.</li>
+        <li><strong>Detection:</strong> five training-free detectors score every image for hidden data.</li>
+        <li><strong>Analysis:</strong> compare detection accuracy across sources with paired statistical tests.</li>
+        <li><strong>Verdicts:</strong> aggregate into research-question conclusions and figures.</li>
+      </ol>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq">
+      <div class="label">Questions</div>
+      <h2>Anticipated questions</h2>
+      <details>
+        <summary>Why are AI images easier to detect?</summary>
+        <div class="answer">Real photos carry random sensor noise from the camera. Steganography hides bits inside that noise. AI generators produce smoother, cleaner images with no real sensor noise &mdash; so the embedded bits have nowhere to blend in and stand out to detectors.</div>
+      </details>
+      <details>
+        <summary>How many images did you test?</summary>
+        <div class="answer">36,000 hidden-data (stego) images across three carrier sources, scored by five detectors &mdash; over 180,000 detection measurements in total. The full run is reproducible from a single seed.</div>
+      </details>
+      <details>
+        <summary>Does encrypting the hidden data help hide it?</summary>
+        <div class="answer">No. AES-256 encryption had no measurable effect on detectability. Encrypted payloads already look random, which is statistically the same as the unencrypted random payloads we tested &mdash; so detectors see no difference.</div>
+      </details>
+    </section>
+
+    <!-- LINKS -->
+    <section id="links">
+      <div class="label">Explore</div>
+      <h2>Dig into the project</h2>
+      <div class="btn-row">
+        <a class="btn" href="https://github.com/Abdul-Moiz16/steganography" target="_blank" rel="noopener">View the Code</a>
+        <a class="btn secondary" href="#" target="_blank" rel="noopener">[PLACEHOLDER] Read the Report</a>
+      </div>
+    </section>
+
+    <!-- TEAM -->
+    <section id="team" style="border-bottom:none;">
+      <div class="label">Team</div>
+      <h2>Who built this</h2>
+      <div class="team">
+        <span>Abdul Moiz Akbar</span>
+        <span>Malo Coquin</span>
+        <span>Daria Gjonbalaj</span>
+        <span>Nico Muller-Spath</span>
+        <span>Jimena Narvaez del Cid</span>
+        <span>David Wicker</span>
+        <span>Nikolas Zouros</span>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="wrap">
+      Department of Advanced Computing Sciences &middot; Maastricht University &middot; 2026
+    </div>
+  </footer>
+
+</body>
+</html>
