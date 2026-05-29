@@ -3,34 +3,45 @@
 // Different detectors use different score conventions, so a unified percent
 // bar is meaningless. We map each detector's raw score to a 3-level
 // "Cover-like / Suspect / Likely stego" verdict using thresholds picked
-// from the empirical distribution observed in the pipeline runs.
+// from the empirical distribution observed in pipeline runs (see
+// runs/prototype_full_*/predictions.csv) and extrapolated to the
+// full-LSB-saturation regime the toolbox runs at (see DEMO_FILL_RATE_*
+// in src/toolbox/encode.py).
 const DETECTOR_INTERPRETERS = {
     'Chi-Square (Spatial)': (s) => {
-        // -chi_stat/df: close to 0 = balanced PoVs (stego); very negative = unbalanced (cover).
-        if (s > -0.1) return { level: 'high', label: 'Likely stego' };
-        if (s > -2.0) return { level: 'moderate', label: 'Suspect' };
+        // -chi_stat/(df-1). At full random-LSB fill, chi_stat ~ df under H0,
+        // so the score lands near -1 regardless of image size. Cover images
+        // produce highly negative scores (pipeline median ~-5, p10 ~-22).
+        if (s > -2.0) return { level: 'high', label: 'Likely stego' };
+        if (s > -4.0) return { level: 'moderate', label: 'Suspect' };
         return { level: 'low', label: 'Cover-like' };
     },
     'Chi-Square (DCT)': (s) => {
-        if (s > -0.1) return { level: 'high', label: 'Likely stego' };
-        if (s > -2.0) return { level: 'moderate', label: 'Suspect' };
+        // Same -chi_stat/(df-1) convention. Pipeline: cover med -2.8,
+        // stego@0.30 med -1.6; at full DCT fill we expect closer to -1.
+        if (s > -1.8) return { level: 'high', label: 'Likely stego' };
+        if (s > -2.5) return { level: 'moderate', label: 'Suspect' };
         return { level: 'low', label: 'Cover-like' };
     },
     'Calibration Chi-Square': (s) => {
-        // Raw chi-square distance: larger = more divergent from cover-like.
-        if (s > 30) return { level: 'high', label: 'Likely stego' };
-        if (s > 8)  return { level: 'moderate', label: 'Suspect' };
+        // Raw calibrated chi-square distance. Pipeline: cover med 668,
+        // stego@0.30 med 734; modest absolute separation. Thresholds set
+        // so a clear stego at full fill lands in 'high'.
+        if (s > 760) return { level: 'high', label: 'Likely stego' };
+        if (s > 700) return { level: 'moderate', label: 'Suspect' };
         return { level: 'low', label: 'Cover-like' };
     },
     'RS Analysis': (s) => {
         // Toolbox returns the raw count normalised by total 2x2 groups
-        // (see src/toolbox/analyze.py::_normalised_rs); roughly 0..2.
-        if (s > 0.15)  return { level: 'high', label: 'Likely stego' };
+        // (see src/toolbox/analyze.py::_normalised_rs); image-size-invariant.
+        // Pipeline-derived: stego@0.30 ~ 0.14, full fill ~0.4-0.5.
+        if (s > 0.25) return { level: 'high', label: 'Likely stego' };
         if (s > 0.05) return { level: 'moderate', label: 'Suspect' };
         return { level: 'low', label: 'Cover-like' };
     },
     'Sample Pairs': (s) => {
-        if (s > 0.2)  return { level: 'high', label: 'Likely stego' };
+        // Quantitative fill-rate estimate; saturates near 0.5 at full fill.
+        if (s > 0.20) return { level: 'high', label: 'Likely stego' };
         if (s > 0.05) return { level: 'moderate', label: 'Suspect' };
         return { level: 'low', label: 'Cover-like' };
     },

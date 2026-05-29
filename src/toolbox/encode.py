@@ -17,15 +17,18 @@ DCT_JPEG_QUALITY = 95  # re-saves the stego at the same Q the pipeline uses.
 # Target fill rates for the demo. Real user messages are tiny (kilobits at
 # most) and would touch < 1% of the LSB plane -- far below the detection
 # threshold of the classical detectors in this study. We pad the embedded
-# payload with random bytes to reach a clearly-detectable fill rate; the
-# 4-byte length header in the embedded payload lets the decoder return
-# only the user's message, so the padding is invisible to the user but
-# present to the detector. Without this pad, "encode -> analyze" demos
-# always show "Cover-like" even on a legitimate stego.
-DEMO_FILL_RATE_PNG = 0.25   # 25% of LSB plane
-DEMO_FILL_RATE_JPEG = 0.50  # 50% of eligible non-zero AC coefficients
-                            # DCT detectors are less sensitive than spatial ones;
-                            # we pad more aggressively so the demo lights them up.
+# payload with random bytes so the demo runs at full saturation: every
+# eligible LSB / DCT coefficient is touched. The 4-byte length header in
+# the embedded payload lets the decoder return only the user's message,
+# so the padding is invisible to the user but present to the detector.
+#
+# Full saturation also makes chi-square scores image-size-invariant:
+# under random-LSB null, chi_stat ~ df, so -chi_stat/(df-1) ~ -1
+# regardless of cover dimensions. Partial fill leaves natural-histogram
+# imbalance untouched in the unembedded regions, which dominates chi_stat
+# and scales with image size -- bad for a user-facing readout.
+DEMO_FILL_RATE_PNG = 1.0
+DEMO_FILL_RATE_JPEG = 1.0
 
 @dataclass
 class StegOutput:

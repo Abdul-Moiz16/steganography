@@ -108,12 +108,11 @@ def main() -> None:
     from src.analysis.wilcoxon_tests import run_wilcoxon_tests
     from src.analysis.encryption_invariance import run_encryption_invariance
 
+    # PipelineRunner instance is only used for compute_metrics_from_predictions
+    # and generate_metrics_figures; both accept explicit metrics_dir /
+    # figures_dir parameters, so the frozen runner.paths is fine as-is.
     cfg = PipelineConfig(project_root=_PROJECT_ROOT, n_groups=0)
     runner = PipelineRunner(cfg)
-    runner.paths.run_dir = shadow
-    runner.paths.metrics_dir = shadow / "metrics"
-    runner.paths.figures_dir = shadow / "figures"
-    runner.paths.predictions_dir = shadow / "predictions"
 
     print()
     print("=== computing combined metrics ===")
