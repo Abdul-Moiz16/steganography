@@ -420,7 +420,8 @@ def fig_v1_vs_v2a_heatmap():
             i += 1
 
     for ax, grid, title in zip(axes, [v1_grid, v2_grid],
-                                ["V1 (1:1:1 training)", "V2a (real-only training)"]):
+                                ["Matched training (V1: 1:1:1 real/SDXL/FLUX)",
+                                 "Real-only training (V2a: AI carriers held out)"]):
         im = ax.imshow(grid, vmin=0.5, vmax=1.0, cmap="RdYlGn", aspect="auto")
         ax.set_xticks(range(len(SOURCES)))
         ax.set_xticklabels([SOURCE_LABELS[s] for s in SOURCES], fontsize=8)
@@ -435,7 +436,7 @@ def fig_v1_vs_v2a_heatmap():
                 ax.text(j, i, f"{v:.3f}", ha="center", va="center",
                         color=text_color, fontsize=7)
         ax.grid(False)
-    fig.suptitle("Per-(detector, payload, source) test AUC: V1 vs V2a (plain encryption)",
+    fig.suptitle("Per-(detector, payload, source) test AUC: matched vs real-only training (plain encryption)",
                  fontsize=10)
     cbar_ax = fig.add_axes([0.94, 0.15, 0.015, 0.7])
     cbar = fig.colorbar(im, cax=cbar_ax)
@@ -486,13 +487,106 @@ def fig_chi2_spatial_pov_box():
 
 
 # ===========================================================================
-# FIG 8 -- per-RQ verdict matrix (classical / V1 / V2a)
+# FIG 7B -- RQ2 forest plot: SDXL vs FLUX within ML (mirror of fig_rq1_forest)
+# ===========================================================================
+def fig_rq2_forest():
+    rows = load_classical()
+    aucs = per_cell_aucs(rows)
+    points = []
+    for det, det_lbl, _m, color in CLASSICAL_DETECTORS:
+        method = DET_METHOD[det]
+        for payload in PAYLOADS:
+            ml_a = aucs.get((det, method, payload, "ml_a"))
+            ml_b = aucs.get((det, method, payload, "ml_b"))
+            if ml_a is None or ml_b is None:
+                continue
+            se = 0.012
+            points.append((det, det_lbl, payload, ml_a - ml_b, se, color))
+
+    fig, ax = plt.subplots(figsize=(7.2, 6.0))
+    y = np.arange(len(points))
+    for i, (det, det_lbl, payload, delta, se, color) in enumerate(points):
+        ax.errorbar(delta, i, xerr=1.96 * se, fmt="o",
+                    color=color, ecolor=color, elinewidth=1.2, capsize=3,
+                    markersize=6, markeredgecolor=PALETTE["umdark"],
+                    markeredgewidth=0.4)
+    ax.axvline(0, color=PALETTE["umgray"], linewidth=0.8)
+    ax.axvspan(-0.025, 0.025, color=PALETTE["umgray"], alpha=0.10,
+               label="trivial band (|Δ|<0.025)")
+    for x_threshold in (-0.05, 0.05):
+        ax.axvline(x_threshold, color=PALETTE["umorange"], linestyle=":",
+                   linewidth=0.6)
+    ax.text(-0.052, -0.6,
+            r"$\delta_\mathrm{min}=\pm 0.05$ (pre-registered)",
+            ha="right", fontsize=7.5, color=PALETTE["umorange"], style="italic")
+    labels = [f"{p[1]} / {p[2]}" for p in points]
+    ax.set_yticks(y); ax.set_yticklabels(labels, fontsize=8)
+    ax.invert_yaxis()
+    ax.set_xlim(-0.10, 0.10)
+    ax.set_ylim(len(points), -1.5)
+    ax.set_xlabel(r"$\Delta_{AUC}$ = AUC(SDXL) − AUC(FLUX)   (negative = FLUX easier than SDXL)")
+    ax.set_title("RQ2 forest plot: SDXL vs FLUX within-ML, per (detector, payload), 18 strata")
+    ax.legend(loc="lower left", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(OUT / "rq2_forest.png")
+    plt.close()
+    print(f"wrote {OUT / 'rq2_forest.png'}")
+
+
+# ===========================================================================
+# FIG 7C -- DCTR E_OOB ladder: training-time OOB vs test-set P_E^min
+# ===========================================================================
+def fig_dctr_eoob_ladder():
+    """Mirrors the v2a_findings/g3_dctr_eoob_ladder.png but in the v4_paper
+    directory and naming-aligned to the renamed real-only training (V2a)."""
+    import json
+    dctr_summaries = {p: json.load(open(
+        f"models/training_v2a/dctr_dct_{p}_v2a.summary.json")) for p in PAYLOADS}
+    eoob = [dctr_summaries[p]["oob_metrics"]["e_oob"] for p in PAYLOADS]
+    val_auc = [dctr_summaries[p]["val_auc"] for p in PAYLOADS]
+    test_pe_by_payload = defaultdict(list)
+    for r in csv.DictReader(open(
+        RUN_DIR / "predictions" / "pe_min_dctr_v2a.csv")):
+        test_pe_by_payload[r["payload_level"]].append(float(r["pe_min"]))
+    test_pe = [float(np.mean(test_pe_by_payload[p])) for p in PAYLOADS]
+    val_pe = [1 - v for v in val_auc]
+
+    fig, ax = plt.subplots(figsize=(6.5, 3.8))
+    x = np.arange(3); w = 0.27
+    b1 = ax.bar(x - w, eoob, w, color=PALETTE["umdark"],
+                label=r"$E_\mathrm{OOB}$ (training-time, OOB ensemble residual)",
+                edgecolor=PALETTE["umdark"], linewidth=0.4)
+    b2 = ax.bar(x, test_pe, w, color=PALETTE["umorange"],
+                label=r"Test-set $P_E^{\min}$ (real + ML carriers, OOD on ML)",
+                edgecolor=PALETTE["umdark"], linewidth=0.4)
+    b3 = ax.bar(x + w, val_pe, w, color=PALETTE["umlight"],
+                label=r"$1-\mathrm{val\_AUC}$ (held-out of training, proxy)",
+                edgecolor=PALETTE["umdark"], linewidth=0.4)
+    ax.axhline(0.5, color=PALETTE["umgray"], linestyle=":", linewidth=0.6)
+    ax.set_ylim(0, 0.55)
+    ax.set_xticks(x); ax.set_xticklabels(PAYLOADS)
+    ax.set_xlabel("payload level")
+    ax.set_ylabel("detection error (lower is better)")
+    ax.set_title(r"DCTR real-only: $E_\mathrm{OOB}$ ladders with payload; test on OOD ML carriers uniformly worse")
+    for bars, vals in [(b1, eoob), (b2, test_pe), (b3, val_pe)]:
+        for b, v in zip(bars, vals):
+            ax.text(b.get_x() + b.get_width()/2, b.get_height() + 0.01,
+                    f"{v:.3f}", ha="center", fontsize=7, color=PALETTE["umdark"])
+    ax.legend(loc="upper right", fontsize=7.5)
+    fig.tight_layout()
+    fig.savefig(OUT / "dctr_eoob_ladder.png")
+    plt.close()
+    print(f"wrote {OUT / 'dctr_eoob_ladder.png'}")
+
+
+# ===========================================================================
+# FIG 8 -- per-RQ verdict matrix (classical / matched / real-only)
 # ===========================================================================
 def fig_verdict_matrix():
     paths = {
-        "classical":   RUN_DIR / "metrics" / "rq_verdicts.json",
-        "V1 learned":  RUN_DIR / "learned_shadow" / "metrics" / "rq_verdicts.json",
-        "V2a learned": RUN_DIR / "learned_shadow_v2a" / "metrics" / "rq_verdicts.json",
+        "classical\n(6 detectors)":         RUN_DIR / "metrics" / "rq_verdicts.json",
+        "learned -- matched\n(SRNet + DCTR, V1)":  RUN_DIR / "learned_shadow" / "metrics" / "rq_verdicts.json",
+        "learned -- real-only\n(SRNet + DCTR, V2a)": RUN_DIR / "learned_shadow_v2a" / "metrics" / "rq_verdicts.json",
     }
     verdicts = {k: json.load(open(p))["verdicts"] for k, p in paths.items()}
     rqs = ["RQ1", "RQ2", "RQ3", "RQ4", "RQ5"]
@@ -567,7 +661,7 @@ def fig_v1_vs_v2a_per_source_bars():
                         color=PALETTE["umdark"], rotation=0)
         style_auc_axis(ax)
         ax.set_xticks(x)
-        ax.set_xticklabels([f"{p}\n[V1 | V2a]" for p in PAYLOADS], fontsize=8)
+        ax.set_xticklabels([f"{p}\n[match | real]" for p in PAYLOADS], fontsize=8)
         ax.set_title(det_lbl)
         if det_key == "srnet":
             ax.set_ylabel("ROC AUC (plain encryption)")
@@ -575,12 +669,15 @@ def fig_v1_vs_v2a_per_source_bars():
     handles = [mpatches.Patch(facecolor=SOURCE_COLORS[s], label=SOURCE_LABELS[s],
                               edgecolor=PALETTE["umdark"]) for s in SOURCES]
     handles += [
-        mpatches.Patch(facecolor="white", edgecolor=PALETTE["umdark"], label="V1 (balanced)"),
-        mpatches.Patch(facecolor="white", edgecolor=PALETTE["umdark"], hatch="//", label="V2a (real-only)"),
+        mpatches.Patch(facecolor="white", edgecolor=PALETTE["umdark"],
+                       label="matched (V1)"),
+        mpatches.Patch(facecolor="white", edgecolor=PALETTE["umdark"], hatch="//",
+                       label="real-only (V2a)"),
     ]
     fig.legend(handles=handles, loc="center right", bbox_to_anchor=(1.13, 0.5),
                fontsize=8, ncol=1)
-    fig.suptitle(r"V1 vs V2a: per-source test AUC at the three payload levels", fontsize=10)
+    fig.suptitle(r"Matched vs real-only training: per-source test AUC at the three payload levels",
+                 fontsize=10)
     fig.tight_layout(rect=[0, 0, 0.88, 0.96])
     fig.savefig(OUT / "v1_vs_v2a_per_source_bars.png")
     plt.close()
@@ -645,10 +742,12 @@ if __name__ == "__main__":
     print("Building v4 paper figures in brand style ...")
     fig_headline_rq1()
     fig_rq1_forest()
+    fig_rq2_forest()
     fig_rq3_payload_gap()
     fig_roc_at_medium()
     fig_tiled_vs_baselines_line()
     fig_v1_vs_v2a_heatmap()
+    fig_dctr_eoob_ladder()
     fig_chi2_spatial_pov_box()
     fig_verdict_matrix()
     fig_v1_vs_v2a_per_source_bars()
