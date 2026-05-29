@@ -78,6 +78,8 @@ import argparse
 import csv
 import hashlib
 import io
+import multiprocessing as mp
+import os
 import sys
 import time
 from pathlib import Path
@@ -119,6 +121,84 @@ def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+# ---------------------------------------------------------------------------
+# Multiprocessing workers (top-level so spawn-mode workers can pickle them).
+# Both workers do all their own I/O so the main process only collects the
+# returned metadata records and writes the manifests at the end.
+# ---------------------------------------------------------------------------
+
+def _encode_one_cover(task: tuple) -> dict:
+    """Stage 1 worker: read PGM, JPEG-encode, write, return manifest row."""
+    import datetime  # noqa: F401 -- numpy/multiprocessing PyCapsule_Import workaround
+    pgm_path, group_id, jpeg_path, quality, out_run_parent = task
+    pgm_path = Path(pgm_path); jpeg_path = Path(jpeg_path); out_run_parent = Path(out_run_parent)
+    pgm_bytes = pgm_path.read_bytes()
+    pgm_sha256 = _sha256_hex(pgm_bytes)
+    if not jpeg_path.exists():
+        _pgm_to_jpeg(pgm_bytes, jpeg_path, quality=quality)
+    cover_bytes = jpeg_path.read_bytes()
+    cover_sha256 = _sha256_hex(cover_bytes)
+    return {
+        "group_id": group_id,
+        "source": "real",
+        "dataset": "BOSSBase_1.01",
+        "orig_id": pgm_path.stem,
+        "caption_id": f"bossbase-{pgm_path.stem}",
+        "caption_text": "",
+        "spatial_path": "",
+        "frequency_path": str(jpeg_path.relative_to(out_run_parent)),
+        "qc_pass": "true",
+        "qc_score": "1.0",
+        "seed": "0",
+        "pgm_sha256": pgm_sha256,
+        "cover_sha256": cover_sha256,
+    }
+
+
+def _embed_one_stego(task: tuple) -> dict | None:
+    """Stage 2 worker: load cover, build payload, embed, write stego, return manifest row.
+
+    Returns None for pathological covers with insufficient AC capacity (skipped
+    to avoid raising in the embedder; consistent with the original serial loop).
+    """
+    import datetime  # noqa: F401 -- numpy/multiprocessing PyCapsule_Import workaround
+    (cover_record, payload_level, fill_rate, encryption,
+     out_run, out_run_parent, payload_seed, jpeg_quality) = task
+    out_run = Path(out_run); out_run_parent = Path(out_run_parent)
+    gid = cover_record["group_id"]
+    cover_jpeg = (out_run_parent / cover_record["frequency_path"]).read_bytes()
+    capacity = dct_payload_capacity_bytes(cover_jpeg, fill_rate)
+    if capacity <= 0:
+        return None
+    payload_bytes = _make_payload(
+        seed=payload_seed, group_id=gid,
+        payload_level=payload_level, encryption=encryption,
+        n_bytes=capacity,
+    )
+    stego_jpeg = embed_dct_lsb_jpeg(
+        cover_jpeg, payload_bytes, fill_rate,
+        jpeg_quality=jpeg_quality,
+    )
+    stego_dir = out_run / "stego" / "dct" / payload_level / encryption / "real"
+    # mkdir is idempotent + thread-safe; workers may race on the same dir
+    # but exist_ok absorbs that.
+    stego_dir.mkdir(parents=True, exist_ok=True)
+    stego_path = stego_dir / f"g{gid:04d}__src-real__m-dct__p-{payload_level}__e-{encryption}.jpg"
+    stego_path.write_bytes(stego_jpeg)
+    return {
+        "group_id": gid,
+        "source": "real",
+        "method": "dct",
+        "payload_level": payload_level,
+        "fill_rate": fill_rate,
+        "encryption": encryption,
+        "stego_path": str(stego_path.relative_to(out_run_parent)),
+        "stego_sha256": _sha256_hex(stego_jpeg),
+        "cover_sha256": cover_record["cover_sha256"],
+        "payload_bytes": capacity,
+    }
+
+
 def main() -> None:
     p = argparse.ArgumentParser(
         description=__doc__,
@@ -139,6 +219,10 @@ def main() -> None:
                    help="Only emit covers + manifest, skip stego embedding "
                         "(useful to inspect the cover layout before committing "
                         "to the slow embedding step).")
+    p.add_argument("--n-workers", type=int,
+                   default=max(1, (os.cpu_count() or 2) // 2),
+                   help="Worker processes for parallel encode+embed (default: cpu_count/2). "
+                        "On a 16-core box, --n-workers 16 takes the full import from ~3h to ~10-15 min.")
     args = p.parse_args()
 
     pgm_paths = _discover_pgms(args.bossbase_dir, args.n_images)
@@ -149,37 +233,34 @@ def main() -> None:
     manifests_dir = args.out_run / "manifests"
     manifests_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- Stage 1: cover encoding ----------------------------------------
-    print(f"\n--- Stage 1: encode covers at Q={args.quality} ---")
+    # --- Stage 1: cover encoding (parallel) -----------------------------
+    print(f"\n--- Stage 1: encode covers at Q={args.quality} with {args.n_workers} workers ---")
+    encode_tasks = [
+        (str(pgm), idx,
+         str(covers_dir / f"g{idx:04d}__src-real.jpg"),
+         args.quality, str(args.out_run.parent))
+        for idx, pgm in enumerate(pgm_paths, start=1)
+    ]
     cover_records: list[dict] = []
     t0 = time.time()
-    for idx, pgm in enumerate(pgm_paths, start=1):
-        group_id = idx
-        jpeg_path = covers_dir / f"g{group_id:04d}__src-real.jpg"
-        # Always hash the input PGM (cheap, audit-relevant) regardless of
-        # whether we skipped re-encoding because the JPEG already existed.
-        pgm_bytes = pgm.read_bytes()
-        pgm_sha256 = _sha256_hex(pgm_bytes)
-        if not jpeg_path.exists():
-            _pgm_to_jpeg(pgm_bytes, jpeg_path, quality=args.quality)
-        cover_sha256 = _sha256_hex(jpeg_path.read_bytes())
-        cover_records.append({
-            "group_id": group_id,
-            "source": "real",
-            "dataset": "BOSSBase_1.01",
-            "orig_id": pgm.stem,
-            "caption_id": f"bossbase-{pgm.stem}",
-            "caption_text": "",
-            "spatial_path": "",  # BOSSBase import: no PNG spatial branch
-            "frequency_path": str(jpeg_path.relative_to(args.out_run.parent)),
-            "qc_pass": "true",
-            "qc_score": "1.0",
-            "seed": "0",
-            "pgm_sha256": pgm_sha256,
-            "cover_sha256": cover_sha256,
-        })
-        if idx % 1000 == 0:
-            print(f"  {idx}/{len(pgm_paths)} covers encoded ({(time.time() - t0) / 60:.1f} min)")
+    if args.n_workers <= 1:
+        for i, task in enumerate(encode_tasks, start=1):
+            cover_records.append(_encode_one_cover(task))
+            if i % 1000 == 0:
+                print(f"  {i}/{len(encode_tasks)} covers encoded ({(time.time() - t0) / 60:.1f} min)")
+    else:
+        ctx = mp.get_context("spawn")
+        with ctx.Pool(args.n_workers) as pool:
+            for i, rec in enumerate(
+                pool.imap_unordered(_encode_one_cover, encode_tasks, chunksize=8),
+                start=1,
+            ):
+                cover_records.append(rec)
+                if i % 1000 == 0:
+                    print(f"  {i}/{len(encode_tasks)} covers encoded ({(time.time() - t0) / 60:.1f} min)")
+    # Sort by group_id so the manifest is in the expected ascending order
+    # despite imap_unordered's arbitrary return order.
+    cover_records.sort(key=lambda r: r["group_id"])
     print(f"  done: {len(cover_records)} covers in {(time.time() - t0) / 60:.1f} min")
 
     # --- Write covers_real.csv (so exp1..5 can iterate by group_id) -----
@@ -194,65 +275,57 @@ def main() -> None:
         print("\n--skip-stego given; covers + manifest written, exiting.")
         return
 
-    # --- Stage 2: stego embedding (the slow part) -----------------------
-    print(f"\n--- Stage 2: embed DCT-LSB stegos at {len(PAYLOAD_FILL_RATES)} payloads x {len(ENCRYPTIONS)} encryptions ---")
-    rng_state = args.payload_seed
+    # --- Stage 2: stego embedding (parallel, the slow part) -------------
+    print(f"\n--- Stage 2: embed DCT-LSB stegos at {len(PAYLOAD_FILL_RATES)} payloads x "
+          f"{len(ENCRYPTIONS)} encryptions with {args.n_workers} workers ---")
     total = len(cover_records) * len(PAYLOAD_FILL_RATES) * len(ENCRYPTIONS)
-    done = 0
-    t0 = time.time()
-    stego_records: list[dict] = []
-    # Index covers by group_id so we can pair each stego row with its
-    # cover sha256 without re-reading the manifest.
-    cover_sha_by_gid: dict[int, str] = {r["group_id"]: r["cover_sha256"] for r in cover_records}
+    embed_tasks = []
     for payload_level, fill_rate in PAYLOAD_FILL_RATES:
         for encryption in ENCRYPTIONS:
-            stego_dir = args.out_run / "stego" / "dct" / payload_level / encryption / "real"
-            stego_dir.mkdir(parents=True, exist_ok=True)
             for record in cover_records:
-                gid = record["group_id"]
-                cover_jpeg = (args.out_run.parent / record["frequency_path"]).read_bytes()
-                # Embedder requires payload_bytes <= per-cover DCT capacity at
-                # this fill rate.  Capacity depends on image content (count of
-                # non-zero AC coefs), so we precompute it per-cover.
-                capacity = dct_payload_capacity_bytes(cover_jpeg, fill_rate)
-                if capacity <= 0:
-                    # Pathological image (too few non-zero AC coefs).  Skip
-                    # so the embedder doesn't raise.  These would also be
-                    # filtered by any sensible QC step on real BOSSBase covers.
-                    continue
-                payload_bytes = _make_payload(
-                    seed=rng_state,
-                    group_id=gid,
-                    payload_level=payload_level,
-                    encryption=encryption,
-                    n_bytes=capacity,
-                )
-                stego_jpeg = embed_dct_lsb_jpeg(
-                    cover_jpeg, payload_bytes, fill_rate,
-                    jpeg_quality=args.quality,
-                )
-                stego_path = stego_dir / (
-                    f"g{gid:04d}__src-real__m-dct__p-{payload_level}__e-{encryption}.jpg"
-                )
-                stego_path.write_bytes(stego_jpeg)
-                stego_records.append({
-                    "group_id": gid,
-                    "source": "real",
-                    "method": "dct",
-                    "payload_level": payload_level,
-                    "fill_rate": fill_rate,
-                    "encryption": encryption,
-                    "stego_path": str(stego_path.relative_to(args.out_run.parent)),
-                    "stego_sha256": _sha256_hex(stego_jpeg),
-                    "cover_sha256": cover_sha_by_gid[gid],
-                    "payload_bytes": capacity,
-                })
-                done += 1
-                if done % 500 == 0:
-                    rate = done / max(time.time() - t0, 1e-3)
-                    eta_min = (total - done) / max(rate, 1e-3) / 60
-                    print(f"  {done}/{total} stegos written ({rate:.0f} img/s, ETA {eta_min:.1f} min)")
-    print(f"  done: {done} stegos in {(time.time() - t0) / 60:.1f} min")
+                embed_tasks.append((
+                    record, payload_level, fill_rate, encryption,
+                    str(args.out_run), str(args.out_run.parent),
+                    args.payload_seed, args.quality,
+                ))
+    print(f"  built {len(embed_tasks)} embed tasks")
+
+    stego_records: list[dict] = []
+    done = 0; skipped = 0
+    t0 = time.time()
+
+    def _accumulate(rec):
+        nonlocal done, skipped
+        if rec is None:
+            skipped += 1
+        else:
+            stego_records.append(rec)
+        done += 1
+        if done % 500 == 0:
+            rate = done / max(time.time() - t0, 1e-3)
+            eta_min = (total - done) / max(rate, 1e-3) / 60
+            print(f"  {done}/{total} embed tasks complete ({rate:.0f} img/s, "
+                  f"ETA {eta_min:.1f} min, skipped={skipped})")
+
+    if args.n_workers <= 1:
+        for task in embed_tasks:
+            _accumulate(_embed_one_stego(task))
+    else:
+        ctx = mp.get_context("spawn")
+        with ctx.Pool(args.n_workers) as pool:
+            for rec in pool.imap_unordered(_embed_one_stego, embed_tasks, chunksize=8):
+                _accumulate(rec)
+    # Sort for deterministic manifest order matching what the serial
+    # implementation produced (outer payload, encryption; inner gid).
+    payload_order = {name: i for i, (name, _) in enumerate(PAYLOAD_FILL_RATES)}
+    encryption_order = {enc: i for i, enc in enumerate(ENCRYPTIONS)}
+    stego_records.sort(key=lambda r: (
+        payload_order.get(r["payload_level"], 99),
+        encryption_order.get(r["encryption"], 99),
+        r["group_id"],
+    ))
+    print(f"  done: {len(stego_records)} stegos in {(time.time() - t0) / 60:.1f} min "
+          f"({skipped} covers skipped for insufficient AC capacity)")
 
     # --- Write stegos manifest -----------------------------------------
     stego_manifest = manifests_dir / "stegos.csv"

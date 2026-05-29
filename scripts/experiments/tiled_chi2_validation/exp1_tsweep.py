@@ -30,6 +30,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import functools
+import os
 import time
 from pathlib import Path
 
@@ -72,6 +74,10 @@ def main() -> None:
                         "BOSSBase runs only have 'real'; pass --sources real for those.")
     p.add_argument("--max-cells-per-strata", type=int, default=None,
                    help="Cap cells per (payload, encryption, source) for quick dry runs.")
+    p.add_argument("--n-workers", type=int,
+                   default=max(1, (os.cpu_count() or 2) // 2),
+                   help="Worker processes for parallel scoring (default: cpu_count/2). "
+                        "Pass 1 for serial. On a 16-core machine, --n-workers 16 typically gives ~12x speedup.")
     args = p.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -86,7 +92,10 @@ def main() -> None:
             max_cells_per_strata=args.max_cells_per_strata,
         ))
         print(f"  scoring {len(cells)} cells with tile-local chi^2 (T={T}, pool={args.pool})")
-        rows = score_cells(cells, lambda b: tiled_chi2_score(b, tiles=T, pool=args.pool))
+        # functools.partial of a top-level callable is pickleable; lambdas are not.
+        # Required for n_workers > 1 (spawn-mode worker pool).
+        score_fn = functools.partial(tiled_chi2_score, tiles=T, pool=args.pool)
+        rows = score_cells(cells, score_fn, n_workers=args.n_workers)
         auc_rows = compute_auc_per_cell(rows)
         for entry in auc_rows:
             entry["T"] = T

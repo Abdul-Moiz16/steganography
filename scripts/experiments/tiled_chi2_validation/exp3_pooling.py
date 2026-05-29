@@ -29,6 +29,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import functools
+import os
 import time
 from pathlib import Path
 
@@ -66,6 +68,9 @@ def main() -> None:
                    help="Source directory names (default: real ml_a ml_b). "
                         "Pass --sources real for BOSSBase runs.")
     p.add_argument("--max-cells-per-strata", type=int, default=None)
+    p.add_argument("--n-workers", type=int,
+                   default=max(1, (os.cpu_count() or 2) // 2),
+                   help="Worker processes for parallel scoring (default: cpu_count/2).")
     args = p.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -79,8 +84,9 @@ def main() -> None:
             sources=args.sources,
             max_cells_per_strata=args.max_cells_per_strata,
         ))
-        score_fn = lambda b, _p=pool: tiled_chi2_score(b, tiles=args.tiles, pool=_p, topk=args.topk)
-        rows = score_cells(cells, score_fn)
+        # functools.partial of top-level tiled_chi2_score so spawn-mode workers can pickle it.
+        score_fn = functools.partial(tiled_chi2_score, tiles=args.tiles, pool=pool, topk=args.topk)
+        rows = score_cells(cells, score_fn, n_workers=args.n_workers)
         auc_rows = compute_auc_per_cell(rows)
         for entry in auc_rows:
             entry["T"] = args.tiles

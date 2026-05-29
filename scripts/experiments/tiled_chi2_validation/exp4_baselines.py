@@ -27,6 +27,8 @@ DCTR comparison is optional; skipped silently if --dctr-models is not given.
 from __future__ import annotations
 
 import argparse
+import functools
+import os
 import time
 from pathlib import Path
 
@@ -75,19 +77,23 @@ def main() -> None:
                    help="Source directory names (default: real ml_a ml_b). "
                         "Pass --sources real for BOSSBase runs.")
     p.add_argument("--max-cells-per-strata", type=int, default=None)
+    p.add_argument("--n-workers", type=int,
+                   default=max(1, (os.cpu_count() or 2) // 2),
+                   help="Worker processes for parallel scoring (default: cpu_count/2).")
     args = p.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
+    # All score_fns are partial-wrapped top-level callables so they pickle
+    # across spawn-mode worker boundaries (required for n_workers > 1).
     detectors: dict[str, callable] = {
-        "global_chi2_dct": lambda b: chi_square_dct_score(b),
-        f"sliding_chi2_w{args.sliding_window}_s{args.sliding_stride}": (
-            lambda b: sliding_chi2_score(b, window=args.sliding_window,
-                                          stride=args.sliding_stride)
-        ),
-        f"tiled_chi2_T{args.tiles}_max": (
-            lambda b: tiled_chi2_score(b, tiles=args.tiles, pool="max")
-        ),
+        "global_chi2_dct": chi_square_dct_score,  # already a top-level zero-kwarg call
+        f"sliding_chi2_w{args.sliding_window}_s{args.sliding_stride}":
+            functools.partial(sliding_chi2_score,
+                              window=args.sliding_window,
+                              stride=args.sliding_stride),
+        f"tiled_chi2_T{args.tiles}_max":
+            functools.partial(tiled_chi2_score, tiles=args.tiles, pool="max"),
     }
 
     all_auc_rows: list[dict] = []
@@ -100,7 +106,7 @@ def main() -> None:
             sources=args.sources,
             max_cells_per_strata=args.max_cells_per_strata,
         ))
-        rows = score_cells(cells, score_fn)
+        rows = score_cells(cells, score_fn, n_workers=args.n_workers)
         auc_rows = compute_auc_per_cell(rows)
         for entry in auc_rows:
             entry["detector"] = name
