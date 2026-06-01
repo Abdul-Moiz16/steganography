@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Does the Source of the Carrier Image Affect Steganographic Detectability?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --um-dark:    #001C3D;
+    --um-light:   #4A90C4;
+    --um-orange:  #E84E10;
+    --um-gray:    #6B7280;
+    --paper-bg:   #FBF9F5;
+    --card-bg:    #FFFFFF;
+    --rule:       #D8D2C5;
+    --rule-soft:  #ECE7DA;
+  }
+
+  @page { size: A0 portrait; margin: 0; }
+  html, body { margin: 0; padding: 0; background: var(--paper-bg); }
+  body {
+    width: 841mm; height: 1189mm;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--um-dark);
+    overflow: hidden;
+  }
+
+  .poster {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .brand-band  { flex: 0 0 50mm; }
+  .title-block { flex: 0 0 auto; }
+  .hook        { flex: 1 1 auto; }
+  .findings    { flex: 0 0 auto; }
+  .meta-row    { flex: 0 0 auto; }
+  .limits      { flex: 0 0 auto; }
+  .footer      { flex: 0 0 80mm; }
+
+  /* ===== BRAND BAND ===== */
+  .brand-band {
+    background: var(--um-dark); color: white;
+    display: grid; grid-template-columns: 12mm 1fr auto;
+    align-items: stretch;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+  }
+  .brand-band .stripe { background: var(--um-orange); }
+  .brand-band .info {
+    display: flex; align-items: center; padding: 0 20mm; gap: 18mm;
+  }
+  .brand-band .info .venue { font-size: 8mm; font-weight: 700; letter-spacing: -0.01em; }
+  .brand-band .info .dept {
+    font-size: 5mm; font-weight: 500; color: var(--um-light);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    border-left: 0.5mm solid rgba(255,255,255,0.3); padding-left: 18mm;
+  }
+  .brand-band .crest {
+    align-self: center; border: 0.6mm solid white;
+    padding: 2mm 5mm; margin-right: 22mm;
+    font-size: 10mm; font-weight: 700; letter-spacing: 0.1em;
+  }
+
+  /* ===== TITLE BLOCK ===== */
+  .title-block {
+    padding: 14mm 22mm 8mm 22mm;
+    display: grid; grid-template-columns: 1fr 270mm; column-gap: 16mm;
+    align-items: end;
+  }
+  .title-block h1 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 24mm; font-weight: 700; letter-spacing: -0.025em;
+    line-height: 0.98; margin: 0; color: var(--um-dark);
+  }
+  .title-block h1 .accent { color: var(--um-orange); }
+  .title-block .meta { text-align: right; align-self: end; }
+  .title-block .meta .authors {
+    font-size: 5.5mm; line-height: 1.4; font-weight: 500;
+    color: var(--um-dark); margin-bottom: 3mm;
+  }
+  .title-block .meta .affil { font-size: 4.5mm; color: var(--um-gray); }
+
+  /* ===== HOOK STRIP ===== */
+  .hook {
+    margin: 6mm 22mm 0 22mm;
+    padding: 18mm 20mm;
+    background: var(--um-dark);
+    border-radius: 4mm;
+    color: white;
+    display: grid; grid-template-columns: 460mm 1fr;
+    column-gap: 18mm;
+    align-items: center;
+    min-height: 0;
+  }
+  .hook .triptych {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 5mm;
+  }
+  .hook .triptych figure {
+    margin: 0; padding: 0;
+    background: white; border-radius: 2mm; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .hook .triptych img { width: 100%; height: auto; display: block; }
+  .hook .triptych figcaption {
+    background: white; color: var(--um-dark);
+    padding: 4mm 4mm 5mm 4mm; text-align: center;
+    font-family: 'Space Grotesk', system-ui;
+  }
+  .hook .triptych figcaption .label {
+    font-size: 4mm; color: var(--um-gray);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 1.5mm; font-weight: 600;
+  }
+  .hook .triptych figcaption .title {
+    font-size: 6mm; font-weight: 700; line-height: 1.1;
+  }
+  .hook .triptych figcaption .title .o { color: var(--um-orange); }
+
+  .hook .pitch h2 {
+    font-family: 'Space Grotesk', system-ui;
+    font-size: 18mm; font-weight: 700; line-height: 1;
+    letter-spacing: -0.02em;
+    margin: 0 0 6mm 0;
+  }
+  .hook .pitch h2 .real { color: var(--um-light); }
+  .hook .pitch h2 .ai   { color: var(--um-orange); }
+  .hook .pitch .lede {
+    font-size: 6mm; line-height: 1.35; color: rgba(255,255,255,0.92);
+    font-weight: 400; margin: 0 0 4mm 0;
+  }
+  .hook .pitch .tldr {
+    font-size: 5.5mm; line-height: 1.4; color: rgba(255,255,255,0.85);
+    padding-top: 6mm; border-top: 0.4mm solid rgba(255,255,255,0.25);
+  }
+  .hook .pitch .tldr strong { color: var(--um-orange); font-weight: 700; }
+
+  /* ===== FINDINGS ROW: THREE PANELS ===== */
+  .findings {
+    margin: 8mm 22mm 0 22mm;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    column-gap: 6mm;
+  }
+
+  .panel {
+    background: var(--card-bg);
+    border: 0.4mm solid var(--rule);
+    border-radius: 3mm;
+    padding: 10mm 11mm;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .panel .h-row {
+    display: flex; align-items: baseline; gap: 4mm;
+    margin-bottom: 2mm;
+  }
+  .panel .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 4mm; font-weight: 600;
+    color: var(--um-orange);
+    letter-spacing: 0.08em;
+  }
+  .panel h2 {
+    font-family: 'Space Grotesk', system-ui;
+    font-size: 9mm; font-weight: 700;
+    color: var(--um-dark);
+    letter-spacing: -0.015em; line-height: 1.05;
+    margin: 0 0 3mm 0;
+  }
+  .panel .hero {
+    font-family: 'Space Grotesk', system-ui;
+    font-size: 26mm; font-weight: 700; line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--um-orange);
+    margin: 4mm 0 4mm 0;
+  }
+  .panel .hero .small {
+    font-size: 10mm; color: var(--um-dark);
+  }
+  .panel .lede {
+    font-size: 5mm; line-height: 1.4;
+    color: var(--um-dark); margin: 0 0 4mm 0;
+  }
+  .panel .lede strong { color: var(--um-orange); }
+  .panel .fig {
+    margin-top: auto; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .panel .fig img {
+    width: 100%; height: auto;
+    display: block; border-radius: 1.5mm;
+  }
+  .panel .fig.boss {
+    background: var(--paper-bg);
+    border: 0.3mm solid var(--rule-soft);
+    border-radius: 2mm; padding: 5mm 6mm;
+  }
+
+  table.boss {
+    width: 100%; border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 4.5mm;
+  }
+  table.boss th, table.boss td {
+    padding: 2mm 2mm; text-align: right;
+    border-bottom: 0.25mm solid var(--rule-soft);
+  }
+  table.boss th { font-weight: 600; color: var(--um-gray); }
+  table.boss th:nth-child(1), table.boss td:nth-child(1),
+  table.boss th:nth-child(2), table.boss td:nth-child(2) { text-align: left; }
+  table.boss td.win { color: var(--um-orange); font-weight: 700; }
+  table.boss tr:last-child td { border-bottom: 0; }
+
+  /* ===== METHODS + TRY-IT-YOURSELF ROW ===== */
+  .meta-row {
+    margin: 6mm 22mm 0 22mm;
+    display: grid; grid-template-columns: 1fr 1fr;
+    column-gap: 6mm;
+  }
+
+  .methods {
+    background: var(--card-bg);
+    border: 0.4mm solid var(--rule); border-radius: 3mm;
+    padding: 10mm 11mm;
+    display: flex; flex-direction: column;
+  }
+  .methods .pipeline {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 3mm; margin: 5mm 0 4mm 0; flex: 1;
+  }
+  .methods .stage {
+    flex: 1;
+    background: var(--paper-bg);
+    border: 0.4mm solid var(--rule);
+    border-radius: 2mm;
+    padding: 5mm 3mm;
+    text-align: center;
+    font-family: 'Space Grotesk', system-ui;
+  }
+  .methods .stage .ico {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 4mm; color: var(--um-orange); font-weight: 600;
+    letter-spacing: 0.05em; margin-bottom: 1.5mm;
+  }
+  .methods .stage .name {
+    font-size: 6mm; font-weight: 700; color: var(--um-dark);
+    line-height: 1.1; margin-bottom: 2mm;
+  }
+  .methods .stage .desc {
+    font-family: 'Inter', system-ui;
+    font-size: 3.8mm; color: var(--um-gray);
+    line-height: 1.2;
+  }
+  .methods .arrow {
+    color: var(--um-orange);
+    font-size: 8mm; font-weight: 700;
+    flex: 0 0 auto;
+  }
+  .methods .footnote {
+    font-size: 4.5mm; color: var(--um-gray);
+    margin-top: 4mm; line-height: 1.35;
+  }
+  .methods .footnote strong { color: var(--um-dark); font-weight: 600; }
+
+  /* TRY IT YOURSELF (accent card) */
+  .tryit {
+    background: var(--um-orange); color: white;
+    border-radius: 3mm;
+    padding: 10mm 11mm;
+    display: grid; grid-template-columns: 1fr 80mm;
+    column-gap: 10mm; align-items: center;
+  }
+  .tryit .copy h2 {
+    font-family: 'Space Grotesk', system-ui;
+    font-size: 14mm; font-weight: 700;
+    color: white; line-height: 1.0;
+    margin: 0 0 4mm 0; letter-spacing: -0.02em;
+  }
+  .tryit .copy p {
+    font-size: 5.5mm; line-height: 1.4;
+    color: rgba(255,255,255,0.95); margin: 0 0 3mm 0;
+  }
+  .tryit .copy .cta {
+    font-family: 'Space Grotesk', system-ui;
+    font-size: 5mm; font-weight: 700;
+    color: white; letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 4mm;
+  }
+  .tryit .copy .cta::before { content: "→ "; }
+  .tryit .qrbox {
+    background: white; padding: 5mm;
+    border-radius: 2mm; text-align: center;
+  }
+  .tryit .qrbox img { width: 70mm; height: 70mm; display: block; }
+  .tryit .qrbox .label {
+    font-family: 'Space Grotesk', system-ui;
+    font-size: 3.8mm; font-weight: 700;
+    color: var(--um-dark); margin-top: 2mm;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+
+  /* ===== LIMITATIONS STRIP ===== */
+  .limits {
+    margin: 6mm 22mm 0 22mm;
+    padding: 6mm 11mm;
+    background: var(--card-bg);
+    border: 0.4mm solid var(--rule); border-radius: 3mm;
+    display: grid; grid-template-columns: auto 1fr;
+    column-gap: 8mm; align-items: center;
+  }
+  .limits .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 4mm; font-weight: 600;
+    color: var(--um-orange);
+    letter-spacing: 0.08em;
+  }
+  .limits .text {
+    font-size: 4.8mm; line-height: 1.35;
+    color: var(--um-dark);
+  }
+  .limits .text strong { color: var(--um-dark); font-weight: 700; }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    margin: 0 22mm 14mm 22mm;
+    padding-top: 8mm;
+    border-top: 0.7mm solid var(--um-dark);
+    display: grid; grid-template-columns: 1fr 60mm;
+    column-gap: 14mm; align-items: center;
+  }
+  .footer .text h3 {
+    font-family: 'Space Grotesk', system-ui;
+    font-size: 7mm; font-weight: 700;
+    margin: 0 0 2mm 0; color: var(--um-dark);
+  }
+  .footer .text p {
+    font-size: 4.5mm; line-height: 1.35; margin: 0 0 1mm 0;
+  }
+  .footer .text .repo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 4.5mm; color: var(--um-orange);
+    word-break: break-all;
+  }
+  .footer .qr {
+    background: white; padding: 3mm;
+    border: 0.3mm solid var(--rule); text-align: center;
+  }
+  .footer .qr img { width: 50mm; height: 50mm; display: block; }
+  .footer .qr .label {
+    font-family: 'Space Grotesk', system-ui;
+    font-size: 3.4mm; font-weight: 700;
+    color: var(--um-gray); margin-top: 1.5mm;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="poster">
+
+  <!-- ===== BRAND BAND ===== -->
+  <header class="brand-band">
+    <div class="stripe"></div>
+    <div class="info">
+      <div class="venue">Project 2.2 &middot; Spring 2026</div>
+      <div class="dept">Department of Advanced Computing Sciences</div>
+    </div>
+    <div class="crest">UM</div>
+  </header>
+
+  <!-- ===== TITLE ===== -->
+  <section class="title-block">
+    <h1>
+      Does the source of <span class="accent">the carrier image</span><br>
+      affect steganographic detectability?
+    </h1>
+    <div class="meta">
+      <div class="authors">
+        Abdul Moiz Akbar &middot; Daria Gjonbalaj &middot; Nico M&uuml;ller-Sp&auml;th<br>
+        Jimena Narvaez del Cid &middot; David Wicker &middot; Nikolas Zouros
+      </div>
+      <div class="affil">Maastricht University &middot; May 2026</div>
+    </div>
+  </section>
+
+  <!-- ===== HOOK STRIP ===== -->
+  <section class="hook">
+    <div class="triptych">
+      <figure>
+        <img src="hook/hook_a_cover.png" alt="Original real photograph">
+        <figcaption>
+          <div class="label">Image A</div>
+          <div class="title">no secret</div>
+        </figcaption>
+      </figure>
+      <figure>
+        <img src="hook/hook_b_stego_low.png" alt="Stego image with low payload">
+        <figcaption>
+          <div class="label">Image B</div>
+          <div class="title"><span class="o">hidden message</span><br>(0.05 bpp)</div>
+        </figcaption>
+      </figure>
+      <figure>
+        <img src="hook/hook_c_stego_high.png" alt="Stego image with high payload">
+        <figcaption>
+          <div class="label">Image C</div>
+          <div class="title"><span class="o">hidden message</span><br>(0.30 bpp)</div>
+        </figcaption>
+      </figure>
+    </div>
+    <div class="pitch">
+      <h2>
+        Where do you hide a secret &mdash;<br>
+        in a <span class="real">real photograph</span> or in an <span class="ai">AI&nbsp;image</span>?
+      </h2>
+      <p class="lede">
+        Three pictures of two elephants. To your eye they are identical. To a steganalyst, the <strong>0.05&nbsp;bpp</strong> payload in Image&nbsp;B touches 2.5% of the LSBs; the <strong>0.30&nbsp;bpp</strong> in Image&nbsp;C touches 15%. Both are undetectable by inspection but loud to the right test.
+      </p>
+      <div class="tldr">
+        We ran the test on <strong>3,000&nbsp;caption-matched groups</strong> of real photos and diffusion-generated images, with six classical detectors and two deep learned ones. Three findings &darr;
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== THREE FINDINGS ===== -->
+  <section class="findings">
+
+    <!-- Finding 1 -->
+    <div class="panel">
+      <div class="h-row"><span class="tag">FINDING 1</span></div>
+      <h2>AI carriers are slightly easier to attack</h2>
+      <p class="lede">
+        Five of six training-free detectors find diffusion carriers easier than real photographs. The pooled effect is small (<strong>|&Delta;<sub>AUC</sub>|&nbsp;&approx;&nbsp;0.013</strong>), <strong>3 to 7&times;</strong> larger in the operationally screened FPR&nbsp;&le;&nbsp;0.10 tail.
+      </p>
+      <div class="hero">5<span class="small">/6</span></div>
+      <div class="fig">
+        <img src="../report/figures/v4_paper/headline_rq1.png" alt="Mean AUC per detector and source">
+      </div>
+    </div>
+
+    <!-- Finding 2 -->
+    <div class="panel">
+      <div class="h-row"><span class="tag">FINDING 2</span></div>
+      <h2>A deep CNN is fooled by its training set</h2>
+      <p class="lede">
+        SRNet trained on a balanced real&nbsp;+&nbsp;AI corpus looks source-invariant. Trained on <strong>real photos only</strong>, it interprets diffusion-decoder noise as the LSB perturbation it was taught to detect. Cover-stego separation collapses on AI images.
+      </p>
+      <div class="hero">+0.44</div>
+      <div class="fig">
+        <img src="../report/figures/v4_paper/v1_vs_v2a_heatmap.png" alt="Matched vs real-only training heatmap">
+      </div>
+    </div>
+
+    <!-- Finding 3 -->
+    <div class="panel">
+      <div class="h-row"><span class="tag">FINDING 3</span></div>
+      <h2>A new detector wins on the reference dataset</h2>
+      <p class="lede">
+        Our <strong>tile-local &chi;<sup>2</sup>-DCT</strong> detector partitions the DCT-block grid into T&times;T disjoint tiles and runs Westfeld's pairs-of-values test in each. It beats the textbook global baseline on BOSSBase&nbsp;1.01 at both quality factors.
+      </p>
+      <div class="hero">+0.09</div>
+      <div class="fig boss">
+        <table class="boss">
+          <thead><tr><th>Q</th><th>Embedder</th><th>global</th><th>tile-local</th><th>&Delta;</th></tr></thead>
+          <tbody>
+            <tr><td>75</td><td>JSteg</td><td>0.764</td><td class="win">0.854</td><td class="win">+0.090</td></tr>
+            <tr><td>95</td><td>JSteg</td><td>0.816</td><td class="win">0.902</td><td class="win">+0.086</td></tr>
+            <tr><td>75</td><td>OutGuess</td><td>0.502</td><td>0.500</td><td>&minus;0.002</td></tr>
+            <tr><td>95</td><td>OutGuess</td><td>0.507</td><td>0.507</td><td>0.000</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== METHODS + TRY-IT-YOURSELF ===== -->
+  <section class="meta-row">
+
+    <div class="methods">
+      <div class="h-row"><span class="tag">METHOD</span></div>
+      <h2>A pre-registered five-stage pipeline</h2>
+      <div class="pipeline">
+        <div class="stage">
+          <div class="ico">1 / DATA</div>
+          <div class="name">Cover</div>
+          <div class="desc">real + SDXL + FLUX, caption-matched, 512&times;512 grayscale</div>
+        </div>
+        <div class="arrow">&rarr;</div>
+        <div class="stage">
+          <div class="ico">2 / EMBED</div>
+          <div class="name">Stego</div>
+          <div class="desc">LSB on PNG + JSteg-style DCT-LSB on JPEG Q=95</div>
+        </div>
+        <div class="arrow">&rarr;</div>
+        <div class="stage">
+          <div class="ico">3 / DETECT</div>
+          <div class="name">Score</div>
+          <div class="desc">6 training-free + 2 learned detectors</div>
+        </div>
+        <div class="arrow">&rarr;</div>
+        <div class="stage">
+          <div class="ico">4 / STATS</div>
+          <div class="name">Contrast</div>
+          <div class="desc">Caption-clustered bootstrap + Bonferroni&ndash;Holm</div>
+        </div>
+        <div class="arrow">&rarr;</div>
+        <div class="stage">
+          <div class="ico">5 / VERDICT</div>
+          <div class="name">Decide</div>
+          <div class="desc">Pre-registered &delta;<sub>min</sub>&nbsp;=&nbsp;0.05 practical-significance gate</div>
+        </div>
+      </div>
+      <p class="footnote">
+        <strong>3,000 caption groups</strong> &middot; 108k stegos &middot; 648k classical predictions &middot; cross-validated on a separate matched training corpus &middot; seed&nbsp;4242 &middot; <strong>reproducible from the repo</strong>.
+      </p>
+    </div>
+
+    <div class="tryit">
+      <div class="copy">
+        <h2>Try it yourself</h2>
+        <p>
+          Encode a message into a real photograph or an AI image in your browser. Watch which of the six detectors catch it &mdash; and which don't.
+        </p>
+        <div class="cta">Scan to launch the demo</div>
+      </div>
+      <div class="qrbox">
+        <img src="qr_demo.png" alt="QR code linking to the interactive demo">
+        <div class="label">/toolbox</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== LIMITATIONS STRIP ===== -->
+  <section class="limits">
+    <div class="lbl">SCOPE</div>
+    <div class="text">
+      Non-adaptive LSB embedding only (adaptive variants like J-UNIWARD / HILL / MiPOD deliberately out of scope: the &chi;<sup>2</sup> family they evade is the whole point of the comparison). Frequency-branch real covers carry a double-JPEG history that AI covers do not &mdash; treated as a first-class confound (paper &sect;IX). Real-only training uses Flickr30k only; test set mixes COCO + Flickr30k &mdash; magnitude argument holds (effect &raquo; cross-dataset shift) but flagged.
+    </div>
+  </section>
+
+  <!-- spacer (handled by 1fr grid row) -->
+  <div></div>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="text">
+      <h3>Full paper, code, data &amp; reproducible figures</h3>
+      <p>17-page IEEE-TIFS-style paper &middot; complete predictions CSVs &middot; BOSSBase tile-local results &middot; 245 automated tests &middot; reproducible from seed&nbsp;4242.</p>
+      <p class="repo">gitlab.maastrichtuniversity.nl/m2-2_group02/m2-2_steganography</p>
+    </div>
+    <div class="qr">
+      <img src="qr_repo.png" alt="QR code linking to project repository">
+      <div class="label">Code &amp; data</div>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

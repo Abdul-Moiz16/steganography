@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Tile-local χ²-DCT detector: external validation on BOSSBase 1.01.
+  Paired bars per (Q, embedder): global Westfeld χ² vs. our tile-local
+  variant. Tile-local wins by ~+0.09 AUC on JSteg at both quality
+  factors; both collapse to chance on histogram-preserving OutGuess
+  (documented scope-bound).
+
+  Source: Section VII.A, Table 13.
+    Q=75 JSteg:    global 0.764, tile-local 0.854, Δ = +0.090
+    Q=95 JSteg:    global 0.816, tile-local 0.902, Δ = +0.086
+    Q=75 OutGuess: global 0.502, tile-local 0.500, Δ = -0.002
+    Q=95 OutGuess: global 0.507, tile-local 0.507, Δ =  0.000
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 430" font-family="'Inter', system-ui, sans-serif">
+  <style>
+    .title { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 22px; fill: #001C3D; }
+    .subtitle { font-size: 12px; fill: #6B7280; font-weight: 500; }
+    .axis { stroke: #001C3D; stroke-width: 1; }
+    .grid { stroke: #ECE7DA; stroke-width: 0.6; }
+    .tick { font-size: 11px; fill: #6B7280; }
+    .axislabel { font-size: 12px; fill: #001C3D; font-weight: 500; }
+    .barlabel { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; fill: #001C3D; }
+    .bar-global { fill: #4A90C4; }
+    .bar-tile { fill: #E84E10; }
+    .legend-lbl { font-size: 12px; fill: #001C3D; font-weight: 500; }
+    .gain { font-family: 'Space Grotesk', system-ui; font-size: 16px; font-weight: 700; fill: #E84E10; }
+    .scope { font-family: 'Space Grotesk', system-ui; font-size: 12px; font-weight: 600; fill: #6B7280; font-style: italic; }
+  </style>
+  <defs>
+    <marker id="tle-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+      <polygon points="0,0 6,3 0,6" fill="#E84E10"/>
+    </marker>
+  </defs>
+
+  <!-- Title (two lines, second line in orange = headline number) -->
+  <text class="title" x="20" y="28">A new detector beats the 1999 baseline</text>
+  <text class="title" x="20" y="52" font-size="18" fill="#E84E10">by +9 percentage points on BOSSBase 1.01</text>
+  <text class="subtitle" x="20" y="72">Mean AUC over 12 (payload × encryption) cells per (Q, embedder). External validation on the field-standard dataset.</text>
+
+  <!-- Legend (right-aligned, below subtitle) -->
+  <g transform="translate(490, 92)">
+    <rect class="bar-global" x="0" y="0" width="14" height="14"/>
+    <text class="legend-lbl" x="20" y="12">global χ² (1999)</text>
+    <rect class="bar-tile" x="0" y="22" width="14" height="14"/>
+    <text class="legend-lbl" x="20" y="34">tile-local χ² (ours)</text>
+  </g>
+
+  <!-- Plot area: y(0.5) = 320, y(1.0) = 140 -->
+  <g class="grid">
+    <line x1="60" y1="140" x2="680" y2="140"/>
+    <line x1="60" y1="176" x2="680" y2="176"/>
+    <line x1="60" y1="212" x2="680" y2="212"/>
+    <line x1="60" y1="248" x2="680" y2="248"/>
+    <line x1="60" y1="284" x2="680" y2="284"/>
+    <line x1="60" y1="320" x2="680" y2="320"/>
+  </g>
+  <g class="tick">
+    <text x="52" y="143" text-anchor="end">1.0</text>
+    <text x="52" y="179" text-anchor="end">0.9</text>
+    <text x="52" y="215" text-anchor="end">0.8</text>
+    <text x="52" y="251" text-anchor="end">0.7</text>
+    <text x="52" y="287" text-anchor="end">0.6</text>
+    <text x="52" y="323" text-anchor="end">0.5</text>
+  </g>
+  <line class="axis" x1="60" y1="140" x2="60" y2="320"/>
+  <line class="axis" x1="60" y1="320" x2="680" y2="320"/>
+  <text class="axislabel" x="22" y="230" text-anchor="middle" transform="rotate(-90, 22, 230)">detection accuracy (AUC)</text>
+
+  <!-- JSteg LEFT SIDE (the wins) -->
+  <g>
+    <!-- Q=75 JSteg: global 0.764 (y = 320 - 0.264*360 = 225.0); tile 0.854 (y = 192.6) -->
+    <rect class="bar-global" x="85" y="225.0" width="48" height="95.0"/>
+    <text class="barlabel" x="109" y="220" text-anchor="middle">0.764</text>
+    <rect class="bar-tile" x="140" y="192.6" width="48" height="127.4"/>
+    <text class="barlabel" x="164" y="188" text-anchor="middle">0.854</text>
+    <text class="axislabel" x="137" y="340" text-anchor="middle" font-weight="700">Q=75</text>
+    <!-- gain arrow + callout -->
+    <line x1="115" y1="210" x2="145" y2="178" stroke="#E84E10" stroke-width="2" marker-end="url(#tle-arrow)"/>
+    <text class="gain" x="105" y="170" text-anchor="middle">+0.090</text>
+
+    <!-- Q=95 JSteg: global 0.816 (y = 206.2); tile 0.902 (y = 175.3) -->
+    <rect class="bar-global" x="225" y="206.2" width="48" height="113.8"/>
+    <text class="barlabel" x="249" y="201" text-anchor="middle">0.816</text>
+    <rect class="bar-tile" x="280" y="175.3" width="48" height="144.7"/>
+    <text class="barlabel" x="304" y="170" text-anchor="middle">0.902</text>
+    <text class="axislabel" x="277" y="340" text-anchor="middle" font-weight="700">Q=95</text>
+    <line x1="255" y1="190" x2="287" y2="160" stroke="#E84E10" stroke-width="2" marker-end="url(#tle-arrow)"/>
+    <text class="gain" x="245" y="152" text-anchor="middle">+0.086</text>
+
+    <!-- JSteg group label -->
+    <text x="220" y="362" text-anchor="middle" class="axislabel" font-weight="700" font-size="14" fill="#E84E10">JSteg (1993)</text>
+    <text x="220" y="378" text-anchor="middle" class="subtitle" font-size="11">non-adaptive DCT-LSB</text>
+  </g>
+
+  <!-- Divider -->
+  <line x1="380" y1="135" x2="380" y2="335" stroke="#001C3D" stroke-width="0.6" stroke-dasharray="3,3"/>
+
+  <!-- OutGuess RIGHT SIDE (scope-bound) -->
+  <g>
+    <!-- Q=75: global 0.502 (y = 319.3); tile 0.500 (y = 320) -->
+    <rect class="bar-global" x="420" y="319.3" width="48" height="0.7"/>
+    <text class="barlabel" x="444" y="314" text-anchor="middle">0.502</text>
+    <rect class="bar-tile" x="475" y="320.0" width="48" height="0.0"/>
+    <text class="barlabel" x="499" y="314" text-anchor="middle">0.500</text>
+    <text class="axislabel" x="472" y="340" text-anchor="middle" font-weight="700">Q=75</text>
+
+    <!-- Q=95: global 0.507 (y = 317.5); tile 0.507 -->
+    <rect class="bar-global" x="560" y="317.5" width="48" height="2.5"/>
+    <text class="barlabel" x="584" y="312" text-anchor="middle">0.507</text>
+    <rect class="bar-tile" x="615" y="317.5" width="48" height="2.5"/>
+    <text class="barlabel" x="639" y="312" text-anchor="middle">0.507</text>
+    <text class="axislabel" x="612" y="340" text-anchor="middle" font-weight="700">Q=95</text>
+
+    <!-- "chance level" callout -->
+    <text x="540" y="280" text-anchor="middle" class="scope">both at chance level</text>
+
+    <!-- OutGuess group label -->
+    <text x="540" y="362" text-anchor="middle" class="axislabel" font-weight="700" font-size="14" fill="#6B7280">OutGuess (2001)</text>
+    <text x="540" y="378" text-anchor="middle" class="subtitle" font-size="11">histogram-preserving — out of scope</text>
+  </g>
+
+  <!-- Footer note -->
+  <text x="350" y="408" text-anchor="middle" class="subtitle" font-size="11px">
+    Honest scope: the χ²-family test is by construction blind to embeddings that preserve the pairs-of-values histogram.
+  </text>
+</svg>

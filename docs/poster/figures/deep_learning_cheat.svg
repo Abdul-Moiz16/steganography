@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Deep-learning cheat: SRNet per-source AUC at medium payload under two
+  training configurations. Matched training (top) looks source-invariant
+  at ceiling; real-only training (bottom) collapses on AI carriers.
+
+  Source: Table 11 (V1 vs V2a), SRNet @ medium payload, plain encryption:
+    matched training:   real 0.999  SDXL 0.998  FLUX 0.998
+    real-only training: real 0.986  SDXL 0.547  FLUX 0.644
+  → up to 44 percentage-point gap on AI carriers
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 430" font-family="'Inter', system-ui, sans-serif">
+  <style>
+    .title { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 22px; fill: #001C3D; }
+    .subtitle { font-size: 13px; fill: #6B7280; font-weight: 500; }
+    .axis { stroke: #001C3D; stroke-width: 1; }
+    .grid { stroke: #ECE7DA; stroke-width: 0.6; }
+    .tick { font-size: 11px; fill: #6B7280; }
+    .axislabel { font-size: 12px; fill: #001C3D; font-weight: 500; }
+    .barlabel { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; fill: #001C3D; }
+    .bar-real { fill: #001C3D; }
+    .bar-sdxl { fill: #4A90C4; }
+    .bar-flux { fill: #E84E10; }
+    .panel-cap { font-family: 'Space Grotesk', system-ui; font-weight: 700; font-size: 13px; }
+    .src-label { font-size: 12px; fill: #6B7280; font-weight: 500; }
+    .gap-text { font-family: 'Space Grotesk', system-ui; font-size: 18px; font-weight: 700; fill: #E84E10; }
+  </style>
+  <defs>
+    <marker id="gap-arrow-head" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+      <polygon points="0,0 8,3 0,6" fill="#E84E10"/>
+    </marker>
+  </defs>
+
+  <!-- Title (two lines for clarity) -->
+  <text class="title" x="20" y="28">SRNet's source-invariance is a training-mix artefact</text>
+  <text class="subtitle" x="20" y="50">Per-source detection accuracy (AUC), medium payload, two SRNet training configurations.</text>
+
+  <!-- Two panels side by side
+       Panel 1 (matched): x = 70 .. 320
+       Panel 2 (real-only): x = 380 .. 660
+       y(auc) = 320 - (auc - 0.5) * 360
+       y range 140 (1.0) → 320 (0.5) -->
+
+  <!-- Y-axis labels (shared) -->
+  <g class="grid">
+    <line x1="70" y1="140" x2="660" y2="140"/>
+    <line x1="70" y1="176" x2="660" y2="176"/>
+    <line x1="70" y1="212" x2="660" y2="212"/>
+    <line x1="70" y1="248" x2="660" y2="248"/>
+    <line x1="70" y1="284" x2="660" y2="284"/>
+    <line x1="70" y1="320" x2="660" y2="320"/>
+  </g>
+  <g class="tick">
+    <text x="62" y="143" text-anchor="end">1.0</text>
+    <text x="62" y="179" text-anchor="end">0.9</text>
+    <text x="62" y="215" text-anchor="end">0.8</text>
+    <text x="62" y="251" text-anchor="end">0.7</text>
+    <text x="62" y="287" text-anchor="end">0.6</text>
+    <text x="62" y="323" text-anchor="end">0.5</text>
+  </g>
+  <text class="axislabel" x="22" y="230" text-anchor="middle" transform="rotate(-90, 22, 230)">AUC (1.0 = perfect, 0.5 = chance)</text>
+
+  <!-- PANEL 1: matched training -->
+  <g>
+    <!-- Header banner -->
+    <rect x="70" y="80" width="250" height="32" fill="#001C3D" rx="3"/>
+    <text x="195" y="101" text-anchor="middle" font-family="'Space Grotesk', system-ui" font-weight="700" font-size="14px" fill="white">Trained on real + SDXL + FLUX</text>
+
+    <!-- bars: all three near 1.0 -->
+    <!-- real 0.999: y = 320 - 0.499*360 = 320 - 179.64 = 140.36; height = 179.64 -->
+    <rect class="bar-real" x="95" y="140.36" width="60" height="179.64"/>
+    <text class="barlabel" x="125" y="134" text-anchor="middle">0.999</text>
+    <text class="src-label" x="125" y="338" text-anchor="middle">real</text>
+
+    <!-- SDXL 0.998: y = 140.72; h = 179.28 -->
+    <rect class="bar-sdxl" x="170" y="140.72" width="60" height="179.28"/>
+    <text class="barlabel" x="200" y="134" text-anchor="middle">0.998</text>
+    <text class="src-label" x="200" y="338" text-anchor="middle">SDXL</text>
+
+    <!-- FLUX 0.998 -->
+    <rect class="bar-flux" x="245" y="140.72" width="60" height="179.28"/>
+    <text class="barlabel" x="275" y="134" text-anchor="middle">0.998</text>
+    <text class="src-label" x="275" y="338" text-anchor="middle">FLUX</text>
+
+    <!-- caption below -->
+    <text x="195" y="362" text-anchor="middle" class="panel-cap" font-style="italic" fill="#6B7280">looks source-invariant</text>
+  </g>
+
+  <!-- PANEL 2: real-only training (the cheat reveal) -->
+  <g>
+    <!-- Header banner -->
+    <rect x="380" y="80" width="280" height="32" fill="#E84E10" rx="3"/>
+    <text x="520" y="101" text-anchor="middle" font-family="'Space Grotesk', system-ui" font-weight="700" font-size="14px" fill="white">Trained on real photos only</text>
+
+    <!-- real 0.986: y = 320 - 0.486*360 = 145.04; h = 174.96 -->
+    <rect class="bar-real" x="405" y="145.04" width="60" height="174.96"/>
+    <text class="barlabel" x="435" y="139" text-anchor="middle">0.986</text>
+    <text class="src-label" x="435" y="338" text-anchor="middle">real</text>
+
+    <!-- SDXL 0.547: y = 320 - 0.047*360 = 303.08; h = 16.92 -->
+    <rect class="bar-sdxl" x="480" y="303.08" width="60" height="16.92"/>
+    <text class="barlabel" x="510" y="297" text-anchor="middle" fill="#E84E10">0.547</text>
+    <text class="src-label" x="510" y="338" text-anchor="middle">SDXL</text>
+
+    <!-- FLUX 0.644: y = 320 - 0.144*360 = 268.16; h = 51.84 -->
+    <rect class="bar-flux" x="555" y="268.16" width="60" height="51.84"/>
+    <text class="barlabel" x="585" y="262" text-anchor="middle" fill="#E84E10">0.644</text>
+    <text class="src-label" x="585" y="338" text-anchor="middle">FLUX</text>
+
+    <!-- Gap arrow + callout (between real bar top and SDXL bar top) -->
+    <line stroke="#E84E10" stroke-width="2.5" x1="435" y1="155" x2="500" y2="293" marker-end="url(#gap-arrow-head)"/>
+    <rect x="555" y="180" width="100" height="48" fill="#FBF9F5" stroke="#E84E10" stroke-width="1" rx="3"/>
+    <text class="gap-text" x="605" y="205" text-anchor="middle">−44 pp</text>
+    <text x="605" y="222" text-anchor="middle" class="subtitle" font-size="11px" fill="#E84E10" font-weight="600">on AI carriers</text>
+
+    <!-- caption below -->
+    <text x="520" y="362" text-anchor="middle" class="panel-cap" fill="#E84E10">fails on AI carriers it never saw</text>
+  </g>
+
+  <!-- Footer note -->
+  <text x="340" y="400" text-anchor="middle" class="subtitle" font-size="11px">
+    Same SRNet architecture, same test images. Withholding AI carriers from training opens a +44 pp gap on AI inputs.
+  </text>
+</svg>

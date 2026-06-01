@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RQ3 (learned detectors): Per-detector real − pooled-AI ΔAUC by message
+  size, contrasting two training configurations of each learned detector.
+
+    GRAY  = V1 matched training   (real + SDXL + FLUX, 1:1:1)
+    RED   = V2a real-only training (real photos only)
+
+  Story: under matched training both learned detectors look essentially
+  source-invariant (lines hug the zero axis). Under real-only training
+  the source response flips and opens a large real-easier gap on AI
+  carriers — SRNet most dramatically.
+
+  Source: Section IV.D ablation, Table 11 per-stratum ΔAUC values.
+    V1  SRNet (matched):     low +0.0015   med +0.0011   high +0.0013
+    V1  DCTR  (matched):     low -0.0300   med -0.0275   high -0.0147
+    V2a SRNet (real-only):   low +0.0880   med +0.3900   high +0.3400
+    V2a DCTR  (real-only):   low +0.0170   med +0.0490   high +0.0850
+
+  y mapping: y range -0.05 → +0.45
+    y(Δ) = 80 + (0.45 − Δ) × 560
+    Δ = +0.45 → y = 80
+    Δ = +0.40 → y = 108
+    Δ = +0.30 → y = 164
+    Δ = +0.20 → y = 220
+    Δ = +0.10 → y = 276
+    Δ =  0    → y = 332
+    Δ = -0.05 → y = 360
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 460" font-family="'Inter', system-ui, sans-serif">
+  <style>
+    .title { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 22px; fill: #001C3D; }
+    .subtitle { font-size: 13px; fill: #6B7280; font-weight: 500; }
+    .axis { stroke: #001C3D; stroke-width: 1.2; }
+    .grid { stroke: #ECE7DA; stroke-width: 0.6; }
+    .tick { font-size: 11px; fill: #6B7280; }
+    .axislabel { font-size: 12px; fill: #001C3D; font-weight: 500; }
+    .zero-line { stroke: #001C3D; stroke-width: 0.8; }
+
+    /* V1 matched = gray (darkened + thicker so it reads as a real contrast,
+       not background hair); V2a real-only = red */
+    .v1-srnet { stroke: #4B5563; stroke-width: 2.4; fill: none; stroke-dasharray: 2,2.5; }
+    .v1-dctr  { stroke: #4B5563; stroke-width: 2.4; fill: none; stroke-dasharray: 6,3; }
+    .v2-srnet { stroke: #E84E10; stroke-width: 3.2; fill: none; }
+    .v2-dctr  { stroke: #E84E10; stroke-width: 2.4; fill: none; stroke-dasharray: 6,3; }
+
+    .dot-v1 { fill: #4B5563; }
+    .dot-v2 { fill: #E84E10; }
+
+    /* Source-invariance band ±0.025 around zero */
+    .invariant-band { fill: #F0E5CC; opacity: 0.45; }
+    .invariant-edge { fill: none; stroke: #C4B388; stroke-width: 0.6; stroke-dasharray: 3,2; opacity: 0.7; }
+    .invariant-lbl  { font-size: 10px; font-style: italic; font-weight: 600; fill: #8A7A55; }
+
+    .label    { font-size: 10.5px; font-weight: 600; }
+    .label.v1 { fill: #6B7280; }
+    .label.v2 { fill: #E84E10; }
+    .leader   { stroke: #B8AE9B; stroke-width: 0.5; fill: none; stroke-dasharray: 1.5,1.5; opacity: 0.85; }
+  </style>
+
+  <!-- Title + subtitle -->
+  <text class="title" x="20" y="28">Matched training hides a source response in both learned detectors</text>
+  <text class="subtitle" x="20" y="48">Gray (matched training) sits inside the ±0.025 'source-invariance' band; red (real-only) breaks out at every payload.</text>
+
+  <!-- Legend (top-right of plot) -->
+  <g transform="translate(450, 62)">
+    <line class="v1-srnet" x1="0" y1="6"  x2="22" y2="6"/>
+    <text class="label v1" x="28" y="9">V1 matched training (gray)</text>
+    <line class="v2-srnet" x1="0" y1="22" x2="22" y2="22"/>
+    <text class="label v2" x="28" y="25">V2a real-only training (red)</text>
+  </g>
+
+  <!-- ==================================================================
+       SOURCE-INVARIANCE BAND (±0.025 around zero)
+         +0.025 → y = 80 + (0.45 - 0.025) × 560 = 318
+         −0.025 → y = 80 + (0.45 + 0.025) × 560 = 346
+       Matches the RQ2 equivalence-band convention.
+       ================================================================== -->
+  <rect class="invariant-band" x="100" y="318" width="480" height="28"/>
+  <line class="invariant-edge" x1="100" y1="318" x2="580" y2="318"/>
+  <line class="invariant-edge" x1="100" y1="346" x2="580" y2="346"/>
+  <text class="invariant-lbl" x="576" y="313" text-anchor="end">'source-invariance' band (|Δ| &lt; 0.025)</text>
+
+  <!-- ==================================================================
+       GRID + AXES   y(Δ) = 80 + (0.45 − Δ) × 560
+       Tick anchors:
+         +0.40 → y = 108
+         +0.30 → y = 164
+         +0.20 → y = 220
+         +0.10 → y = 276
+            0  → y = 332
+         -0.05 → y = 360
+       ================================================================== -->
+  <g class="grid">
+    <line x1="100" y1="108" x2="580" y2="108"/>
+    <line x1="100" y1="164" x2="580" y2="164"/>
+    <line x1="100" y1="220" x2="580" y2="220"/>
+    <line x1="100" y1="276" x2="580" y2="276"/>
+    <line x1="100" y1="332" x2="580" y2="332"/>
+    <line x1="100" y1="360" x2="580" y2="360"/>
+  </g>
+  <line class="zero-line" x1="100" y1="332" x2="580" y2="332"/>
+  <g class="tick">
+    <text x="92" y="111" text-anchor="end">+0.40</text>
+    <text x="92" y="167" text-anchor="end">+0.30</text>
+    <text x="92" y="223" text-anchor="end">+0.20</text>
+    <text x="92" y="279" text-anchor="end">+0.10</text>
+    <text x="92" y="335" text-anchor="end">0</text>
+    <text x="92" y="363" text-anchor="end">−0.05</text>
+  </g>
+  <line class="axis" x1="100" y1="80" x2="100" y2="360"/>
+  <text class="axislabel" x="35" y="220" text-anchor="middle" transform="rotate(-90, 35, 220)">ΔAUC (real − pooled AI)</text>
+  <!-- Direction labels: orange = headline direction in this chart (real easier, the V2a shift).
+       Triangle arrows drawn as SVG polygons so they render in every fallback font. -->
+  <polygon points="20,86 27,76 34,86" fill="#E84E10"/>
+  <text x="88" y="92"  text-anchor="end" font-style="italic" font-size="13px" font-weight="700" fill="#E84E10">real easier</text>
+  <polygon points="20,348 27,358 34,348" fill="#6B7280"/>
+  <text x="88" y="355" text-anchor="end" font-style="italic" font-size="13px" font-weight="700" fill="#6B7280">AI easier</text>
+
+  <!-- X-axis -->
+  <line class="axis" x1="100" y1="360" x2="580" y2="360"/>
+  <g class="tick">
+    <text x="140" y="380" text-anchor="middle" font-weight="600" fill="#001C3D" font-size="14px">low</text>
+    <text x="140" y="396" text-anchor="middle">0.05 bpp</text>
+    <text x="350" y="380" text-anchor="middle" font-weight="600" fill="#001C3D" font-size="14px">medium</text>
+    <text x="350" y="396" text-anchor="middle">0.15 bpp</text>
+    <text x="560" y="380" text-anchor="middle" font-weight="600" fill="#001C3D" font-size="14px">high</text>
+    <text x="560" y="396" text-anchor="middle">0.30 bpp</text>
+  </g>
+  <text class="subtitle" x="350" y="418" text-anchor="middle">payload size (bits per non-zero coefficient)</text>
+
+  <!-- ==================================================================
+       TRACES
+       Computed y positions (low, medium, high):
+         V1  SRNet  +0.0015 +0.0011 +0.0013  →  331.2  331.4  331.3
+         V1  DCTR   -0.0300 -0.0275 -0.0147  →  348.8  347.4  340.2
+         V2a SRNet  +0.0880 +0.3900 +0.3400  →  282.7  113.6  141.6
+         V2a DCTR   +0.0170 +0.0490 +0.0850  →  322.5  304.6  284.4
+       ================================================================== -->
+
+  <!-- Matched-training pair (gray, behind) -->
+  <polyline class="v1-srnet" points="140,331.2 350,331.4 560,331.3"/>
+  <polyline class="v1-dctr"  points="140,348.8 350,347.4 560,340.2"/>
+
+  <!-- Real-only pair (red, on top) -->
+  <polyline class="v2-dctr"  points="140,322.5 350,304.6 560,284.4"/>
+  <polyline class="v2-srnet" points="140,282.7 350,113.6 560,141.6"/>
+
+  <!-- Data dots -->
+  <circle class="dot-v1" cx="140" cy="331.2" r="4"/>
+  <circle class="dot-v1" cx="350" cy="331.4" r="4"/>
+  <circle class="dot-v1" cx="560" cy="331.3" r="4"/>
+  <circle class="dot-v1" cx="140" cy="348.8" r="4"/>
+  <circle class="dot-v1" cx="350" cy="347.4" r="4"/>
+  <circle class="dot-v1" cx="560" cy="340.2" r="4"/>
+
+  <circle class="dot-v2" cx="140" cy="282.7" r="4.5"/>
+  <circle class="dot-v2" cx="350" cy="113.6" r="4.5"/>
+  <circle class="dot-v2" cx="560" cy="141.6" r="4.5"/>
+  <circle class="dot-v2" cx="140" cy="322.5" r="3.5"/>
+  <circle class="dot-v2" cx="350" cy="304.6" r="3.5"/>
+  <circle class="dot-v2" cx="560" cy="284.4" r="3.5"/>
+
+  <!-- Inline value annotations on the headline V2a SRNet peak -->
+  <text x="350" y="105" text-anchor="middle"
+        font-family="'Space Grotesk', system-ui" font-weight="700"
+        font-size="16px" fill="#E84E10">+39 pp</text>
+
+  <!-- ==================================================================
+       RIGHT-MARGIN LABELS with dotted neutral leader lines
+       Right endpoints (x = 560):
+         V2a SRNet  y = 141.6
+         V2a DCTR   y = 284.4
+         V1 SRNet   y = 331.3
+         V1 DCTR    y = 340.2
+       ================================================================== -->
+
+  <!-- V2a SRNet -->
+  <line class="leader" x1="563" y1="141.6" x2="615" y2="145"/>
+  <text class="label v2" x="618" y="146" font-weight="700">V2a SRNet</text>
+  <text x="618" y="158" font-size="9.5px" font-style="italic" fill="#E84E10">real-only training</text>
+
+  <!-- V2a DCTR -->
+  <line class="leader" x1="563" y1="284.4" x2="615" y2="284"/>
+  <text class="label v2" x="618" y="287" font-weight="700">V2a DCTR</text>
+  <text x="618" y="299" font-size="9.5px" font-style="italic" fill="#E84E10">real-only training</text>
+
+  <!-- V1 SRNet -->
+  <line class="leader" x1="563" y1="331.3" x2="615" y2="324"/>
+  <text class="label v1" x="618" y="327" font-weight="700">V1 SRNet</text>
+  <text x="618" y="338" font-size="9.5px" font-style="italic" fill="#6B7280">matched training</text>
+
+  <!-- V1 DCTR -->
+  <line class="leader" x1="563" y1="340.2" x2="615" y2="355"/>
+  <text class="label v1" x="618" y="358" font-weight="700">V1 DCTR</text>
+  <text x="618" y="369" font-size="9.5px" font-style="italic" fill="#6B7280">matched training</text>
+
+</svg>

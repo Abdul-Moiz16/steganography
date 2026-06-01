@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RQ3 (classical detectors): Per-detector real − pooled-AI ΔAUC by
+  message size. The pooled estimate shrinks monotonically with payload
+  size. All six classical detectors fit comfortably in the -0.10 → +0.04
+  y-range; χ²-spatial is the visible outlier going the wrong way.
+
+  Source: §IV.B per-stratum ΔAUC values, §IV.D pooled gap.
+    Pooled real-AI:                  low -0.0486   med -0.0281   high -0.0157
+    Per-detector (classical):
+      cal-χ²:                        -0.0092       -0.0231       -0.0453
+      χ²-DCT:                        -0.0254       -0.0513       -0.0477
+      χ²-DCT (tile-local):           -0.0596       -0.0393       -0.0032
+      χ²-spatial:                    +0.0104       +0.0273       +0.0344
+      RS:                            -0.0901       -0.0305       -0.0095
+      sample-pairs:                  -0.0892       -0.0216       -0.0067
+
+  y mapping: y = 80 + (0.04 − Δ) × 1714.3
+    Δ = +0.04 → y = 80
+    Δ = 0    → y = 148.6
+    Δ = -0.10 → y = 320
+
+  Learned-detector counterpart is in rq3_learned.svg.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 420" font-family="'Inter', system-ui, sans-serif">
+  <style>
+    .title { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 22px; fill: #001C3D; }
+    .subtitle { font-size: 13px; fill: #6B7280; font-weight: 500; }
+    .axis { stroke: #001C3D; stroke-width: 1.2; }
+    .grid { stroke: #ECE7DA; stroke-width: 0.6; }
+    .tick { font-size: 11px; fill: #6B7280; }
+    .axislabel { font-size: 12px; fill: #001C3D; font-weight: 500; }
+    .valbig { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 18px; fill: #E84E10; }
+    .pooled-line { stroke: #E84E10; stroke-width: 4; fill: none; stroke-linejoin: round; }
+    .det-cl     { stroke: #4A90C4; stroke-width: 1.4; fill: none; opacity: 0.6; }
+    .det-cl-tl  { stroke: #4A90C4; stroke-width: 1.6; fill: none; opacity: 0.75; }
+    .det-spat   { stroke: #001C3D; stroke-width: 1.8; fill: none; opacity: 0.85; stroke-dasharray: 4,3; }
+    .label      { font-size: 10.5px; font-weight: 600; }
+    .label.cl    { fill: #4A90C4; }
+    .label.cl-tl { fill: #1F5C8C; }
+    .label.spat  { fill: #001C3D; font-weight: 700; }
+    .leader      { stroke: #B8AE9B; stroke-width: 0.5; fill: none; stroke-dasharray: 1.5,1.5; opacity: 0.85; }
+    .zero-line { stroke: #001C3D; stroke-width: 0.8; }
+  </style>
+
+  <!-- Title + subtitle -->
+  <text class="title" x="20" y="28">The real-vs-AI gap shrinks with payload</text>
+  <text class="subtitle" x="20" y="48">Per-detector ΔAUC (real − pooled AI) for the six classical detectors. Pooled estimate in bold orange.</text>
+
+  <!-- ==================================================================
+       GRID + AXES (y range -0.10 → +0.04)
+       y(Δ) = 80 + (0.04 − Δ) × 1714.3
+       ================================================================== -->
+  <g class="grid">
+    <line x1="100" y1="80"  x2="580" y2="80"/>
+    <line x1="100" y1="114" x2="580" y2="114"/>
+    <line x1="100" y1="149" x2="580" y2="149"/>
+    <line x1="100" y1="183" x2="580" y2="183"/>
+    <line x1="100" y1="217" x2="580" y2="217"/>
+    <line x1="100" y1="252" x2="580" y2="252"/>
+    <line x1="100" y1="286" x2="580" y2="286"/>
+    <line x1="100" y1="320" x2="580" y2="320"/>
+  </g>
+  <line class="zero-line" x1="100" y1="148.6" x2="580" y2="148.6"/>
+  <g class="tick">
+    <text x="92" y="84"  text-anchor="end">+0.04</text>
+    <text x="92" y="118" text-anchor="end">+0.02</text>
+    <text x="92" y="152" text-anchor="end">0</text>
+    <text x="92" y="187" text-anchor="end">−0.02</text>
+    <text x="92" y="221" text-anchor="end">−0.04</text>
+    <text x="92" y="256" text-anchor="end">−0.06</text>
+    <text x="92" y="290" text-anchor="end">−0.08</text>
+    <text x="92" y="324" text-anchor="end">−0.10</text>
+  </g>
+  <line class="axis" x1="100" y1="80" x2="100" y2="320"/>
+  <text class="axislabel" x="35" y="200" text-anchor="middle" transform="rotate(-90, 35, 200)">ΔAUC (real − pooled AI)</text>
+  <!-- Direction labels: orange = headline direction in this chart (AI easier).
+       Triangle arrows drawn as SVG polygons so they render in every fallback font. -->
+  <polygon points="20,86 27,76 34,86" fill="#6B7280"/>
+  <text x="88" y="92"  text-anchor="end" font-style="italic" font-size="13px" font-weight="700" fill="#6B7280">real easier</text>
+  <polygon points="20,308 27,318 34,308" fill="#E84E10"/>
+  <text x="88" y="315" text-anchor="end" font-style="italic" font-size="13px" font-weight="700" fill="#E84E10">AI easier</text>
+
+  <!-- X-axis -->
+  <line class="axis" x1="100" y1="320" x2="580" y2="320"/>
+  <g class="tick">
+    <text x="140" y="342" text-anchor="middle" font-weight="600" fill="#001C3D" font-size="14px">low</text>
+    <text x="140" y="358" text-anchor="middle">0.05 bpp</text>
+    <text x="350" y="342" text-anchor="middle" font-weight="600" fill="#001C3D" font-size="14px">medium</text>
+    <text x="350" y="358" text-anchor="middle">0.15 bpp</text>
+    <text x="560" y="342" text-anchor="middle" font-weight="600" fill="#001C3D" font-size="14px">high</text>
+    <text x="560" y="358" text-anchor="middle">0.30 bpp</text>
+  </g>
+  <text class="subtitle" x="350" y="380" text-anchor="middle">payload size (bits per non-zero coefficient)</text>
+
+  <!-- ==================================================================
+       Classical detector traces
+       y values at (low, med, high):
+       cal-χ²:        y=164.4  187.8  225.6
+       χ²-DCT:        y=192.1  236.0  229.8
+       χ²-DCT-tile:   y=250.7  216.1  154.1
+       χ²-spatial:    y=130.7  101.8  89.8
+       RS:            y=303.1  200.9  164.9
+       sample-pairs:  y=301.5  185.6  160.5
+       ================================================================== -->
+
+  <polyline class="det-cl"    points="140,164.4 350,187.8 560,225.6"/>
+  <polyline class="det-cl"    points="140,192.1 350,236.0 560,229.8"/>
+  <polyline class="det-cl-tl" points="140,250.7 350,216.1 560,154.1"/>
+  <polyline class="det-cl"    points="140,303.1 350,200.9 560,164.9"/>
+  <polyline class="det-cl"    points="140,301.5 350,185.6 560,160.5"/>
+  <polyline class="det-spat"  points="140,130.7 350,101.8 560,89.8"/>
+
+  <!-- ==================================================================
+       POOLED line (drawn last so it sits on top)
+       Pooled: -0.0486 → y=231.9   -0.0281 → 196.7   -0.0157 → 175.5
+       ================================================================== -->
+
+  <polyline class="pooled-line" points="140,231.9 350,196.7 560,175.5"/>
+  <circle cx="140" cy="231.9" r="7" fill="#E84E10"/>
+  <circle cx="350" cy="196.7" r="7" fill="#E84E10"/>
+  <circle cx="560" cy="175.5" r="7" fill="#E84E10"/>
+  <text class="valbig" x="120" y="227" text-anchor="end">−4.9 pp</text>
+  <text class="valbig" x="350" y="190" text-anchor="middle">−2.8 pp</text>
+
+  <!-- ==================================================================
+       RIGHT-MARGIN LABELS with dotted neutral leader lines
+       (each leader is a thin dotted neutral-beige line, clearly NOT
+        a data-line continuation)
+       ================================================================== -->
+
+  <!-- χ²-spatial: y=89.8 → label at y=92 -->
+  <line class="leader" x1="563" y1="89.8" x2="615" y2="92"/>
+  <text class="label spat" x="618" y="95">χ²-spatial</text>
+  <text x="618" y="107" font-size="9.5px" font-style="italic" fill="#6B7280">(outlier — reverses)</text>
+
+  <!-- χ²-DCT-tile: y=154.1 → label at y=155 -->
+  <line class="leader" x1="563" y1="154.1" x2="615" y2="155"/>
+  <text class="label cl-tl" x="618" y="158">χ²-DCT (tile-local)</text>
+
+  <!-- sample-pairs: y=160.5 → label at y=170 -->
+  <line class="leader" x1="563" y1="160.5" x2="615" y2="170"/>
+  <text class="label cl" x="618" y="173">sample-pairs</text>
+
+  <!-- RS: y=164.9 → label at y=185 -->
+  <line class="leader" x1="563" y1="164.9" x2="615" y2="185"/>
+  <text class="label cl" x="618" y="188">RS</text>
+
+  <!-- Pooled: y=175.5 → label "−1.6 pp" at y=205 -->
+  <line class="leader" x1="563" y1="175.5" x2="615" y2="205" stroke="#E84E10" opacity="1"/>
+  <text x="618" y="203" font-family="'Space Grotesk', system-ui" font-weight="700" font-size="14px" fill="#E84E10">−1.6 pp</text>
+  <text x="618" y="217" font-size="10.5px" fill="#E84E10" font-weight="600">pooled</text>
+
+  <!-- cal-χ²: y=225.6 → label at y=240 -->
+  <line class="leader" x1="563" y1="225.6" x2="615" y2="240"/>
+  <text class="label cl" x="618" y="243">cal-χ²</text>
+
+  <!-- χ²-DCT: y=229.8 → label at y=255 -->
+  <line class="leader" x1="563" y1="229.8" x2="615" y2="255"/>
+  <text class="label cl" x="618" y="258">χ²-DCT</text>
+
+</svg>

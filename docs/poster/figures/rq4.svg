@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RQ4: Spatial vs. frequency branch contrast per payload level.
+  Spatial-easier at low payload, frequency-easier at medium, tie at high.
+
+  Source: Section IV.E inline table.
+    payload   spatial gap   frequency gap   ΔΔ
+    low       -0.076        -0.033          -0.043   (spatial wins)
+    medium    -0.024        -0.039          +0.015   (frequency wins)
+    high      -0.008        -0.007          -0.001   (tie)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" font-family="'Inter', system-ui, sans-serif">
+  <style>
+    .title { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 20px; fill: #001C3D; }
+    .subtitle { font-size: 12px; fill: #6B7280; font-weight: 500; }
+    .axis { stroke: #001C3D; stroke-width: 1; }
+    .grid { stroke: #ECE7DA; stroke-width: 0.6; }
+    .tick { font-size: 11px; fill: #6B7280; }
+    .axislabel { font-size: 12px; fill: #001C3D; font-weight: 500; }
+    .bar-spat { fill: #4A90C4; }
+    .bar-freq { fill: #E84E10; }
+    .vallbl { font-family: 'JetBrains Mono', monospace; font-size: 11px; fill: #001C3D; font-weight: 600; }
+    .winner { font-family: 'Space Grotesk', system-ui; font-size: 13px; font-weight: 700; }
+    .winner.s { fill: #4A90C4; }
+    .winner.f { fill: #E84E10; }
+    .winner.t { fill: #6B7280; }
+    .legend-lbl { font-size: 12px; fill: #001C3D; font-weight: 500; }
+  </style>
+
+  <!-- Title (single line) -->
+  <text class="title" x="20" y="28">Spatial vs frequency: which finds the bigger gap?</text>
+  <text class="subtitle" x="20" y="48">Real-vs-AI ΔAUC per branch at three payload sizes. The answer is payload-dependent; pooled: ΔΔ ≈ 0.</text>
+
+  <!-- Legend (bottom-right, out of plot area) -->
+  <g transform="translate(420, 386)">
+    <rect class="bar-spat" x="0" y="0" width="14" height="14"/>
+    <text class="legend-lbl" x="20" y="12">spatial branch (LSB / PNG)</text>
+    <rect class="bar-freq" x="0" y="22" width="14" height="14"/>
+    <text class="legend-lbl" x="20" y="34">frequency branch (DCT-LSB / JPEG)</text>
+  </g>
+
+  <!-- Plot area
+       y: 0 at y=120, -0.08 at y=300 (180 px for 0.08 → 22.5 px / 0.01)
+       3 payload groups at x-centres 130, 320, 510 (gap ~190 between groups) -->
+
+  <!-- Grid + ticks -->
+  <g class="grid">
+    <line x1="70" y1="120" x2="600" y2="120"/>
+    <line x1="70" y1="165" x2="600" y2="165"/>
+    <line x1="70" y1="210" x2="600" y2="210"/>
+    <line x1="70" y1="255" x2="600" y2="255"/>
+    <line x1="70" y1="300" x2="600" y2="300"/>
+  </g>
+  <g class="tick">
+    <text x="62" y="123" text-anchor="end">0</text>
+    <text x="62" y="168" text-anchor="end">−0.02</text>
+    <text x="62" y="213" text-anchor="end">−0.04</text>
+    <text x="62" y="258" text-anchor="end">−0.06</text>
+    <text x="62" y="303" text-anchor="end">−0.08</text>
+  </g>
+  <text class="axislabel" x="22" y="210" text-anchor="middle" transform="rotate(-90, 22, 210)">real − AI ΔAUC (more negative = AI easier)</text>
+  <line class="axis" x1="70" y1="120" x2="70" y2="300"/>
+  <line class="axis" x1="70" y1="120" x2="600" y2="120"/>
+
+  <!-- LOW payload group: spatial -0.076, frequency -0.033 -->
+  <g>
+    <rect class="bar-spat" x="100" y="120" width="50" height="171"/>
+    <text class="vallbl" x="125" y="312" text-anchor="middle">−0.076</text>
+    <rect class="bar-freq" x="160" y="120" width="50" height="74.25"/>
+    <text class="vallbl" x="185" y="312" text-anchor="middle">−0.033</text>
+    <text class="axislabel" x="155" y="340" text-anchor="middle" font-weight="700" font-size="14">low</text>
+    <text class="tick" x="155" y="355" text-anchor="middle">0.05 bpp</text>
+    <!-- winner annotation above bars -->
+    <text class="winner s" x="155" y="93" text-anchor="middle">spatial &gt; frequency</text>
+    <text class="winner s" x="155" y="108" text-anchor="middle" font-size="12px" font-weight="500">−4.3 pp difference</text>
+  </g>
+
+  <!-- MEDIUM payload group: spatial -0.024, frequency -0.039 -->
+  <g>
+    <rect class="bar-spat" x="290" y="120" width="50" height="54"/>
+    <text class="vallbl" x="315" y="312" text-anchor="middle">−0.024</text>
+    <rect class="bar-freq" x="350" y="120" width="50" height="87.75"/>
+    <text class="vallbl" x="375" y="312" text-anchor="middle">−0.039</text>
+    <text class="axislabel" x="345" y="340" text-anchor="middle" font-weight="700" font-size="14">medium</text>
+    <text class="tick" x="345" y="355" text-anchor="middle">0.15 bpp</text>
+    <text class="winner f" x="345" y="93" text-anchor="middle">frequency &gt; spatial</text>
+    <text class="winner f" x="345" y="108" text-anchor="middle" font-size="12px" font-weight="500">+1.5 pp difference</text>
+  </g>
+
+  <!-- HIGH payload group: spatial -0.008, frequency -0.007 -->
+  <g>
+    <rect class="bar-spat" x="480" y="120" width="50" height="18"/>
+    <text class="vallbl" x="505" y="312" text-anchor="middle">−0.008</text>
+    <rect class="bar-freq" x="540" y="120" width="50" height="15.75"/>
+    <text class="vallbl" x="565" y="312" text-anchor="middle">−0.007</text>
+    <text class="axislabel" x="535" y="340" text-anchor="middle" font-weight="700" font-size="14">high</text>
+    <text class="tick" x="535" y="355" text-anchor="middle">0.30 bpp</text>
+    <text class="winner t" x="535" y="93" text-anchor="middle">spatial ≈ frequency</text>
+    <text class="winner t" x="535" y="108" text-anchor="middle" font-size="12px" font-weight="500">−0.1 pp difference</text>
+  </g>
+</svg>
