@@ -39,13 +39,15 @@ function renderProposalPage() {
 	).join("");
 
 	return `<div class="proposal-page">
-        <div class="proposal-header">
-            <div class="proposal-header-left">
+        <div class="proposal-left">
+            <div class="proposal-header">
                 <div class="proposal-header-title">Project Proposal</div>
                 <div class="proposal-header-sub">Project Proposal, February 2026. During implementation, some things changed from the proposal:</div>
             </div>
             <div class="div-cards">${cards}</div>
         </div>
-        <iframe class="proposal-embed" src="/public/proposal.html"></iframe>
+        <div class="proposal-right">
+            <iframe class="proposal-embed" src="/public/proposal.html" title="Project proposal PDF viewer"></iframe>
+        </div>
     </div>`;
 }
