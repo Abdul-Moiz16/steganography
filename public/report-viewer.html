@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Final Report</title>
+  <link rel="stylesheet" href="/public/css/variables.css">
+  <link rel="stylesheet" href="/public/css/proposal-viewer.css">
+</head>
+<body>
+  <div id="toolbar">
+    <button id="btn-prev" disabled>&#8249; Prev</button>
+    <button id="btn-next" disabled>Next &#8250;</button>
+    <span id="page-info">— / —</span>
+    <span style="flex:1"></span>
+    <button id="btn-zoom-out">−</button>
+    <span id="zoom-label">100%</span>
+    <button id="btn-zoom-in">+</button>
+    <button id="btn-zoom-fit">Fit</button>
+  </div>
+
+  <div id="scroll-area" data-pdf-url="/api/report-pdf">
+    <div id="loading">Loading PDF…</div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="/public/js/proposal-viewer.js"></script>
+</body>
+</html>

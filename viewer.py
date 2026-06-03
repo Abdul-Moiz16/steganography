@@ -413,6 +413,8 @@ class Handler(BaseHTTPRequestHandler):
             self._sse_events()
         elif p == "/api/proposal-pdf":
             self._serve_proposal_pdf()
+        elif p == "/api/report-pdf":
+            self._serve_report_pdf()
         elif p.startswith("/api/pipeline/stream/"):
             self._sse_stream(p[len("/api/pipeline/stream/"):])
         else:
@@ -578,6 +580,19 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/pdf")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Content-Disposition", "inline; filename=\"proposal.pdf\"")
+        self.send_header("Cache-Control", "max-age=3600")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _serve_report_pdf(self):
+        pdf_path = (PROJECT_ROOT / "docs" / "report" / "final_report_draft_v4.pdf").resolve()
+        if not pdf_path.exists():
+            return self._err(404, "report PDF not found")
+        data = pdf_path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/pdf")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Content-Disposition", "inline; filename=\"final_report.pdf\"")
         self.send_header("Cache-Control", "max-age=3600")
         self.end_headers()
         self.wfile.write(data)

@@ -1,3 +1,42 @@
+.proposal-tab-bar {
+    display: flex;
+    gap: 4px;
+    padding: 10px 16px 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--outline-var);
+    flex-shrink: 0;
+}
+
+.proposal-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: none;
+    background: transparent;
+    color: var(--secondary);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--body);
+    cursor: pointer;
+    border-radius: var(--radius) var(--radius) 0 0;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.proposal-tab-btn .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.proposal-tab-btn:hover {
+    color: var(--on-surface);
+}
+
+.proposal-tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
 .proposal-page {
     display: flex;
     flex-direction: column;
