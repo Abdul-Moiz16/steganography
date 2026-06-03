@@ -54,6 +54,9 @@ class DownloadRecord:
     seed: int
 
 
+_NETWORK_RETRYABLE = (URLError, TimeoutError, ConnectionError)
+
+
 def _request_json(
     url: str,
     *,
@@ -77,7 +80,11 @@ def _request_json(
                 time.sleep(sleep_seconds)
                 continue
             raise
-        except URLError:
+        except _NETWORK_RETRYABLE:
+            # Read timeout, connection reset, DNS hiccup, dropped socket --
+            # any transient network failure during the HTTPS round-trip is
+            # retried with the same backoff as URLError. Without this catch
+            # a single TimeoutError mid-read aborts a multi-hour download.
             if attempt < retries - 1:
                 time.sleep(backoff_seconds * (2**attempt) + random.uniform(0.0, 0.5))
                 continue
@@ -107,7 +114,7 @@ def _request_bytes(
                 time.sleep(sleep_seconds)
                 continue
             raise
-        except URLError:
+        except _NETWORK_RETRYABLE:
             if attempt < retries - 1:
                 time.sleep(backoff_seconds * (2**attempt) + random.uniform(0.0, 0.5))
                 continue
@@ -370,6 +377,43 @@ def download_real_covers(
         (run_dir / "covers" / "real").mkdir(parents=True, exist_ok=True)
         (run_dir / "manifests").mkdir(parents=True, exist_ok=True)
 
+    # SHORT-CIRCUIT: if a previous run already produced manifests and the
+    # standardised covers on disk, skip the HuggingFace datasets-server
+    # API calls entirely.  The HF API is the only thing this function uses
+    # the network for that we cannot regenerate from local state, and it is
+    # also the most frequent rate-limit / outage failure point (CloudFront
+    # 429s).  When manifests + cover files exist with the expected row count
+    # we return the existing paths and let the caller proceed to embedding.
+    if run_dir is not None:
+        existing_manifest = run_dir / "manifests" / "covers_real.csv"
+        existing_raw_index = run_dir / "manifests" / "raw_cover_index_real.csv"
+        existing_prompts = run_dir / "manifests" / "generation_prompts.csv"
+        existing_summary = run_dir / "manifests" / "real_download_summary.json"
+        if existing_manifest.exists() and existing_raw_index.exists():
+            target_total = coco_target + flickr_target
+            import csv as _csv
+            with existing_manifest.open() as f:
+                n_existing = sum(1 for _ in _csv.DictReader(f))
+            cover_files_on_disk = len(list((run_dir / "covers" / "real").glob("g*__src-real*")))
+            # Permissive: short-circuit if we have at least a meaningful
+            # fraction of the overshoot AND enough cover files to back the
+            # records.  covers_real.csv can legitimately be post-caption-prune
+            # (smaller than the overshoot) on a relaunch -- the caller's
+            # pruning step is idempotent on already-pruned data.
+            if n_existing >= max(100, int(target_total * 0.4)) and cover_files_on_disk >= 2 * n_existing - 10:
+                print(
+                    f"[download_real_covers] SHORT-CIRCUIT: covers_real.csv has "
+                    f"{n_existing} rows (target was {target_total}); "
+                    f"{cover_files_on_disk} cover files on disk; "
+                    f"skipping HuggingFace API + downloads, reusing existing state."
+                )
+                return {
+                    "raw_index": existing_raw_index,
+                    "covers_master_real": existing_manifest,
+                    "generation_prompts": existing_prompts,
+                    "summary": existing_summary,
+                }
+
     specs = [
         DatasetSpec(
             dataset="COCO",
@@ -410,6 +454,8 @@ def download_real_covers(
     from tqdm import tqdm
 
     records: list[DownloadRecord] = []
+    n_skipped_existing = 0
+    n_failed = 0
     for idx, candidate in tqdm(
         enumerate(collected, start=1),
         total=len(collected),
@@ -421,24 +467,65 @@ def download_real_covers(
             dataset_slug = candidate.dataset.lower().replace(" ", "")
             ext = _url_extension(candidate.image_url)
             raw_path = run_dir / "raw" / "real" / dataset_slug / f"g{group_id:04d}__src-real{ext}"
-        else:
-            raw_path = _raw_image_path(paths, group_id, candidate.dataset, candidate.image_url)
-        raw_path.parent.mkdir(parents=True, exist_ok=True)
-        raw_path.write_bytes(fetch_bytes(candidate.image_url))
-
-        if run_dir is not None:
             spatial_path = (run_dir / "covers" / "real") / cover_filename(group_id, "real", "spatial")
             frequency_path = (run_dir / "covers" / "real") / cover_filename(group_id, "real", "frequency")
         else:
+            raw_path = _raw_image_path(paths, group_id, candidate.dataset, candidate.image_url)
             spatial_path = paths.cover_path(group_id, "real", "spatial")
             frequency_path = paths.cover_path(group_id, "real", "frequency")
-        standardize_and_save_variants(
-            raw_path,
-            spatial_path,
-            frequency_path,
-            size=image_size,
-            jpeg_quality=95,
-        )
+
+        # Skip-if-exists: if both standardised variants are already on disk
+        # from a previous attempt, reuse without re-downloading.  This makes
+        # the download stage resumable across crashes (e.g. a stray HTTP 4xx
+        # used to abort the whole loop and waste the prior work).
+        if spatial_path.exists() and frequency_path.exists():
+            n_skipped_existing += 1
+            records.append(
+                DownloadRecord(
+                    group_id=group_id,
+                    source="real",
+                    dataset=candidate.dataset,
+                    orig_id=candidate.orig_id,
+                    caption_id=candidate.caption_id,
+                    caption_text=candidate.caption_text,
+                    raw_image_path=_to_project_relative(project_root, raw_path),
+                    spatial_path=_to_project_relative(project_root, spatial_path),
+                    frequency_path=_to_project_relative(project_root, frequency_path),
+                    qc_pass=True,
+                    qc_score=1.0,
+                    seed=seed,
+                )
+            )
+            continue
+
+        # Per-image error handling: HTTP 4xx (image unavailable / restricted),
+        # network errors, or decode failures are non-fatal -- log the skip and
+        # move on so a single bad URL does not crash the entire pipeline.
+        raw_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            raw_path.write_bytes(fetch_bytes(candidate.image_url))
+            standardize_and_save_variants(
+                raw_path,
+                spatial_path,
+                frequency_path,
+                size=image_size,
+                jpeg_quality=95,
+            )
+        except (HTTPError, URLError, OSError, ValueError) as exc:
+            n_failed += 1
+            tqdm.write(
+                f"[download_real_covers] SKIP g{group_id:04d} "
+                f"({candidate.dataset}/{candidate.orig_id}): "
+                f"{type(exc).__name__}: {exc}"
+            )
+            # Clean up half-written raw file if write_bytes succeeded but
+            # standardize failed.
+            if raw_path.exists():
+                try:
+                    raw_path.unlink()
+                except OSError:
+                    pass
+            continue
 
         records.append(
             DownloadRecord(
@@ -455,6 +542,13 @@ def download_real_covers(
                 qc_score=1.0,
                 seed=seed,
             )
+        )
+
+    if n_skipped_existing or n_failed:
+        print(
+            f"[download_real_covers] reused {n_skipped_existing} existing covers, "
+            f"skipped {n_failed} failed downloads "
+            f"({len(records)} valid records of {len(collected)} attempted)"
         )
 
     raw_rows, cover_rows, prompt_rows = _build_rows(records)

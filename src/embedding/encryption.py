@@ -1,9 +1,11 @@
-from __future__ import annotations
+# Main worker: Daria
+# Contributor: David (Template)
 
-# reference: https://cryptography.io/en/latest/hazmat/primitives/symmetric-encryption/
-# reference: https://cryptography.io/en/latest/hazmat/primitives/padding/
+from __future__ import annotations
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
+# reference: https://cryptography.io/en/latest/hazmat/primitives/symmetric-encryption/
+# reference: https://cryptography.io/en/latest/hazmat/primitives/padding/
 
 def encrypt_payload_aes_256_cbc(payload: bytes, key: bytes, iv: bytes) -> bytes:
     """Encrypt payload bytes with AES-256-CBC before embedding.

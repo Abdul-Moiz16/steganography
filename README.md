@@ -1,11 +1,34 @@
 # Carrier-Source Steganalysis Pipeline
 
-> Does the source of a carrier image (real photograph vs. ML-generated) affect
+> Does the source of a carrier image (real photograph vs. AI-generated) affect
 > how detectable steganographic embedding is?
 
 This repository implements an end-to-end steganographic embedding and detection
-pipeline for comparing carrier sources, with a web-based explorer for
-visualizing results.
+pipeline for comparing real-photograph vs. diffusion-generated carriers
+(SDXL 1.0, FLUX.1-schnell) under non-adaptive LSB-style embeddings, with a
+web-based explorer for visualising results.
+
+## Paper
+
+The final paper is at
+[`docs/report/final_report_draft_v4.pdf`](docs/report/final_report_draft_v4.pdf)
+(LaTeX source: `final_report_draft_v4.tex`). Headline findings:
+
+- Across 3{,}000 caption-matched image groups and six training-free detectors,
+  the carrier-source effect is small (pooled $|\Delta_\text{AUC}|\!\approx\!0.013$),
+  payload-dependent, and consistently signed toward AI carriers being easier
+  to attack in five of six detectors; the partial-AUC view at FPR$\leq$0.10
+  amplifies the effect 3-7$\times$.
+- Cross-validation on SRNet and DCTR (with an LDA ensemble) trained on a
+  separate caption-matched corpus reproduces the classical pattern. A
+  real-only-training ablation reveals SRNet's apparent source-invariance is a
+  training-mix artefact: withholding AI carriers opens a per-source gap of
+  up to 0.44 AUC on AI test images.
+- A new **tile-local Westfeld $\chi^2$-DCT detector** beats the global
+  baseline by +0.09 AUC on BOSSBase 1.01 (JSteg, Q=75 and Q=95) and is the
+  strongest frequency-branch classical detector on our test corpus.
+- A candidate cover-side variance-inflation mechanism is offered for the
+  $\chi^2$-spatial reversal (operationally negligible: dissolves under pAUC).
 
 ## Table of Contents
 
@@ -52,10 +75,24 @@ python run.py prototype --ml-engine stub
 
 # Explicit run ID
 python run.py prototype --run-id my_experiment_001
+
+# Override individual knobs (any subset; profile defaults fill the rest)
+python run.py prototype_full --ml-engine stub \
+    --n-groups 50 --active-methods lsb \
+    --active-detectors rs chi_square_spatial sample_pairs \
+    --active-encryption plain --jpeg-quality 95
+
+# Validate a config without running anything
+python run.py prototype --dry-run --ml-engine stub --include-bd-sens
 ```
 
 All outputs are written to `runs/{profile}_{timestamp}/`, keeping each run
 self-contained (covers, manifests, stego images, predictions, metrics, figures).
+The runner automatically writes per-experiment contrast CSVs (`exp1`…`exp5`),
+a consolidated `experiments_summary.csv`, and supplementary `wilcoxon_tests.csv`
++ `t_tests.csv` + `encryption_invariance.csv` to `metrics/` after the figures
+are generated. See [`src/pipeline/README.md`](src/pipeline/README.md) for the
+full knob compatibility matrix and figure-enablement rules.
 
 To run all tests:
 
@@ -84,32 +121,37 @@ significant but validate pipeline functionality and LSB integration.
 
 | ID  | Type         | Question                                                          |
 | --- | ------------ | ----------------------------------------------------------------- |
-| RQ1 | Primary      | Does carrier source (real vs. ML-generated) affect detectability? |
-| RQ2 | Primary      | Within ML carriers, does the generator (SDXL vs. FLUX.1) matter?  |
+| RQ1 | Primary      | Does carrier source (real vs. AI-generated) affect detectability? |
+| RQ2 | Primary      | Within AI carriers, does the generator (SDXL vs. FLUX.1) matter?  |
 | RQ3 | Exploratory  | Does payload size change the detectability gap between sources?   |
 | RQ4 | Exploratory  | Do spatial (LSB+PNG) and frequency (DCT+JPEG) branches differ?    |
 | RQ5 | Verification | Does AES-256-CBC encryption of the payload affect detectability?  |
 
 ## Experimental Design
 
-- **Carrier sources**: Real (COCO + Flickr30k), ML-A (SDXL 1.0), ML-B (FLUX.1-schnell)
+- **Carrier sources**: Real (COCO + Flickr30k), AI-A (SDXL 1.0), AI-B (FLUX.1-schnell)
 - **Image format**: Grayscale 512×512
 - **Spatial branch**: Sequential row-major LSB replacement → PNG
 - **Frequency branch**: JSteg-style DCT-LSB on AC coefficients → JPEG Q=95
-- **Payload levels**: Low (25%), Medium (50%), High (75%) fill rate
-- **Encryption**: Plain vs. AES-256-CBC
-- **Detectors**: RS Analysis, Chi-Square (Spatial), Sample Pairs, Chi-Square (DCT), Calibration Chi-Square
-- **Metrics**: ROC-AUC, EER, accuracy at Youden's J, FPR at fixed 10% FNR, PSNR, SSIM
+- **Payload levels**: 0.05 / 0.15 / 0.30 bpp (low / medium / high)
+- **Encryption**: Plain (seeded uniform random bytestream) vs. AES-256-CBC
+- **Classical detectors** (6): RS Analysis, Sample Pairs, Spatial χ², global DCT χ², **tile-local DCT χ² (ours)**, Calibration χ²
+- **Learned detectors** (2): SRNet (spatial branch), DCTR + LDA ensemble (frequency branch); trained on a separate caption-matched corpus
+- **External validation**: BOSSBase 1.01 at Q=75 and Q=95 (JSteg + OutGuess) for the tile-local detector
+- **Metrics**: ROC-AUC, EER, accuracy at Youden's J, FPR at fixed 10% FNR, PSNR, SSIM; partial AUC at FPR≤0.10
 
-### Full design scale
+### Final-run scale ($N\!=\!3{,}000$ confirmatory)
 
-| Quantity                 | Count                                      |
-| ------------------------ | ------------------------------------------ |
-| Groups                   | 500 (300 COCO + 200 Flickr30k)             |
-| Covers per group         | 3 (real + ML-A + ML-B)                     |
-| Total covers             | 1,500                                      |
-| Stego variants per cover | 12 (2 methods × 3 payloads × 2 encryption) |
-| Total stego images       | 18,000                                     |
+| Quantity                 | Count                                                          |
+| ------------------------ | -------------------------------------------------------------- |
+| Caption groups           | 3,000 (mixed COCO + Flickr30k)                                 |
+| Covers per group         | 3 (real + AI-A + AI-B)                                         |
+| Logical covers           | 9,000                                                          |
+| Cover files on disk      | 18,000 (each logical cover stored as PNG + JPEG)               |
+| Stego variants per cover | 12 (2 methods × 3 payloads × 2 encryption)                     |
+| Total stego files        | 108,000                                                        |
+| Classical predictions    | 648,000                                                        |
+| Learned predictions      | 4 × 108,000 (2 detectors × 2 training configurations)          |
 
 ## Prototype vs Full Design
 

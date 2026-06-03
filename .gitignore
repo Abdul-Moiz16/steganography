@@ -6,6 +6,8 @@ __pycache__/
 # Local environments
 .venv/
 venv/
+venv312/
+.python-version
 
 # Secrets
 .env
@@ -25,3 +27,31 @@ venv/
 # Test output artifacts
 tests/output/
 /node_modules
+
+# Heavy runs (regenerable; too large for git)
+runs/prototype_full_20260512_010050_p8765/
+runs/prototype_full_20260512_113925_p8765/
+runs/prototype_full_20260512_154340_p8765/
+runs/prototype_full_20260513_005357_p8765/
+
+# Training runs for SRNet / DCTR learned baselines (~30 GB each)
+runs/training_*/
+
+# Claude Code local session state
+.claude/
+
+# LaTeX build artefacts (regenerable from .tex)
+*.aux
+*.log
+*.out
+*.toc
+*.nav
+*.snm
+*.bbl
+*.blg
+*.synctex.gz
+missfont.log
+texput.log
+
+# Runtime logs (regenerable)
+logs/

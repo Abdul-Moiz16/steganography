@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RQ1: Real vs. AI carriers. Per-detector mean of the real-vs-AI ΔAUC,
+  averaged across the three payload levels (low/medium/high). Negative =
+  AI carriers easier to attack (orange); positive = real carriers easier
+  (dark navy, the χ²-spatial outlier).
+
+  Source: Section IV.B of the paper, per-stratum DeLong contrasts from
+  the rq1strip figure data. Per-detector means (across payload):
+    cal-χ²     = mean(-0.0092, -0.0231, -0.0453) = -0.026
+    χ²-DCT     = mean(-0.0254, -0.0513, -0.0477) = -0.041
+    χ²-DCTt    = mean(-0.0596, -0.0393, -0.0032) = -0.034
+    χ²-spatial = mean(+0.0104, +0.0273, +0.0344) = +0.024
+    RS         = mean(-0.0901, -0.0305, -0.0095) = -0.043
+    sample-pairs = mean(-0.0892, -0.0216, -0.0067) = -0.039
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 410" font-family="'Inter', system-ui, sans-serif">
+  <style>
+    .title { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 22px; fill: #001C3D; }
+    .subtitle { font-size: 13px; fill: #6B7280; font-weight: 500; }
+    .axis { stroke: #001C3D; stroke-width: 1; }
+    .grid { stroke: #ECE7DA; stroke-width: 0.6; }
+    .tick { font-size: 11px; fill: #6B7280; }
+    .detlabel { font-size: 13px; fill: #001C3D; font-weight: 500; }
+    .val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
+    .ai-easier { fill: #E84E10; }
+    .real-easier { fill: #001C3D; }
+    .band { fill: #FBF9F5; stroke: #ECE7DA; stroke-width: 0.6; stroke-dasharray: 2,2; }
+    .axislabel { font-size: 11px; fill: #6B7280; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+    .callout { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 14px; font-weight: 700; fill: #E84E10; }
+  </style>
+
+  <!-- Title -->
+  <text class="title" x="20" y="28">5 of 6 detectors find AI carriers easier</text>
+  <text class="subtitle" x="20" y="48">Mean ΔAUC per detector (real − pooled AI), averaged over payload sizes</text>
+
+  <!-- Plot area: x maps Δ in [-0.06, +0.04] → [140, 580]
+       x = 140 + (Δ + 0.06) × 4400 -->
+  <!-- Trivial-zone band (|Δ| < 0.025): from -0.025 → 0.025 -->
+  <rect class="band" x="293" y="80" width="220" height="220"/>
+
+  <!-- Zero axis -->
+  <line class="axis" x1="404" y1="80" x2="404" y2="300"/>
+
+  <!-- X-axis ticks at -0.06, -0.04, -0.02, 0, +0.02, +0.04 -->
+  <g class="tick">
+    <line class="grid" x1="140" y1="300" x2="580" y2="300"/>
+    <line class="axis" x1="140" y1="300" x2="580" y2="300"/>
+    <text x="140" y="318" text-anchor="middle">−0.06</text>
+    <text x="228" y="318" text-anchor="middle">−0.04</text>
+    <text x="316" y="318" text-anchor="middle">−0.02</text>
+    <text x="404" y="318" text-anchor="middle">0</text>
+    <text x="492" y="318" text-anchor="middle">+0.02</text>
+    <text x="580" y="318" text-anchor="middle">+0.04</text>
+  </g>
+
+  <!-- X-axis labels -->
+  <text class="axislabel" x="100" y="338" text-anchor="start">← AI easier</text>
+  <text class="axislabel" x="580" y="338" text-anchor="end">real easier →</text>
+  <text class="subtitle" x="350" y="358" text-anchor="middle" style="font-size:11px;">ΔAUC (real − pooled AI), averaged across payload</text>
+
+  <!-- Detector rows. Six detectors ordered by |Δ|. -->
+  <!-- y-positions, evenly spaced from y=98 to y=288 (190px range, ~31px per row) -->
+
+  <!-- RS: -0.043 -->
+  <g>
+    <text class="detlabel" x="132" y="103" text-anchor="end">RS</text>
+    <line stroke="#E84E10" stroke-width="2" x1="404" y1="100" x2="215" y2="100"/>
+    <circle class="ai-easier" cx="215" cy="100" r="6"/>
+    <text class="val ai-easier" x="207" y="104" text-anchor="end">−0.043</text>
+  </g>
+  <!-- χ²-DCT: -0.041 -->
+  <g>
+    <text class="detlabel" x="132" y="138" text-anchor="end">χ²-DCT</text>
+    <line stroke="#E84E10" stroke-width="2" x1="404" y1="135" x2="224" y2="135"/>
+    <circle class="ai-easier" cx="224" cy="135" r="6"/>
+    <text class="val ai-easier" x="216" y="139" text-anchor="end">−0.041</text>
+  </g>
+  <!-- sample-pairs: -0.039 -->
+  <g>
+    <text class="detlabel" x="132" y="173" text-anchor="end">sample-pairs</text>
+    <line stroke="#E84E10" stroke-width="2" x1="404" y1="170" x2="232" y2="170"/>
+    <circle class="ai-easier" cx="232" cy="170" r="6"/>
+    <text class="val ai-easier" x="224" y="174" text-anchor="end">−0.039</text>
+  </g>
+  <!-- χ²-DCT-tiled: -0.034 -->
+  <g>
+    <text class="detlabel" x="132" y="208" text-anchor="end">χ²-DCT (tile-local)</text>
+    <line stroke="#E84E10" stroke-width="2" x1="404" y1="205" x2="254" y2="205"/>
+    <circle class="ai-easier" cx="254" cy="205" r="6"/>
+    <text class="val ai-easier" x="246" y="209" text-anchor="end">−0.034</text>
+  </g>
+  <!-- cal-χ²: -0.026 -->
+  <g>
+    <text class="detlabel" x="132" y="243" text-anchor="end">calibration-χ²</text>
+    <line stroke="#E84E10" stroke-width="2" x1="404" y1="240" x2="290" y2="240"/>
+    <circle class="ai-easier" cx="290" cy="240" r="6"/>
+    <text class="val ai-easier" x="282" y="244" text-anchor="end">−0.026</text>
+  </g>
+  <!-- χ²-spatial: +0.024 (THE OUTLIER) -->
+  <g>
+    <text class="detlabel" x="132" y="278" text-anchor="end">χ²-spatial</text>
+    <line stroke="#001C3D" stroke-width="2" x1="404" y1="275" x2="510" y2="275"/>
+    <circle class="real-easier" cx="510" cy="275" r="6"/>
+    <text class="val real-easier" x="518" y="279" text-anchor="start">+0.024</text>
+  </g>
+
+  <!-- Callout / explanation -->
+  <text class="callout" x="20" y="397" style="fill:#001C3D" font-size="13px">
+    χ²-spatial reverses on full AUC <tspan fill="#6B7280" font-weight="400" font-size="11px">— but dissolves under partial AUC at operational FPRs</tspan>
+  </text>
+</svg>

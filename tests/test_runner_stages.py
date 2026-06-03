@@ -99,12 +99,12 @@ def test_embed_params_json_contract(project_root: Path) -> None:
     lsb_low = __import__("json").loads(runner._embed_params_json("lsb", "low"))
     assert lsb_low["method"] == "lsb"
     assert lsb_low["bit_depth"] == 1
-    assert lsb_low["fill_rate"] == 0.25
+    assert lsb_low["fill_rate"] == 0.05
     assert lsb_low["scan_order"] == "row_major"
 
     dct_high = __import__("json").loads(runner._embed_params_json("dct", "high"))
     assert dct_high["method"] == "dct_lsb_jpeg"
-    assert dct_high["fill_rate"] == 0.75
+    assert dct_high["fill_rate"] == 0.30
     assert dct_high["jpeg_quality"] == 95
 
     with pytest.raises(ValueError, match="Unknown method"):

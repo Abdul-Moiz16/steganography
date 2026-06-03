@@ -21,7 +21,7 @@
 - `download_real_covers.py`
   - builds the real-image set and prompt manifest
 - `generate_ml_covers.py`
-  - creates SDXL / PixArt-alpha covers from prompts
+  - creates SDXL / FLUX.1-schnell covers from prompts
 - `merge_covers_master.py`
   - merges real + ML manifests into final `covers_master.csv`
 

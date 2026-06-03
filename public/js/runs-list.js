@@ -87,12 +87,13 @@ function buildRunRow(run) {
     const isKilled = !isActive && (run.is_killed || (getJobForRun(run.id) || {}).killed);
     const activeJob = getJobForRun(run.id);
     // parse profile from run ID as last resort (format: {profile}_{timestamp}_p{port})
-    const profileFromId = Object.keys(PROFILE_META).find(k => run.id.startsWith(k)) || null;
+    const profileFromId = profileFromRunId(run.id);
     const profile = cfg.profile || (activeJob && activeJob.profile) || profileFromId || (isActive ? '\u2026' : 'unconfigured');
     // fallback to static profile metadata when config.json not yet written
     const meta = PROFILE_META[profile] || null;
     const methods = cfg.active_methods ? toArray(cfg.active_methods) : (meta ? meta.active_methods : []);
     const levels = cfg.active_payload_levels ? toArray(cfg.active_payload_levels) : (meta ? meta.active_payload_levels : []);
+    const payloadMode = cfg.payload_mode || (activeJob && activeJob.payloadMode) || 'random';
     const nGroups = cfg.n_groups != null ? cfg.n_groups : (meta ? meta.n_groups : null);
     const nDetectors = run.n_detectors || (meta ? meta.n_detectors : 0);
     const runStatus = isActive
@@ -125,6 +126,7 @@ function buildRunRow(run) {
             <td><span class="cell-mono">${escapeHtml(nGroups != null ? nGroups : '\u2014')}</span></td>
             <td><span class="cell-dim">${escapeHtml(methods.length ? methods.join(', ') : '\u2014')}</span></td>
             <td><span class="cell-dim">${escapeHtml(levels.length ? levels.join(', ') : '\u2014')}</span></td>
+            <td><span class="cell-dim">${escapeHtml(payloadMode)}</span></td>
             <td><div style="display:flex;align-items:center;gap:6px">${icon('security')}<span class="cell-mono">${escapeHtml(nDetectors)}</span></div></td>
             <td>${deltaCell}</td>
             <td>${runStatus}</td>
@@ -151,6 +153,7 @@ function buildRunsTable(runs, totalRuns, rows) {
                         <th>Groups</th>
                         <th>Methods</th>
                         <th>Payloads</th>
+                        <th>Payload Mode</th>
                         <th>Detectors</th>
                         <th>Source \u0394</th>
                         <th>Status</th>
@@ -181,4 +184,3 @@ function buildActivityFeed(runs) {
         </div>`;
     }).join('');
 }
-

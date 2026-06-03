@@ -4,8 +4,9 @@ Run the steganography pipeline for a named experiment profile.
 
 Usage
 -----
-    python run.py prototype              # new prototype run  (auto-ID)
-    python run.py full_design            # new full-design run (auto-ID)
+    python run.py prototype              # new prototype run       (auto-ID, 60 images, LSB only)
+    python run.py prototype_full         # new prototype-full run  (auto-ID, 300 images, full design)
+    python run.py full_design            # new full-design run     (auto-ID, 1500 images, full design)
     python run.py prototype --run-id my_run_001   # explicit run ID
     python run.py prototype --ml-engine stub      # stub generator (no GPU/API needed)
 
@@ -27,13 +28,15 @@ the full steganography pipeline:
 
 Available profiles
 ------------------
-  prototype    20 groups × 3 sources =   60 images · LSB only  · medium fill · 6 conditions
-  full_design 500 groups × 3 sources = 1500 images · LSB + DCT · all fills   · 36 conditions
+  prototype       20 groups x 3 sources =   60 images . LSB only  . low fill   .  6 conditions
+  prototype_full 100 groups x 3 sources =  300 images . LSB + DCT . all fills  . 36 conditions
+  full_design    500 groups x 3 sources = 1500 images . LSB + DCT . all fills  . 36 conditions
 
 Cover image breakdown per profile
 ----------------------------------
-  prototype   →  12 COCO + 8 Flickr30k  (real)  +  20 SDXL + 20 FLUX  (ml)
-  full_design → 300 COCO + 200 Flickr30k (real)  + 500 SDXL + 500 FLUX (ml)
+  prototype       ->  12 COCO +  8 Flickr30k (real)  +  20 SDXL +  20 FLUX (ml)
+  prototype_full  ->  60 COCO + 40 Flickr30k (real)  + 100 SDXL + 100 FLUX (ml)
+  full_design     -> 300 COCO + 200 Flickr30k (real) + 500 SDXL + 500 FLUX (ml)
 
 ML engine options (--ml-engine)
 --------------------------------
@@ -153,24 +156,37 @@ def _print_results_summary(run_dir: Path) -> None:
                 row_str += f"  {f'{val:.3f}' if val is not None else '  —':>10}"
             print(row_str)
 
+    figures_dir = run_dir / "figures"
+    if figures_dir.exists():
+        top_pngs = sorted(figures_dir.glob("*.png"))
+        nested_pngs = sorted(figures_dir.glob("*/*.png"))
+        if top_pngs or nested_pngs:
+            total = len(top_pngs) + len(nested_pngs)
+            print(f"\n  FIGURES  ({total} PNGs in {figures_dir})")
+            for path in top_pngs:
+                print(f"    - {path.name}")
+            sub_counts: dict[str, int] = {}
+            for path in nested_pngs:
+                sub_counts[path.parent.name] = sub_counts.get(path.parent.name, 0) + 1
+            for sub, count in sorted(sub_counts.items()):
+                print(f"    - {sub}/  ({count} PNGs)")
+
     print(f"\n{'═'*W}\n")
 
-# ── Profile constants ─────────────────────────────────────────────────────────
+# ── Cover-source mix ──────────────────────────────────────────────────────────
 
-_PROFILE_N_GROUPS: dict[str, int] = {
-    "prototype":   20,
-    "full_design": 500,
-}
+# Per proposal §3.1 the real-image pool is 60% COCO + 40% Flickr30k regardless
+# of the profile. COCO and Flickr30k targets are now derived from n_groups so
+# overriding the group count via --n-groups scales the dataset draws cleanly.
+_REAL_COCO_RATIO = 0.6
 
-_PROFILE_COCO_TARGET: dict[str, int] = {
-    "prototype":   12,   # 12 of 20 real groups per run
-    "full_design": 300,
-}
 
-_PROFILE_FLICKR_TARGET: dict[str, int] = {
-    "prototype":    8,   # 8 of 20 real groups per run
-    "full_design": 200,
-}
+def _split_real_targets(n_groups: int) -> tuple[int, int]:
+    """Return (coco_target, flickr_target) for the given total real-cover count."""
+    coco = int(round(n_groups * _REAL_COCO_RATIO))
+    coco = max(0, min(n_groups, coco))
+    flickr = n_groups - coco
+    return coco, flickr
 
 
 # ── HF token resolution ───────────────────────────────────────────────────────
@@ -214,9 +230,10 @@ def _resolve_hf_token(project_root: Path, profile: str, ml_engine: str) -> None:
             "    echo 'HF_TOKEN=hf_your_token_here' > .env\n"
         )
     else:
-        # full_design: token is effectively required for 500 generations
+        # prototype_full and full_design: token is effectively required for
+        # 100 / 500 generations respectively.
         print(
-            "Error: HF_TOKEN is required for full_design ML cover generation.\n"
+            f"Error: HF_TOKEN is required for {profile} ML cover generation.\n"
             "\n"
             "Create a .env file in the project root with your HuggingFace token:\n"
             "\n"
@@ -267,8 +284,7 @@ def _prepare_run_covers(
     if real_manifest.exists() and _row_count(real_manifest) >= n_groups:
         print(f"  [1/3] ✓ Real covers already downloaded.")
     else:
-        coco_n   = _PROFILE_COCO_TARGET[profile]
-        flickr_n = _PROFILE_FLICKR_TARGET[profile]
+        coco_n, flickr_n = _split_real_targets(n_groups)
         print(f"  [1/3] Downloading {coco_n} COCO + {flickr_n} Flickr30k covers (seed={seed}) …")
         from src.data.download_real_covers import download_real_covers
         download_real_covers(
@@ -290,16 +306,45 @@ def _prepare_run_covers(
         if not prompts_csv.exists():
             print("  Error: generation_prompts.csv not found — real covers must be downloaded first.")
             sys.exit(1)
-        print(f"  [2/3] Generating ML covers (engine={ml_engine}) …")
+        # Inference-API backends occasionally return transient 5xx errors. The
+        # generator now keeps already-saved files on disk and re-tries the
+        # missing groups on each call, so up to 3 outer passes give the
+        # backend a chance to recover from longer outages before we surface
+        # a hard failure to the user.
         from src.data.generate_ml_covers import generate_ml_covers_from_prompts
-        generate_ml_covers_from_prompts(
-            project_root=project_root,
-            prompts_csv=prompts_csv,
-            engine=ml_engine,
-            max_groups=n_groups,
-            seed_base=seed,
-            run_dir=run_dir,
-        )
+        max_outer_attempts = 3
+        for attempt in range(1, max_outer_attempts + 1):
+            print(f"  [2/3] Generating ML covers (engine={ml_engine}, attempt {attempt}/{max_outer_attempts}) …")
+            generate_ml_covers_from_prompts(
+                project_root=project_root,
+                prompts_csv=prompts_csv,
+                engine=ml_engine,
+                max_groups=n_groups,
+                seed_base=seed,
+                run_dir=run_dir,
+            )
+            ml_a_rows = _row_count(ml_a_manifest)
+            ml_b_rows = _row_count(ml_b_manifest)
+            if ml_a_rows >= n_groups and ml_b_rows >= n_groups:
+                break
+            missing_a = max(0, n_groups - ml_a_rows)
+            missing_b = max(0, n_groups - ml_b_rows)
+            if attempt < max_outer_attempts:
+                wait = 60 * attempt
+                print(
+                    f"  [retry] {missing_a} ml_a + {missing_b} ml_b groups still missing — "
+                    f"waiting {wait}s before another pass ..."
+                )
+                import time as _t
+                _t.sleep(wait)
+            else:
+                print(
+                    f"  [error] {missing_a} ml_a + {missing_b} ml_b groups remain unfilled "
+                    f"after {max_outer_attempts} passes. See "
+                    f"manifests/ml_generation_failures.csv for the offending prompts. "
+                    f"Re-run the same command later to retry only the missing groups."
+                )
+                sys.exit(2)
 
     # ── Step 3: merge manifests ────────────────────────────────────────────
     print(f"  [3/3] Merging covers manifest ({n_groups} groups × 3 sources = {n_groups * 3} rows) …")
@@ -321,6 +366,11 @@ def _prepare_run_covers(
 def main() -> None:
     import argparse
 
+    from src.pipeline.config import (
+        ALL_DETECTORS, ALL_ENCRYPTIONS, ALL_METHODS, ALL_PAYLOAD_LEVELS,
+    )
+    from src.pipeline.profile import PROFILES
+
     parser = argparse.ArgumentParser(
         description="Run the steganography pipeline for a named experiment profile.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -328,8 +378,12 @@ def main() -> None:
     )
     parser.add_argument(
         "profile",
-        choices=list(_PROFILE_N_GROUPS.keys()),
-        help="Experiment profile: 'prototype' (60 images) or 'full_design' (1500 images).",
+        choices=list(PROFILES.keys()),
+        help=(
+            "Experiment profile: 'prototype' (60 images, LSB-only), "
+            "'prototype_full' (300 images, full factor design), or "
+            "'full_design' (1500 images, full factor design)."
+        ),
     )
     parser.add_argument(
         "--run-id",
@@ -343,16 +397,121 @@ def main() -> None:
         default="inference_api",
         help="Backend for ML cover generation (default: inference_api).",
     )
+    parser.add_argument(
+        "--payload-mode",
+        choices=["random", "hardcoded"],
+        default="random",
+        help="Payload generation mode passed to the pipeline.",
+    )
+    parser.add_argument(
+        "--hardcoded-payload",
+        type=str,
+        default=None,
+        help="UTF-8 text payload used when --payload-mode=hardcoded.",
+    )
+    parser.add_argument(
+        "--hardcoded-payload-file",
+        type=Path,
+        default=None,
+        help="Text file payload used when --payload-mode=hardcoded.",
+    )
+
+    # ── Profile overrides ─────────────────────────────────────────────────────
+    parser.add_argument(
+        "--n-groups",
+        type=int,
+        default=None,
+        help="Override the profile's groups-per-source count (scales COCO/Flickr 60/40).",
+    )
+    parser.add_argument(
+        "--active-methods",
+        nargs="+",
+        choices=list(ALL_METHODS),
+        default=None,
+        help=f"Subset of embedding methods to run (default: profile setting; choices: {list(ALL_METHODS)}).",
+    )
+    parser.add_argument(
+        "--active-payload-levels",
+        nargs="+",
+        choices=list(ALL_PAYLOAD_LEVELS),
+        default=None,
+        help=f"Subset of payload levels to run (default: profile setting; choices: {list(ALL_PAYLOAD_LEVELS)}).",
+    )
+    parser.add_argument(
+        "--active-encryption",
+        nargs="+",
+        choices=list(ALL_ENCRYPTIONS),
+        default=None,
+        help=f"Subset of encryption arms to run (default: both; choices: {list(ALL_ENCRYPTIONS)}).",
+    )
+    parser.add_argument(
+        "--active-detectors",
+        nargs="+",
+        choices=list(ALL_DETECTORS),
+        default=None,
+        help=f"Subset of detectors to run (default: all five; choices: {list(ALL_DETECTORS)}).",
+    )
+    parser.add_argument(
+        "--include-bd-sens",
+        action="store_true",
+        help="Include the BD-Sens auxiliary condition (k=2, 1.50 bpp) for Exp 3b.",
+    )
+    parser.add_argument(
+        "--jpeg-quality",
+        type=int,
+        default=None,
+        help="Override the JPEG quality factor (default: 95 — proposal-locked).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate the config and print the planned figure list, then exit without running.",
+    )
+
     args = parser.parse_args()
 
     profile      = args.profile
-    n_groups     = _PROFILE_N_GROUPS[profile]
     project_root = Path(__file__).parent.resolve()
 
     from src.pipeline.config import PipelineConfig
     from src.pipeline.runner import PipelineRunner
 
-    config = PipelineConfig.from_profile(project_root, profile)
+    config = PipelineConfig.from_profile(
+        project_root,
+        profile,
+        n_groups=args.n_groups,
+        active_methods=tuple(args.active_methods) if args.active_methods else None,
+        active_payload_levels=(
+            tuple(args.active_payload_levels) if args.active_payload_levels else None
+        ),
+        active_encryption=tuple(args.active_encryption) if args.active_encryption else None,
+        active_detectors=tuple(args.active_detectors) if args.active_detectors else None,
+        include_bd_sens_auxiliary=args.include_bd_sens or None,
+        jpeg_quality=args.jpeg_quality,
+    )
+    n_groups = config.n_groups
+
+    errors, warnings = config.validate()
+    for w in warnings:
+        print(f"  [warn] {w}")
+    if errors:
+        print("\nConfig is invalid:")
+        for e in errors:
+            print(f"  [error] {e}")
+        sys.exit(2)
+
+    if args.dry_run:
+        print("\n[dry-run] config validates clean.")
+        print(f"  n_groups            : {config.n_groups}")
+        print(f"  active_methods      : {list(config.active_methods)}")
+        print(f"  active_payload_levels: {list(config.active_payload_levels)}")
+        print(f"  active_encryption   : {list(config.active_encryption)}")
+        print(f"  active_detectors    : {list(config.active_detectors)}")
+        print(f"  include_bd_sens     : {config.include_bd_sens_auxiliary}")
+        print(f"  jpeg_quality        : {config.jpeg_quality}")
+        print(f"  planned figures     : {sorted(config.planned_figures())}")
+        sys.exit(0)
+
     runner = PipelineRunner(config)
 
     # ── Generate cover seed and create run directory ──────────────────────────
@@ -395,7 +554,28 @@ def main() -> None:
         "--execute-detectors",
         "--skip-unimplemented",
         "--generate-figures",
+        "--payload-mode",     args.payload_mode,
     ]
+    if args.hardcoded_payload is not None:
+        cli_args.extend(["--hardcoded-payload", args.hardcoded_payload])
+    if args.hardcoded_payload_file is not None:
+        cli_args.extend(["--hardcoded-payload-file", str(args.hardcoded_payload_file)])
+
+    # Forward profile overrides so the child cli.main() rebuilds the same config.
+    if args.n_groups is not None:
+        cli_args.extend(["--n-groups", str(args.n_groups)])
+    if args.active_methods:
+        cli_args.extend(["--active-methods", *args.active_methods])
+    if args.active_payload_levels:
+        cli_args.extend(["--active-payload-levels", *args.active_payload_levels])
+    if args.active_encryption:
+        cli_args.extend(["--active-encryption", *args.active_encryption])
+    if args.active_detectors:
+        cli_args.extend(["--active-detectors", *args.active_detectors])
+    if args.include_bd_sens:
+        cli_args.append("--include-bd-sens")
+    if args.jpeg_quality is not None:
+        cli_args.extend(["--jpeg-quality", str(args.jpeg_quality)])
 
     sys.argv = ["run.py"] + cli_args
 

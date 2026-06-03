@@ -1,0 +1,10 @@
+experiment,detector,method,source,payload_level,auc,se,ci_lo,ci_hi,n_pos,n_neg,real_minus_ml_gap
+exp3_rq3_payload_interaction,chi_square_spatial,lsb,ml_a,low,0.6425,0.06312127115160841,0.5187823085428475,0.7662176914571525,40,40,0.03187499999999999
+exp3_rq3_payload_interaction,chi_square_spatial,lsb,ml_b,low,0.69375,0.0592656719509268,0.5775892829761835,0.8099107170238165,40,40,0.03187499999999999
+exp3_rq3_payload_interaction,chi_square_spatial,lsb,real,low,0.7,0.058807595881257835,0.5847371120727346,0.8152628879272653,40,40,0.03187499999999999
+exp3_rq3_payload_interaction,rs,lsb,ml_a,low,1.0,0.0,1.0,1.0,40,40,-0.015000000000000013
+exp3_rq3_payload_interaction,rs,lsb,ml_b,low,1.0,0.0,1.0,1.0,40,40,-0.015000000000000013
+exp3_rq3_payload_interaction,rs,lsb,real,low,0.985,0.00945637757934173,0.9664654999444902,1.0035345000555098,40,40,-0.015000000000000013
+exp3_rq3_payload_interaction,sample_pairs,lsb,ml_a,low,1.0,0.0,1.0,1.0,40,40,-0.032500000000000084
+exp3_rq3_payload_interaction,sample_pairs,lsb,ml_b,low,1.0,0.0,1.0,1.0,40,40,-0.032500000000000084
+exp3_rq3_payload_interaction,sample_pairs,lsb,real,low,0.9674999999999999,0.023003622903070436,0.9224128991099818,1.012587100890018,40,40,-0.032500000000000084

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RQ2: SDXL vs FLUX. Per-detector inverse-variance pooled ΔAUC
+  (SDXL − FLUX). All detectors cluster inside the practical-significance
+  band; the pooled estimate is +0.0004 (well inside ±0.025).
+
+  Source: Section IV.C / Table 5.
+    calibration χ²    +0.001  CI [-0.008, +0.009]
+    χ²-DCT            +0.025  CI [+0.020, +0.030]
+    χ²-DCT-tiled      -0.001  CI [-0.002, -0.000]
+    χ²-spatial        -0.016  CI [-0.024, -0.008]
+    RS                -0.001  CI [-0.001, -0.000]
+    sample-pairs      +0.001  CI [+0.001, +0.002]
+    Pooled (all)      +0.0004 CI [+0.000, +0.001]
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 380" font-family="'Inter', system-ui, sans-serif">
+  <style>
+    .title { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 22px; fill: #001C3D; }
+    .subtitle { font-size: 13px; fill: #6B7280; font-weight: 500; }
+    .axis { stroke: #001C3D; stroke-width: 1; }
+    .grid { stroke: #ECE7DA; stroke-width: 0.6; }
+    .tick { font-size: 11px; fill: #6B7280; }
+    .detlabel { font-size: 13px; fill: #001C3D; font-weight: 500; }
+    .val { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; fill: #001C3D; }
+    .ci { stroke: #001C3D; stroke-width: 2; }
+    .ci-end { stroke: #001C3D; stroke-width: 2; }
+    .dot { fill: #001C3D; }
+    .band-trivial { fill: #FBF9F5; stroke: #ECE7DA; stroke-width: 0.6; stroke-dasharray: 2,2; }
+    .band-label { font-size: 11px; fill: #E84E10; font-weight: 600; }
+    .axislabel { font-size: 11px; fill: #6B7280; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+    .pooled { fill: #E84E10; }
+    .pooled-ci { stroke: #E84E10; stroke-width: 3; }
+  </style>
+
+  <!-- Title -->
+  <text class="title" x="20" y="28">SDXL and FLUX are interchangeable</text>
+  <text class="subtitle" x="20" y="48">Per-detector pooled ΔAUC (SDXL − FLUX); every detector sits inside the equivalence band</text>
+
+  <!-- Plot area: x maps Δ in [-0.04, +0.04] → [180, 580]
+       x = 380 + Δ × 5000 -->
+  <!-- ±0.025 practical-significance band -->
+  <rect class="band-trivial" x="255" y="78" width="250" height="232"/>
+  <text class="band-label" x="380" y="68" text-anchor="middle">±0.025 equivalence band</text>
+
+  <!-- Zero axis -->
+  <line class="axis" x1="380" y1="78" x2="380" y2="310"/>
+
+  <!-- X-axis -->
+  <g class="tick">
+    <line class="axis" x1="180" y1="310" x2="580" y2="310"/>
+    <text x="180" y="328" text-anchor="middle">−0.04</text>
+    <text x="280" y="328" text-anchor="middle">−0.02</text>
+    <text x="380" y="328" text-anchor="middle">0</text>
+    <text x="480" y="328" text-anchor="middle">+0.02</text>
+    <text x="580" y="328" text-anchor="middle">+0.04</text>
+  </g>
+  <text class="subtitle" x="380" y="358" text-anchor="middle" style="font-size:11px;">ΔAUC (SDXL − FLUX), inverse-variance pooled across payload + method</text>
+
+  <!-- Detector rows. y-positions evenly spaced (rows ~ 30px apart) -->
+  <!-- Δ × 5000 + 380 = x position -->
+
+  <!-- calibration-χ²: +0.001 CI [-0.008, +0.009] -->
+  <g>
+    <text class="detlabel" x="172" y="93" text-anchor="end">calibration-χ²</text>
+    <line class="ci" x1="340" y1="90" x2="425" y2="90"/>
+    <line class="ci-end" x1="340" y1="86" x2="340" y2="94"/>
+    <line class="ci-end" x1="425" y1="86" x2="425" y2="94"/>
+    <circle class="dot" cx="385" cy="90" r="5"/>
+    <text class="val" x="510" y="93" text-anchor="start">+0.001</text>
+  </g>
+
+  <!-- χ²-DCT: +0.025 CI [+0.020, +0.030] -->
+  <g>
+    <text class="detlabel" x="172" y="123" text-anchor="end">χ²-DCT</text>
+    <line class="ci" x1="480" y1="120" x2="530" y2="120"/>
+    <line class="ci-end" x1="480" y1="116" x2="480" y2="124"/>
+    <line class="ci-end" x1="530" y1="116" x2="530" y2="124"/>
+    <circle class="dot" cx="505" cy="120" r="5"/>
+    <text class="val" x="540" y="123" text-anchor="start">+0.025</text>
+  </g>
+
+  <!-- χ²-DCT-tiled: -0.001 CI [-0.002, -0.000] -->
+  <g>
+    <text class="detlabel" x="172" y="153" text-anchor="end">χ²-DCT (tile-local)</text>
+    <line class="ci" x1="370" y1="150" x2="380" y2="150"/>
+    <line class="ci-end" x1="370" y1="146" x2="370" y2="154"/>
+    <line class="ci-end" x1="380" y1="146" x2="380" y2="154"/>
+    <circle class="dot" cx="375" cy="150" r="5"/>
+    <text class="val" x="510" y="153" text-anchor="start">−0.001</text>
+  </g>
+
+  <!-- χ²-spatial: -0.016 CI [-0.024, -0.008] -->
+  <g>
+    <text class="detlabel" x="172" y="183" text-anchor="end">χ²-spatial</text>
+    <line class="ci" x1="260" y1="180" x2="340" y2="180"/>
+    <line class="ci-end" x1="260" y1="176" x2="260" y2="184"/>
+    <line class="ci-end" x1="340" y1="176" x2="340" y2="184"/>
+    <circle class="dot" cx="300" cy="180" r="5"/>
+    <text class="val" x="510" y="183" text-anchor="start">−0.016</text>
+  </g>
+
+  <!-- RS: -0.001 CI [-0.001, -0.000] -->
+  <g>
+    <text class="detlabel" x="172" y="213" text-anchor="end">RS</text>
+    <line class="ci" x1="375" y1="210" x2="380" y2="210"/>
+    <line class="ci-end" x1="375" y1="206" x2="375" y2="214"/>
+    <line class="ci-end" x1="380" y1="206" x2="380" y2="214"/>
+    <circle class="dot" cx="377" cy="210" r="5"/>
+    <text class="val" x="510" y="213" text-anchor="start">−0.001</text>
+  </g>
+
+  <!-- sample-pairs: +0.001 CI [+0.001, +0.002] -->
+  <g>
+    <text class="detlabel" x="172" y="243" text-anchor="end">sample-pairs</text>
+    <line class="ci" x1="385" y1="240" x2="390" y2="240"/>
+    <line class="ci-end" x1="385" y1="236" x2="385" y2="244"/>
+    <line class="ci-end" x1="390" y1="236" x2="390" y2="244"/>
+    <circle class="dot" cx="388" cy="240" r="5"/>
+    <text class="val" x="510" y="243" text-anchor="start">+0.001</text>
+  </g>
+
+  <!-- Divider -->
+  <line x1="180" y1="265" x2="580" y2="265" stroke="#001C3D" stroke-width="0.4"/>
+
+  <!-- POOLED -->
+  <g>
+    <text class="detlabel" x="172" y="288" text-anchor="end" font-weight="700" fill="#E84E10">Pooled (all)</text>
+    <line class="pooled-ci" x1="380" y1="285" x2="385" y2="285"/>
+    <line class="pooled-ci" x1="380" y1="280" x2="380" y2="290"/>
+    <line class="pooled-ci" x1="385" y1="280" x2="385" y2="290"/>
+    <circle class="pooled" cx="382" cy="285" r="6"/>
+    <text class="val pooled" x="510" y="288" text-anchor="start" font-weight="700">+0.0004</text>
+  </g>
+</svg>

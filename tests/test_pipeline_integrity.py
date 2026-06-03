@@ -56,4 +56,8 @@ def test_detector_applicability_contract(project_root: Path) -> None:
 
     assert len(lsb_rows) == len(dct_rows) == 9000
     assert runner._detectors_for_method("lsb") == ["rs", "chi_square_spatial", "sample_pairs"]
-    assert runner._detectors_for_method("dct") == ["chi_square_dct", "calibration_chi_square"]
+    assert runner._detectors_for_method("dct") == [
+        "chi_square_dct",
+        "calibration_chi_square",
+        "chi_square_dct_tiled",
+    ]

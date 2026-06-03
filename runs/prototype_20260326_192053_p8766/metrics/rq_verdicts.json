@@ -1,0 +1,80 @@
+{
+  "verdicts": {
+    "RQ1": {
+      "title": "Real vs pooled ML carrier sources",
+      "test": "DeLong + Bonferroni\u2013Holm (confirmatory)",
+      "contrasts_file": "exp1_rq1_real_vs_pooled_ml_contrasts.csv",
+      "rows_available": 3,
+      "n_strata": 3,
+      "n_significant_holm_0_05": 0,
+      "n_significant_positive": 0,
+      "n_significant_negative": 0,
+      "n_underpowered_strata": 0,
+      "verdict": "not_supported",
+      "pooled_diff": -0.01668643962037662,
+      "pooled_se": 0.008684227264449179,
+      "pooled_ci_lo": -0.03370752505869701,
+      "pooled_ci_hi": 0.00033464581794376974,
+      "n_pooled": 3
+    },
+    "RQ2": {
+      "title": "SDXL vs PixArt-\u03b1 within ML",
+      "test": "DeLong + Bonferroni\u2013Holm (confirmatory)",
+      "contrasts_file": "exp2_rq2_mla_vs_mlb_contrasts.csv",
+      "rows_available": 3,
+      "n_strata": 3,
+      "n_significant_holm_0_05": 0,
+      "n_significant_positive": 0,
+      "n_significant_negative": 0,
+      "n_underpowered_strata": 0,
+      "verdict": "not_supported",
+      "pooled_diff": -0.05125000000000002,
+      "pooled_se": 0.0865835708641642,
+      "pooled_ci_lo": -0.22095379889376185,
+      "pooled_ci_hi": 0.11845379889376181,
+      "n_pooled": 1
+    },
+    "RQ3": {
+      "title": "Payload-level interaction with carrier source",
+      "test": "Real\u2013ML AUC gap across payload levels (exploratory)",
+      "contrasts_file": "exp3_rq3_payload_interaction_contrasts.csv",
+      "rows_available": 9,
+      "n_strata": 3,
+      "mean_gap_by_payload": {
+        "low": -0.00520833333333337,
+        "medium": null,
+        "high": null
+      },
+      "monotone_trend": null,
+      "verdict": "no_data"
+    },
+    "RQ4": {
+      "title": "Embedding branch \u00d7 source interaction",
+      "test": "Wald CI on (spatial gap \u2212 frequency gap) (exploratory)",
+      "contrasts_file": "exp4_rq4_spatial_vs_frequency_contrasts.csv",
+      "rows_available": 0,
+      "n_strata": 0,
+      "n_significant_ci_excludes_0": 0,
+      "n_significant_positive": 0,
+      "n_significant_negative": 0,
+      "verdict": "no_data"
+    },
+    "RQ5": {
+      "title": "Encryption invariance (plain vs AES-256-CBC)",
+      "test": "Paired DeLong, equivalence check within \u00b12.5% AUC margin",
+      "contrasts_file": "exp5_rq5_encryption_contrasts.csv",
+      "rows_available": 9,
+      "n_strata": 9,
+      "margin": 0.025,
+      "n_within_margin": 9,
+      "n_outside_margin": 0,
+      "verdict": "supported",
+      "pooled_diff": 0.0020712909441233216,
+      "pooled_se": 0.0034001020045902413,
+      "pooled_ci_lo": -0.0045929089848735505,
+      "pooled_ci_hi": 0.008735490873120194,
+      "n_pooled": 4
+    }
+  },
+  "metrics_dir": "runs/prototype_20260326_192053_p8766/metrics"
+}

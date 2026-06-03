@@ -94,7 +94,9 @@ def test_run_detector_stage_dry_run_and_compute_metrics(tmp_path: Path) -> None:
     )
 
     pred_rows = read_rows_csv(pred_path)
-    assert len(pred_rows) == 16
+    # 2 lsb rows * 3 spatial detectors * 2 score rows (cover+stego) +
+    # 1 dct row * 3 frequency detectors * 2 score rows = 12 + 6 = 18.
+    assert len(pred_rows) == 18
     assert all(r["score"] == "" for r in pred_rows)
 
 
@@ -122,16 +124,26 @@ def test_run_detector_stage_execute_with_stub_scores_and_metrics(tmp_path: Path)
         fieldnames=STEGO_FIELDS,
     )
 
-    def fake_score_detector_row(*, detector, label, row):
-        _ = (detector, row)
-        return 0.9 if label == 1 else 0.1
+    # Stub the detector dispatch so we get deterministic, perfect-AUC scores.
+    # The runner farms work out to multiprocessing workers, but they would not
+    # see a monkey-patch applied in this process, so force sequential mode
+    # (n_workers=1) and patch the module-level helper that both paths use.
+    import src.pipeline.runner as runner_mod
 
-    runner._score_detector_row = fake_score_detector_row  # type: ignore[method-assign]
+    def fake_score_path(detector, path, jpeg_quality):
+        _ = (detector, jpeg_quality)
+        return 0.9 if "stego" in str(path) else 0.1
 
-    pred_path = runner.run_detector_stage(
-        stego_manifest_path=stego_manifest,
-        execute=True,
-    )
+    monkeypatch_real = runner_mod._score_path
+    runner_mod._score_path = fake_score_path
+    try:
+        pred_path = runner.run_detector_stage(
+            stego_manifest_path=stego_manifest,
+            execute=True,
+            n_workers=1,
+        )
+    finally:
+        runner_mod._score_path = monkeypatch_real
     preds = read_rows_csv(pred_path)
     assert len(preds) == 6
     assert {p["detector"] for p in preds} == {"rs", "chi_square_spatial", "sample_pairs"}

@@ -11,8 +11,11 @@ stay closed-loop (in-memory in/out), while this module:
 - keeps the operational pipeline aligned with `proposal_updated_3.tex`.
 """
 
+import csv
 import hashlib
 import json
+import multiprocessing as _mp
+import os
 import random
 import secrets
 from datetime import datetime
@@ -39,11 +42,12 @@ from src.data.manifests import (
 from src.detection.statistical import (
     calibration_chi_square_score,
     chi_square_dct_score,
+    chi_square_dct_tiled_score,
     chi_square_spatial_score,
     rs_analysis_score,
     sample_pairs_score,
 )
-from src.embedding.dct import embed_dct_lsb_jpeg
+from src.embedding.dct import dct_payload_capacity_bytes, embed_dct_lsb_jpeg
 from src.embedding.encryption import encrypt_payload_aes_256_cbc
 from src.embedding.lsb import embed_lsb
 from src.evaluation.metrics import (
@@ -53,13 +57,288 @@ from src.evaluation.metrics import (
 from src.evaluation.plots import generate_metrics_figures
 from src.metrics.psnr import psnr as _compute_psnr
 from src.metrics.ssim import ssim as _compute_ssim
-from src.pipeline.config import PipelineConfig
+
+
+def _compute_fsim_safe(cover: "Image.Image", stego: "Image.Image") -> "float | None":
+    """Compute FSIM only if optional deps (piq, torch) are present.
+
+    FSIM is part of the proposal quality-control trio (PSNR/SSIM/FSIM). The
+    runtime cost and the torch+piq dependency are heavier than PSNR/SSIM, so
+    we import lazily and return ``None`` whenever the deps or computation
+    fail. The quality_metrics column is still emitted, just left blank for
+    that row, which the report figures handle gracefully.
+    """
+    try:
+        from src.metrics.fsim import fsim as _fsim_impl
+    except Exception:
+        return None
+    try:
+        return float(_fsim_impl(cover, stego))
+    except Exception:
+        return None
+from src.pipeline.config import AES_CBC_BLOCK_BYTES, PAYLOAD_MODE_HARDCODED, PipelineConfig
 
 
 def _stable_iv(group_id: int, payload_level: str) -> bytes:
     """Create a deterministic 16-byte IV from group and payload level."""
     digest = hashlib.sha256(f"{group_id}:{payload_level}".encode("utf-8")).digest()
     return digest[:16]
+
+
+_PREDICTIONS_FIELDNAMES = [
+    "detector", "group_id", "source", "method",
+    "payload_level", "encryption", "label", "score",
+]
+
+_QUALITY_FIELDNAMES = [
+    "group_id", "source", "method", "payload_level", "encryption",
+    "psnr", "ssim", "fsim",
+]
+
+
+def _embed_one_task(task: dict) -> dict | None:
+    """Worker entry: embed one row + compute PSNR/SSIM/FSIM.
+
+    Side-effect: writes the stego image to disk at the requested path.
+    Returns a quality-metrics dict (one row of quality_metrics_raw.csv) or
+    None on failure. Stateless and picklable.
+    """
+    from io import BytesIO
+    from PIL import Image as _PIL_Image
+
+    row = task["row"]
+    project_root = Path(task["project_root"])
+
+    def _resolve(rel_or_abs: str) -> Path:
+        p = Path(rel_or_abs)
+        return p if p.is_absolute() else (project_root / p)
+
+    payload_path = _resolve(row["payload_path"])
+    cover_path = _resolve(row["cover_path"])
+    stego_path = _resolve(row["stego_path"])
+    stego_path.parent.mkdir(parents=True, exist_ok=True)
+
+    method = row["method"]
+    if method not in ("lsb", "dct"):
+        raise ValueError(f"Unknown method: {method}")
+
+    payload_bytes = payload_path.read_bytes()
+    params = json.loads(row["embed_params"])
+    fill_rate = float(params["fill_rate"])
+
+    if method == "lsb":
+        cover_image = load_image(cover_path)
+        stego = embed_lsb(
+            cover_image=cover_image,
+            payload_bytes=payload_bytes,
+            fill_rate=fill_rate,
+            bit_depth=int(params["bit_depth"]),
+        )
+        save_png(stego, stego_path)
+        cover_for_quality = cover_image
+        stego_for_quality = stego
+    elif method == "dct":
+        cover_jpeg_bytes = load_bytes(cover_path)
+        capacity_bytes = dct_payload_capacity_bytes(cover_jpeg_bytes, fill_rate)
+        # The DCT branch slices the payload down to capacity at embedding
+        # time; replicate that here so the worker is fully stateless.
+        truncated_payload = payload_bytes[:capacity_bytes]
+        stego_bytes = embed_dct_lsb_jpeg(
+            cover_jpeg_bytes=cover_jpeg_bytes,
+            payload_bytes=truncated_payload,
+            fill_rate=fill_rate,
+            jpeg_quality=int(params["jpeg_quality"]),
+        )
+        save_bytes(stego_bytes, stego_path)
+        try:
+            cover_for_quality = _PIL_Image.open(BytesIO(cover_jpeg_bytes)).convert("L")
+            stego_for_quality = _PIL_Image.open(BytesIO(stego_bytes)).convert("L")
+        except Exception:
+            cover_for_quality = None
+            stego_for_quality = None
+    else:
+        raise ValueError(f"Unknown method: {method}")
+
+    if not task.get("compute_quality", True) or cover_for_quality is None:
+        return {
+            "group_id": row["group_id"],
+            "source": row["source"],
+            "method": method,
+            "payload_level": row["payload_level"],
+            "encryption": row["encryption"],
+            "psnr": "",
+            "ssim": "",
+            "fsim": "",
+        }
+
+    try:
+        p = float(_compute_psnr(cover_for_quality, stego_for_quality))
+    except Exception:
+        p = None
+    try:
+        s = float(_compute_ssim(cover_for_quality, stego_for_quality))
+    except Exception:
+        s = None
+    f = _compute_fsim_safe(cover_for_quality, stego_for_quality)
+
+    return {
+        "group_id": row["group_id"],
+        "source": row["source"],
+        "method": method,
+        "payload_level": row["payload_level"],
+        "encryption": row["encryption"],
+        "psnr": "" if p is None else p,
+        "ssim": "" if s is None else s,
+        "fsim": "" if f is None else f,
+    }
+
+
+def _load_existing_quality_keys(path: Path) -> set[tuple]:
+    """Parse an existing quality_metrics_raw.csv and return completed keys.
+
+    Same tolerance pattern as _load_existing_prediction_keys: missing file,
+    empty file, foreign header, truncated last line all handled.
+    """
+    if not path.exists() or path.stat().st_size == 0:
+        return set()
+    keys: set[tuple] = set()
+    with path.open(newline="") as f:
+        reader = csv.reader(f)
+        try:
+            header = next(reader)
+        except StopIteration:
+            return set()
+        if header != _QUALITY_FIELDNAMES:
+            return set()
+        for row in reader:
+            if len(row) != len(_QUALITY_FIELDNAMES):
+                continue
+            try:
+                keys.add((
+                    int(row[0]), row[1], row[2], row[3], row[4],
+                ))
+            except (ValueError, IndexError):
+                continue
+    return keys
+
+
+def _score_path(detector: str, path: Path, jpeg_quality: int) -> float:
+    """Stateless detector dispatch used by both sequential and parallel paths."""
+    if detector == "rs":
+        return float(rs_analysis_score(load_image(path)))
+    if detector == "chi_square_spatial":
+        return float(chi_square_spatial_score(load_image(path)))
+    if detector == "sample_pairs":
+        return float(sample_pairs_score(load_image(path)))
+    if detector == "chi_square_dct":
+        return float(chi_square_dct_score(load_bytes(path)))
+    if detector == "chi_square_dct_tiled":
+        return float(chi_square_dct_tiled_score(load_bytes(path)))
+    if detector == "calibration_chi_square":
+        return float(calibration_chi_square_score(load_bytes(path), jpeg_quality=jpeg_quality))
+    raise ValueError(f"Unknown detector: {detector}")
+
+
+def _score_one_task(task: dict) -> list[dict]:
+    """Worker entry: score one (row, detector) pair on cover AND stego.
+
+    Picklable, no shared mutable state. Returns the two output rows that
+    correspond to label=1 (stego) and label=0 (cover) for the requested
+    (row, detector) combination.
+    """
+    detector = task["detector"]
+    row = task["row"]
+    project_root = Path(task["project_root"])
+    jpeg_quality = task["jpeg_quality"]
+
+    def _resolve(rel_or_abs: str) -> Path:
+        p = Path(rel_or_abs)
+        return p if p.is_absolute() else (project_root / p)
+
+    common = {
+        "detector": detector,
+        "group_id": int(row["group_id"]),
+        "source": row["source"],
+        "method": row["method"],
+        "payload_level": row["payload_level"],
+        "encryption": row["encryption"],
+    }
+    out: list[dict] = []
+    try:
+        stego_score = _score_path(detector, _resolve(row["stego_path"]), jpeg_quality)
+        out.append({**common, "label": 1, "score": stego_score})
+    except NotImplementedError:
+        if task.get("skip_unimplemented", False):
+            return []
+        raise
+    try:
+        cover_score = _score_path(detector, _resolve(row["cover_path"]), jpeg_quality)
+        out.append({**common, "label": 0, "score": cover_score})
+    except NotImplementedError:
+        if task.get("skip_unimplemented", False):
+            return out  # keep the stego row we already scored
+        raise
+    return out
+
+
+def _append_unique(writer, fh, produced: list[dict], done_keys: set[tuple]) -> None:
+    """Write rows that are not already in ``done_keys``; flush after each task.
+
+    Single-writer pattern: only the main process calls this. csv.DictWriter
+    emits one whole line per ``writerow`` call so partial writes from a
+    SIGKILL show up as at most one truncated final line, which the resume
+    parser drops.
+    """
+    for r in produced:
+        key = (
+            r["detector"], int(r["group_id"]), r["source"], r["method"],
+            r["payload_level"], r["encryption"], int(r["label"]),
+        )
+        if key in done_keys:
+            continue
+        writer.writerow(r)
+        done_keys.add(key)
+    fh.flush()
+
+
+def tasks_with_progress(tasks: list[dict]):
+    """Iterate over tasks with a tqdm progress bar (sequential fallback path)."""
+    from tqdm import tqdm
+    yield from tqdm(tasks, desc="Detecting", unit="task")
+
+
+def _load_existing_prediction_keys(path: Path) -> set[tuple]:
+    """Parse an existing predictions.csv and return the set of completed keys.
+
+    Tolerant of: missing file, empty file, schema mismatch (e.g. foreign CSV
+    at the same path), truncated/malformed final row (kill -9 mid-write).
+    The set members are 7-tuples mirroring _PREDICTIONS_FIELDNAMES minus
+    'score', which is enough to deduplicate work on resume.
+    """
+    if not path.exists() or path.stat().st_size == 0:
+        return set()
+    keys: set[tuple] = set()
+    with path.open(newline="") as f:
+        reader = csv.reader(f)
+        try:
+            header = next(reader)
+        except StopIteration:
+            return set()
+        if header != _PREDICTIONS_FIELDNAMES:
+            return set()
+        for row in reader:
+            if len(row) != len(_PREDICTIONS_FIELDNAMES):
+                continue  # truncated/malformed row -- drop
+            try:
+                keys.add((
+                    row[0],
+                    int(row[1]),
+                    row[2], row[3], row[4], row[5],
+                    int(row[6]),
+                ))
+            except (ValueError, IndexError):
+                continue
+    return keys
 
 
 class PipelineRunner:
@@ -88,10 +367,17 @@ class PipelineRunner:
 
     def _detectors_for_method(self, method: str) -> list[str]:
         if method == "lsb":
-            return ["rs", "chi_square_spatial", "sample_pairs"]
-        if method == "dct":
-            return ["chi_square_dct", "calibration_chi_square"]
-        raise ValueError(f"Unknown method: {method}")
+            branch_detectors = ("rs", "chi_square_spatial", "sample_pairs")
+        elif method == "dct":
+            branch_detectors = (
+                "chi_square_dct",
+                "calibration_chi_square",
+                "chi_square_dct_tiled",
+            )
+        else:
+            raise ValueError(f"Unknown method: {method}")
+        active = set(self.config.active_detectors)
+        return [d for d in branch_detectors if d in active]
 
     def standardize_covers_from_index(
         self,
@@ -162,20 +448,18 @@ class PipelineRunner:
         # ciphertext.  To keep the encrypted payload exactly at capacity we
         # generate 16 bytes less plaintext; PKCS7 then pads back to the
         # original size so the ciphertext == capacity bytes exactly.
-        _AES_BLOCK_BYTES = 16
-
         rng = random.Random(self.config.payload_seed)
         records: list[PayloadRecord] = []
         for group_id in groups:
             for payload_level in self.config.active_payload_levels:
                 payload_stream_bits = self.config.spatial_payload_bits(payload_level)
                 fill_rate = self.config.payload_fill_rates[payload_level]
-                for encryption in ENCRYPTION_STATES:
+                for encryption in self.config.active_encryption:
                     # Plain payload fills capacity exactly; encrypted payload
                     # is generated 16 bytes shorter so its ciphertext (after
                     # PKCS7 padding) matches capacity.
                     plaintext_bits = (
-                        payload_stream_bits - _AES_BLOCK_BYTES * 8
+                        payload_stream_bits - AES_CBC_BLOCK_BYTES * 8
                         if encryption == "encrypted"
                         else payload_stream_bits
                     )
@@ -248,7 +532,7 @@ class PipelineRunner:
                     cover["spatial_path"] if method == "lsb" else cover["frequency_path"]
                 )
                 for payload_level in self.config.active_payload_levels:
-                    for encryption in ENCRYPTION_STATES:
+                    for encryption in self.config.active_encryption:
                         payload_row = payload_index[(group_id, payload_level, encryption)]
                         payload_path = self._to_project_relative(payload_row["payload_path"])
 
@@ -302,12 +586,25 @@ class PipelineRunner:
         stego_manifest_path: Path,
         execute: bool = False,
         quality_metrics_path: Path | None = None,
+        *,
+        n_workers: int | None = None,
     ) -> int:
         """Create stego artifacts from manifest rows.
 
         With ``execute=False`` this is a dry-run counter only.
-        When *quality_metrics_path* is provided and *execute* is True, PSNR and
-        SSIM are computed for each LSB pair and written to that path.
+        When *quality_metrics_path* is provided and *execute* is True, PSNR,
+        SSIM and FSIM are computed per cover/stego pair and appended to that
+        path incrementally so a partial run can resume.
+
+        Embedding work is dispatched to a multiprocessing pool. Workers are
+        stateless and picklable; they load the cover, embed, compute the
+        quality trio, save the stego image, and return one quality row.
+        On re-run, rows whose ``(group_id, source, method, payload_level,
+        encryption)`` key is already in the quality CSV are skipped.
+
+        FSIM uses ``torch + piq`` which is heavy to import; default
+        ``n_workers`` is intentionally modest (``cpu_count // 2``, capped at
+        6) so each worker amortises that startup cost over many rows.
         """
         from tqdm import tqdm
 
@@ -315,58 +612,110 @@ class PipelineRunner:
         if not execute:
             return len(rows)
 
-        quality_rows: list[dict] = []
-        _QUALITY_FIELDS = ["group_id", "source", "method", "payload_level", "encryption", "psnr", "ssim", "fsim"]
-
-        for row in tqdm(rows, desc="Embedding", unit="img"):
-            payload_bytes = self._resolve_manifest_path(row["payload_path"]).read_bytes()
-            params = json.loads(row["embed_params"])
-            method = row["method"]
-            stego_path = self._resolve_manifest_path(row["stego_path"])
-            stego_path.parent.mkdir(parents=True, exist_ok=True)
-            if method == "lsb":
-                cover_image = load_image(self._resolve_manifest_path(row["cover_path"]))
-                stego = embed_lsb(
-                    cover_image=cover_image,
-                    payload_bytes=payload_bytes,
-                    fill_rate=float(params["fill_rate"]),
-                    bit_depth=int(params["bit_depth"]),
-                )
-                save_png(stego, stego_path)
-                if quality_metrics_path is not None:
-                    psnr_val, ssim_val = self._compute_quality_pair(cover_image, stego)
-                    quality_rows.append({
-                        "group_id": row["group_id"],
-                        "source": row["source"],
-                        "method": method,
-                        "payload_level": row["payload_level"],
-                        "encryption": row["encryption"],
-                        "psnr": "" if psnr_val is None else psnr_val,
-                        "ssim": "" if ssim_val is None else ssim_val,
-                        "fsim": "",
-                    })
-            elif method == "dct":
-                cover_jpeg_bytes = load_bytes(self._resolve_manifest_path(row["cover_path"]))
-                stego_bytes = embed_dct_lsb_jpeg(
-                    cover_jpeg_bytes=cover_jpeg_bytes,
-                    payload_bytes=payload_bytes,
-                    fill_rate=float(params["fill_rate"]),
-                    jpeg_quality=int(params["jpeg_quality"]),
-                )
-                save_bytes(stego_bytes, stego_path)
-            else:
-                raise ValueError(f"Unknown method: {method}")
-
-        if quality_metrics_path is not None and quality_rows:
+        emit_quality = quality_metrics_path is not None
+        if emit_quality:
             quality_metrics_path.parent.mkdir(parents=True, exist_ok=True)
-            write_rows_csv(quality_metrics_path, quality_rows, fieldnames=_QUALITY_FIELDS)
+
+        # Resume: drop rows whose quality entry is already on disk.
+        done_keys: set[tuple] = (
+            _load_existing_quality_keys(quality_metrics_path) if emit_quality else set()
+        )
+
+        def _row_key(row: dict) -> tuple:
+            return (
+                int(row["group_id"]), row["source"], row["method"],
+                row["payload_level"], row["encryption"],
+            )
+
+        pending_rows = [r for r in rows if not (emit_quality and _row_key(r) in done_keys)]
+
+        if not pending_rows and not emit_quality:
+            return len(rows)
+        if not pending_rows:
+            return len(rows)
+
+        tasks = [
+            {
+                "row": row,
+                "project_root": str(self.config.project_root),
+                "compute_quality": emit_quality,
+            }
+            for row in pending_rows
+        ]
+
+        if n_workers is None:
+            n_workers = max(1, min(6, (os.cpu_count() or 2) // 2))
+        chunksize = max(1, len(tasks) // max(1, n_workers * 6))
+
+        file_needs_header = emit_quality and (
+            not quality_metrics_path.exists() or quality_metrics_path.stat().st_size == 0
+        )
+        if emit_quality and not file_needs_header and not done_keys:
+            # Foreign/corrupt header -- start fresh.
+            quality_metrics_path.unlink()
+            file_needs_header = True
+
+        if emit_quality:
+            fh = quality_metrics_path.open("a", newline="")
+            writer = csv.DictWriter(fh, fieldnames=_QUALITY_FIELDNAMES)
+            if file_needs_header:
+                writer.writeheader()
+                fh.flush()
+        else:
+            fh = None
+            writer = None
+
+        try:
+            if n_workers <= 1:
+                iterator = (
+                    _embed_one_task(t)
+                    for t in tqdm(tasks, desc="Embedding", unit="img")
+                )
+                for quality_row in iterator:
+                    if quality_row is None or writer is None:
+                        continue
+                    key = (int(quality_row["group_id"]), quality_row["source"],
+                           quality_row["method"], quality_row["payload_level"],
+                           quality_row["encryption"])
+                    if key in done_keys:
+                        continue
+                    writer.writerow(quality_row)
+                    done_keys.add(key)
+                    fh.flush()
+            else:
+                with _mp.Pool(processes=n_workers) as pool:
+                    iterator = pool.imap_unordered(
+                        _embed_one_task, tasks, chunksize=chunksize,
+                    )
+                    for quality_row in tqdm(
+                        iterator, total=len(tasks),
+                        desc=f"Embedding ({n_workers} workers)",
+                        unit="img",
+                    ):
+                        if quality_row is None or writer is None:
+                            continue
+                        key = (int(quality_row["group_id"]), quality_row["source"],
+                               quality_row["method"], quality_row["payload_level"],
+                               quality_row["encryption"])
+                        if key in done_keys:
+                            continue
+                        writer.writerow(quality_row)
+                        done_keys.add(key)
+                        fh.flush()
+        finally:
+            if fh is not None:
+                fh.close()
 
         return len(rows)
 
     def _compute_quality_pair(
         self, cover: "Image.Image", stego: "Image.Image"
-    ) -> "tuple[float | None, float | None]":
-        """Return (psnr, ssim) for a cover/stego pair; None on any error."""
+    ) -> "tuple[float | None, float | None, float | None]":
+        """Return (psnr, ssim, fsim) for a cover/stego pair; None per metric on error.
+
+        FSIM uses optional deps (piq + torch) and is skipped silently when
+        unavailable so a missing piq install does not break the run.
+        """
         try:
             p = _compute_psnr(cover, stego)
         except Exception:
@@ -375,7 +724,8 @@ class PipelineRunner:
             s = _compute_ssim(cover, stego)
         except Exception:
             s = None
-        return p, s
+        f = _compute_fsim_safe(cover, stego)
+        return p, s, f
 
     def run_detector_stage(
         self,
@@ -384,89 +734,111 @@ class PipelineRunner:
         *,
         execute: bool = False,
         skip_unimplemented: bool = False,
+        n_workers: int | None = None,
     ) -> Path:
         """Run detector scoring over the full proposal-aligned evaluation table.
 
         Output schema:
         detector, group_id, source, method, payload_level, encryption, label, score
+
+        Parallel + incremental: tasks are dispatched to a multiprocessing pool
+        (default ``cpu_count - 1`` workers, override via ``n_workers``) and
+        prediction rows are appended to disk as soon as each task returns.
+        A re-run reads the existing predictions.csv, skips already-completed
+        (detector, group_id, source, method, payload_level, encryption, label)
+        keys, and only dispatches the gap -- making mid-run interruptions
+        cheap to recover from.
         """
         from tqdm import tqdm
 
         stego_rows = read_rows_csv(stego_manifest_path)
+        out_path = output_path or (self.paths.predictions_dir / "predictions.csv")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        pred_rows: list[dict[str, object]] = []
-        for row in tqdm(stego_rows, desc="Detecting", unit="img"):
-            group_id = int(row["group_id"])
+        # Dry-run: keep the old behaviour (write placeholder rows in one shot).
+        if not execute:
+            placeholder_rows: list[dict] = []
+            for row in stego_rows:
+                for detector in self._detectors_for_method(row["method"]):
+                    for label in (1, 0):
+                        placeholder_rows.append({
+                            "detector": detector,
+                            "group_id": int(row["group_id"]),
+                            "source": row["source"],
+                            "method": row["method"],
+                            "payload_level": row["payload_level"],
+                            "encryption": row["encryption"],
+                            "label": label,
+                            "score": "",
+                        })
+            write_rows_csv(out_path, placeholder_rows, fieldnames=_PREDICTIONS_FIELDNAMES)
+            return out_path
+
+        # Build the task list: one task per (row, detector) pair.
+        tasks: list[dict] = []
+        for row in stego_rows:
             for detector in self._detectors_for_method(row["method"]):
-                pos_score = ""
-                if execute:
-                    try:
-                        pos_score = self._score_detector_row(
-                            detector=detector,
-                            label=1,
-                            row=row,
-                        )
-                    except NotImplementedError:
-                        if skip_unimplemented:
-                            continue
-                        raise
+                tasks.append({
+                    "detector": detector,
+                    "row": row,
+                    "project_root": str(self.config.project_root),
+                    "jpeg_quality": self.config.jpeg_quality,
+                    "skip_unimplemented": skip_unimplemented,
+                })
 
-                pred_rows.append(
-                    {
-                        "detector": detector,
-                        "group_id": group_id,
-                        "source": row["source"],
-                        "method": row["method"],
-                        "payload_level": row["payload_level"],
-                        "encryption": row["encryption"],
-                        "label": 1,
-                        "score": pos_score,
-                    }
+        # Resume: drop tasks whose output rows are already on disk.
+        done_keys = _load_existing_prediction_keys(out_path)
+
+        def _task_keys(task: dict) -> tuple[tuple, tuple]:
+            r, d = task["row"], task["detector"]
+            base = (d, int(r["group_id"]), r["source"], r["method"],
+                    r["payload_level"], r["encryption"])
+            return (base + (1,), base + (0,))
+
+        pending_tasks = [t for t in tasks if not all(k in done_keys for k in _task_keys(t))]
+        if not pending_tasks:
+            return out_path
+
+        # Open in append mode; write header if the file is fresh (or was foreign
+        # and got rejected by _load_existing_prediction_keys, leaving done_keys empty).
+        file_needs_header = (not out_path.exists()) or out_path.stat().st_size == 0
+        if not file_needs_header and not done_keys:
+            # Foreign/corrupt header -- start fresh.
+            out_path.unlink()
+            file_needs_header = True
+
+        n_workers = n_workers if n_workers is not None else max(1, (os.cpu_count() or 2) - 1)
+        # Per-task work is small (~30-200 ms on vectorised detectors); larger
+        # chunksize amortises the IPC overhead.
+        chunksize = max(1, len(pending_tasks) // max(1, n_workers * 8))
+
+        with out_path.open("a", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=_PREDICTIONS_FIELDNAMES)
+            if file_needs_header:
+                writer.writeheader()
+                fh.flush()
+
+            if n_workers <= 1:
+                # Sequential fallback (useful for debugging or single-core hosts).
+                iterator = (
+                    _score_one_task(t)
+                    for t in tasks_with_progress(pending_tasks)
                 )
+                for produced in iterator:
+                    _append_unique(writer, fh, produced, done_keys)
+            else:
+                with _mp.Pool(processes=n_workers) as pool:
+                    iterator = pool.imap_unordered(
+                        _score_one_task, pending_tasks, chunksize=chunksize
+                    )
+                    for produced in tqdm(
+                        iterator, total=len(pending_tasks),
+                        desc=f"Detecting ({n_workers} workers)",
+                        unit="task",
+                    ):
+                        _append_unique(writer, fh, produced, done_keys)
 
-                neg_score = ""
-                if execute:
-                    try:
-                        neg_score = self._score_detector_row(
-                            detector=detector,
-                            label=0,
-                            row=row,
-                        )
-                    except NotImplementedError:
-                        if skip_unimplemented:
-                            pred_rows.pop()
-                            continue
-                        raise
-
-                pred_rows.append(
-                    {
-                        "detector": detector,
-                        "group_id": group_id,
-                        "source": row["source"],
-                        "method": row["method"],
-                        "payload_level": row["payload_level"],
-                        "encryption": row["encryption"],
-                        "label": 0,
-                        "score": neg_score,
-                    }
-                )
-
-        out = output_path or (self.paths.predictions_dir / "predictions.csv")
-        write_rows_csv(
-            out,
-            pred_rows,
-            fieldnames=[
-                "detector",
-                "group_id",
-                "source",
-                "method",
-                "payload_level",
-                "encryption",
-                "label",
-                "score",
-            ],
-        )
-        return out
+        return out_path
 
     def compute_metrics_from_predictions(
         self,
@@ -625,6 +997,7 @@ class PipelineRunner:
 
         # Covers are already placed in run_dir by run.py before pipeline starts
         active_covers = resolved_covers
+        self._validate_hardcoded_payload_against_dct_covers(active_covers)
 
         payload_manifest = self.build_payload_manifest(
             covers_manifest_path=active_covers,
@@ -676,7 +1049,68 @@ class PipelineRunner:
                 figures_dir=figures_out,
             ))
 
+        # ── Per-run statistical analyses ──────────────────────────────────
+        # These modules read predictions.csv and write supplementary tables
+        # under metrics/. They are best-effort: a failure logs the error and
+        # leaves the rest of the run intact.
+        analysis_dir = metrics_out.parent
+        for label, runner_fn in self._analysis_jobs():
+            try:
+                out_path = runner_fn(analysis_dir)
+                out[f"analysis_{label}"] = out_path
+            except Exception as exc:  # noqa: BLE001 — analysis must not break the run
+                print(f"  [warn] analysis '{label}' failed: {exc}")
+
+        # ── Refresh RQ verdict cards now that verdicts.json is on disk ─────
+        # The figure was rendered earlier as a placeholder because verdicts
+        # are produced after the contrast tables.  Re-render so the writer
+        # sees the populated cards in figures/.
+        if generate_figures:
+            try:
+                import json as _json
+                from src.evaluation.plots import render_rq_summary_cards
+                verdicts_path = metrics_out / "rq_verdicts.json"
+                payload = _json.loads(verdicts_path.read_text()) if verdicts_path.exists() else None
+                if payload is not None:
+                    out["rq_summary_cards"] = render_rq_summary_cards(figures_out, payload)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  [warn] rq summary card refresh failed: {exc}")
+
         return out
+
+    def _analysis_jobs(self) -> list[tuple[str, "callable[[Path], Path]"]]:
+        """Return (label, callable) pairs to run after metrics + figures.
+
+        Each callable accepts a run directory and returns the path of the CSV
+        (or first-of-many path) it wrote. Encryption-invariance is skipped
+        when only one encryption arm is active because the paired comparison
+        would be empty. The RQ verdict + power-analysis modules read the
+        contrast CSVs written by generate_metrics_figures and are scheduled
+        last so they always see the latest tables.
+        """
+        from src.analysis.t_tests import run_t_tests
+        from src.analysis.wilcoxon_tests import run_wilcoxon_tests
+        from src.analysis.rq_verdicts import run_rq_verdicts as _run_rq_verdicts
+        from src.analysis.power_analysis import run_power_analysis as _run_power
+
+        def _run_verdicts_first_path(run_dir: Path) -> Path:
+            json_path, _ = _run_rq_verdicts(run_dir)
+            return json_path
+
+        def _run_power_first_path(run_dir: Path) -> Path:
+            detail_path, _ = _run_power(run_dir)
+            return detail_path
+
+        jobs: list[tuple[str, "callable[[Path], Path]"]] = [
+            ("wilcoxon", run_wilcoxon_tests),
+            ("t_tests", run_t_tests),
+        ]
+        if {"plain", "encrypted"}.issubset(self.config.active_encryption):
+            from src.analysis.encryption_invariance import run_encryption_invariance
+            jobs.append(("encryption_invariance", run_encryption_invariance))
+        jobs.append(("rq_verdicts", _run_verdicts_first_path))
+        jobs.append(("power_analysis", _run_power_first_path))
+        return jobs
 
     # ── Run-directory helpers ────────────────────────────────────────────────
 
@@ -703,6 +1137,19 @@ class PipelineRunner:
             "image_size": list(self.config.image_size),
             "split_seed": self.config.split_seed,
             "payload_seed": self.config.payload_seed,
+            "payload_mode": self.config.payload_mode,
+            "hardcoded_payload_bytes": (
+                len(self.config.validate_hardcoded_payload_text(self.config.hardcoded_payload_text))
+                if self.config.payload_mode == PAYLOAD_MODE_HARDCODED
+                else None
+            ),
+            "hardcoded_payload_sha256": (
+                hashlib.sha256(
+                    self.config.validate_hardcoded_payload_text(self.config.hardcoded_payload_text)
+                ).hexdigest()
+                if self.config.payload_mode == PAYLOAD_MODE_HARDCODED
+                else None
+            ),
             "embed_seed": self.config.embed_seed,
             "jpeg_quality": self.config.jpeg_quality,
             "primary_lsb_bit_depth": self.config.primary_lsb_bit_depth,
@@ -713,9 +1160,57 @@ class PipelineRunner:
         write_json(run_dir / "config.json", snapshot)
 
     def _generate_payload_bytes(self, payload_bits: int, rng: random.Random) -> bytes:
-        """Generate deterministic pseudo-random payload bytes for one condition row."""
+        """Generate deterministic payload bytes for one condition row."""
         n_bytes = payload_bits // 8
+        if self.config.payload_mode == PAYLOAD_MODE_HARDCODED:
+            return self._generate_hardcoded_payload_bytes(n_bytes)
         return bytes(rng.getrandbits(8) for _ in range(n_bytes))
+
+    def _generate_hardcoded_payload_bytes(self, n_bytes: int) -> bytes:
+        payload = self.config.validate_hardcoded_payload_text(
+            self.config.hardcoded_payload_text
+        )
+        if len(payload) > n_bytes:
+            raise ValueError(
+                f"Hardcoded payload is too large for this condition: {len(payload)} bytes > {n_bytes} bytes."
+            )
+        repeats = (n_bytes + len(payload) - 1) // len(payload)
+        return (payload * repeats)[:n_bytes]
+
+    def _payload_bytes_for_dct_row(
+        self,
+        cover_jpeg_bytes: bytes,
+        payload_bytes: bytes,
+        *,
+        fill_rate: float,
+    ) -> bytes:
+        capacity_bytes = dct_payload_capacity_bytes(cover_jpeg_bytes, fill_rate)
+        if self.config.payload_mode == PAYLOAD_MODE_HARDCODED:
+            return self._generate_hardcoded_payload_bytes(capacity_bytes)
+        return payload_bytes[:capacity_bytes]
+
+    def _validate_hardcoded_payload_against_dct_covers(self, covers_manifest_path: Path) -> None:
+        if self.config.payload_mode != PAYLOAD_MODE_HARDCODED or "dct" not in self.config.active_methods:
+            return
+        payload = self.config.validate_hardcoded_payload_text(self.config.hardcoded_payload_text)
+        if not self.config.active_payload_levels:
+            return
+        min_fill_rate = min(
+            self.config.payload_fill_rates[level] for level in self.config.active_payload_levels
+        )
+        min_capacity: int | None = None
+        min_path = ""
+        for row in read_rows_csv(covers_manifest_path):
+            cover_path = self._resolve_manifest_path(row["frequency_path"])
+            capacity = dct_payload_capacity_bytes(load_bytes(cover_path), min_fill_rate)
+            if min_capacity is None or capacity < min_capacity:
+                min_capacity = capacity
+                min_path = row["frequency_path"]
+        if min_capacity is not None and len(payload) > min_capacity:
+            raise ValueError(
+                "Hardcoded payload is too large for the DCT covers in this run: "
+                f"{len(payload)} bytes > {min_capacity} bytes on {min_path}."
+            )
 
     def _embed_params_json(self, method: str, payload_level: str) -> str:
         """Return serialized embedding parameters stored in the stego manifest."""
@@ -767,6 +1262,8 @@ class PipelineRunner:
             return float(sample_pairs_score(load_image(path)))
         if detector == "chi_square_dct":
             return float(chi_square_dct_score(load_bytes(path)))
+        if detector == "chi_square_dct_tiled":
+            return float(chi_square_dct_tiled_score(load_bytes(path)))
         if detector == "calibration_chi_square":
             return float(calibration_chi_square_score(
                 load_bytes(path),

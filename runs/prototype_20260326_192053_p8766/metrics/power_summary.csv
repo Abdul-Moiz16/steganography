@@ -1,0 +1,5 @@
+rq,label,n_tests_assumed,target_diff,alpha,power,n_a_priori_80pct_power,n_pilot_strata_used,n_pilot_min,n_pilot_max,n_pilot_p90
+RQ1,real vs pooled ML,9,0.05,0.05,0.8,787,3,208,1569,262
+RQ2,SDXL vs PixArt-α,9,0.05,0.05,0.8,787,1,1492,1492,1492
+RQ4,spatial − frequency gap,9,0.05,0.05,0.8,787,0,,,
+RQ5,plain vs encrypted,18,0.05,0.05,0.8,443,2,588,743,588

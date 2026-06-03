@@ -1,3 +1,54 @@
+// Per-detector interpretation thresholds.
+//
+// Different detectors use different score conventions, so a unified percent
+// bar is meaningless. We map each detector's raw score to a 3-level
+// "Cover-like / Suspect / Likely stego" verdict using thresholds picked
+// from the empirical distribution observed in pipeline runs (see
+// runs/prototype_full_*/predictions.csv) and extrapolated to the
+// full-LSB-saturation regime the toolbox runs at (see DEMO_FILL_RATE_*
+// in src/toolbox/encode.py).
+const DETECTOR_INTERPRETERS = {
+    'Chi-Square (Spatial)': (s) => {
+        // -chi_stat/(df-1). At full random-LSB fill, chi_stat ~ df under H0,
+        // so the score lands near -1 regardless of image size. Cover images
+        // produce highly negative scores (pipeline median ~-5, p10 ~-22).
+        if (s > -2.0) return { level: 'high', label: 'Likely stego' };
+        if (s > -4.0) return { level: 'moderate', label: 'Suspect' };
+        return { level: 'low', label: 'Cover-like' };
+    },
+    'Chi-Square (DCT)': (s) => {
+        // Same -chi_stat/(df-1) convention. Pipeline: cover med -2.8,
+        // stego@0.30 med -1.6; at full DCT fill we expect closer to -1.
+        if (s > -1.8) return { level: 'high', label: 'Likely stego' };
+        if (s > -2.5) return { level: 'moderate', label: 'Suspect' };
+        return { level: 'low', label: 'Cover-like' };
+    },
+    'Calibration Chi-Square': (s) => {
+        // Raw calibrated chi-square distance. Pipeline: cover med 668,
+        // stego@0.30 med 734; modest absolute separation. Thresholds set
+        // so a clear stego at full fill lands in 'high'.
+        if (s > 760) return { level: 'high', label: 'Likely stego' };
+        if (s > 700) return { level: 'moderate', label: 'Suspect' };
+        return { level: 'low', label: 'Cover-like' };
+    },
+    'RS Analysis': (s) => {
+        // Toolbox returns the raw count normalised by total 2x2 groups
+        // (see src/toolbox/analyze.py::_normalised_rs); image-size-invariant.
+        // Pipeline-derived: stego@0.30 ~ 0.14, full fill ~0.4-0.5.
+        if (s > 0.25) return { level: 'high', label: 'Likely stego' };
+        if (s > 0.05) return { level: 'moderate', label: 'Suspect' };
+        return { level: 'low', label: 'Cover-like' };
+    },
+    'Sample Pairs': (s) => {
+        // Quantitative fill-rate estimate; saturates near 0.5 at full fill.
+        if (s > 0.20) return { level: 'high', label: 'Likely stego' };
+        if (s > 0.05) return { level: 'moderate', label: 'Suspect' };
+        return { level: 'low', label: 'Cover-like' };
+    },
+};
+
+const _DEFAULT_INTERPRET = () => ({ level: 'moderate', label: '—' });
+
 class ToolboxApp {
     constructor() {
         this._state = { encode: null, decode: null, analyze: null };
@@ -7,6 +58,7 @@ class ToolboxApp {
             this._state[tab] = file;
             document.getElementById(`btn-${tab}`).disabled = !file;
             this._clearResult(tab);
+            this._refreshMethodHint(tab, file);
         });
     }
 
@@ -89,19 +141,23 @@ class ToolboxApp {
         document.getElementById('result-analyze-label').textContent =
             `Detector scores — ${data.format.toUpperCase()}`;
         document.getElementById('scores-list').innerHTML = data.scores.map(s => {
-            const pct = Math.min(100, Math.round(s.score * 100));
-            let cls;
-            if (pct >= 67)      cls = 'high';
-            else if (pct >= 34) cls = 'moderate';
-            else                cls = 'low';
+            const interp = (DETECTOR_INTERPRETERS[s.detector] || _DEFAULT_INTERPRET)(s.score);
             return `<div class="score-row">
                 <div class="score-name">${fmtDetector(s.detector)}</div>
-                <div class="score-bar-wrap">
-                    <div class="score-bar ${cls}" style="width:${pct}%"></div>
-                </div>
-                <div class="score-label ${cls}">${pct}%</div>
+                <div class="score-value">${s.score.toFixed(4)}</div>
+                <div class="score-label ${interp.level}">${interp.label}</div>
             </div>`;
         }).join('');
+    }
+
+    _refreshMethodHint(tab, file) {
+        if (tab !== 'encode') return;
+        const hint = document.getElementById('encode-method-hint');
+        if (!hint) return;
+        if (!file) { hint.textContent = ''; hint.style.display = 'none'; return; }
+        const method = file.format === 'png' ? 'spatial LSB (k=1, row-major)' : 'DCT-LSB (JSteg-style, JPEG Q=95)';
+        hint.textContent = `Embedding method: ${method}`;
+        hint.style.display = 'block';
     }
 
     _showError(tab, message) {

@@ -41,6 +41,7 @@ const DETECTOR_LABELS = {
     'chi_square_spatial':     'Chi-Square (Spatial)',
     'sample_pairs':           'Sample Pairs',
     'chi_square_dct':         'Chi-Square (DCT)',
+    'chi_square_dct_tiled':   'Tiled Chi-Square (DCT)',
     'calibration_chi_square': 'Calibration Chi-Square',
 };
 
