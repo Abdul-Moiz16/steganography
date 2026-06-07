@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Does the Source of Carrier Image Affect Steganographic Detectability?</title>
+  <title>Real vs. Synthetic Carriers &mdash; Rethinking Steganalysis Assumptions</title>
   <meta name="description" content="A research study comparing how easily hidden data is detected in real photographs versus AI-generated images.">
   <style>
     :root {
@@ -67,6 +67,12 @@
       margin-bottom: 16px;
       line-height: 1.3;
     }
+    section h3 {
+      font-size: 17px;
+      color: var(--navy);
+      margin-top: 22px;
+      margin-bottom: 8px;
+    }
     p { margin-bottom: 14px; color: var(--text); }
     .muted { color: var(--muted); }
     .lead { font-size: 17px; }
@@ -82,29 +88,32 @@
     .headline .big { font-size: 19px; font-weight: 600; line-height: 1.45; color:#fff; margin:0; }
     .headline .big em { color: var(--orange); font-style: normal; }
 
-    /* Cards */
-    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
-    .card {
+    /* RQ pill list */
+    .rq-list { list-style: none; counter-reset: rq; margin-top: 4px; }
+    .rq-list li {
+      position: relative;
+      padding: 14px 16px 14px 60px;
+      margin-bottom: 10px;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 18px;
+      font-size: 15px;
     }
-    .card h3 { font-size: 15px; color: var(--navy); margin-bottom: 6px; }
-    .card p { font-size: 14px; color: var(--muted); margin: 0; }
-
-    /* Figure */
-    figure { margin: 8px 0; }
-    figure img {
-      width: 100%;
-      height: auto;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: #fff;
+    .rq-list li::before {
+      counter-increment: rq;
+      content: "RQ" counter(rq);
+      position: absolute;
+      left: 12px; top: 14px;
+      background: var(--orange);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
     }
-    figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; text-align: center; }
 
-    /* Steps */
+    /* Pipeline steps */
     .steps { list-style: none; counter-reset: step; }
     .steps li {
       position: relative;
@@ -125,6 +134,83 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 14px; font-weight: 700;
     }
+
+    /* Stats row */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+    .stats .stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 12px;
+      text-align: center;
+    }
+    .stats .stat .num { font-size: 22px; font-weight: 700; color: var(--orange); display: block; }
+    .stats .stat .lab { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* Detector grid */
+    .detector-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+    .det-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .det-card .pill {
+      display: inline-block;
+      font-size: 10px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .det-card .pill.classical { background: #eaf0f8; color: var(--navy); }
+    .det-card .pill.dl { background: #fdebe0; color: var(--orange); }
+    .det-card h4 { font-size: 15px; color: var(--navy); margin-bottom: 4px; }
+    .det-card p { font-size: 13px; color: var(--muted); margin: 0; }
+
+    /* RQ result blocks */
+    .rq-block {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .rq-block .rq-tag {
+      display: inline-block;
+      background: var(--orange);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+    .rq-block h3 { margin-top: 0; }
+    .rq-block .verdict {
+      background: var(--bg);
+      border-left: 3px solid var(--orange);
+      padding: 10px 14px;
+      margin: 12px 0 8px;
+      font-size: 14px;
+      color: var(--text);
+      border-radius: 0 6px 6px 0;
+    }
+    .rq-block .verdict strong { color: var(--navy); }
+
+    /* Figure */
+    figure { margin: 8px 0; }
+    figure img {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; text-align: center; }
 
     /* FAQ */
     details {
@@ -161,8 +247,6 @@
       transition: background 0.15s;
     }
     .btn:hover { background: #d2531f; }
-    .btn.secondary { background: var(--navy-light); }
-    .btn.secondary:hover { background: var(--navy); }
 
     /* Team */
     .team { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -183,7 +267,9 @@
 
     @media (max-width: 560px) {
       header h1 { font-size: 23px; }
-      .cards { grid-template-columns: 1fr; }
+      .detector-grid { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+      .stats .stat .num { font-size: 18px; }
     }
   </style>
 </head>
@@ -192,8 +278,8 @@
   <header>
     <div class="wrap">
       <span class="tag">Project 2.2 &middot; Maastricht University</span>
-      <h1>Does the Source of Carrier Image Affect Steganographic Detectability?</h1>
-      <p class="sub">Comparing how easily hidden data is detected in real photographs versus AI-generated images.</p>
+      <h1>Real vs. Synthetic Carriers: Rethinking Steganalysis Assumptions</h1>
+      <p class="sub">Do detection tools built on real photographs still work when the carrier is an AI-generated image?</p>
     </div>
   </header>
 
@@ -204,86 +290,195 @@
       <div class="label">About This Project</div>
       <h2>A research study on hiding data in images &mdash; and whether we can still catch it.</h2>
       <p class="lead">This is a Project&nbsp;2.2 study at Maastricht University. We investigate whether the <strong>source of a carrier image</strong> &mdash; a real photograph versus an AI-generated picture &mdash; changes how easily hidden data can be detected.</p>
-      <p>We built an end-to-end pipeline that hides data across 36,000 images from three sources (real photos, SDXL, and FLUX), runs five detection algorithms over them, and measures detection accuracy with rigorous statistical testing. This page summarises what we asked, what we found, and why it matters.</p>
+      <p>This page walks you through what steganography is, how our experiment works, what we found, and why it matters &mdash; no prior knowledge required.</p>
     </section>
 
-    <!-- PROBLEM -->
-    <section id="problem">
-      <div class="label">The Problem</div>
-      <h2>Can detection tools built for real photos still catch hidden data in AI-generated images?</h2>
-      <p class="lead">Steganography hides secret data inside ordinary-looking images. The tools that detect it &mdash; steganalysis &mdash; were all built and validated on <strong>real photographs</strong>.</p>
-      <p>But today, a huge share of images online aren't real &mdash; they're generated by AI models like Stable Diffusion and FLUX. Nobody had systematically tested whether existing detection tools still work when the carrier is an AI-generated image. That's the gap we set out to close.</p>
+    <!-- WHAT IS STEGANOGRAPHY -->
+    <section id="steg">
+      <div class="label">Step 1 &mdash; The Basics</div>
+      <h2>What is steganography?</h2>
+      <p class="lead">Steganography is the art of <strong>hiding a secret message inside something that looks ordinary</strong>. In our case: an image.</p>
+      <p>You start with a normal-looking picture (the <em>cover</em>). You make tiny, invisible changes to its pixel values to encode your message. The result (the <em>stego image</em>) looks identical to the eye &mdash; but the message is in there. Unlike encryption, which hides the <em>content</em> of a message, steganography hides the <em>fact that a message exists at all</em>.</p>
+      <p><strong>Steganalysis</strong> is the opposite job: looking at a suspicious image and asking, <em>"is something hidden inside this?"</em> Detection tools work by spotting the tiny statistical traces that embedding leaves behind &mdash; traces too small for the human eye, but visible to math.</p>
+      <h3>So what's the problem?</h3>
+      <p>Almost every detection tool was built and tested on <strong>real camera photographs</strong>. But today, a huge share of images online are <strong>generated by AI</strong> &mdash; Stable Diffusion, FLUX, Midjourney. These images look real, but their underlying statistics are different. Nobody had systematically tested: do our detection tools still work on them?</p>
     </section>
 
-    <!-- SOLUTION -->
-    <section id="solution">
-      <div class="label">The Solution</div>
-      <h2>Yes &mdash; the carrier source changes detectability.</h2>
-      <div class="headline">
-        <p class="big">Across five detectors and 36,000 hidden-data images, AI-generated carriers were generally <em>easier</em> to detect than real photos &mdash; though the direction depends on the detector.</p>
-      </div>
-      <p class="muted" style="margin-top:18px;">The likely reason: AI images lack the natural sensor noise real cameras produce. Hidden bits normally hide inside that noise &mdash; without it, they stand out.</p>
-    </section>
-
-    <!-- KEY FIGURE -->
-    <section id="figure">
-      <div class="label">The Evidence</div>
-      <h2>Detection accuracy by carrier source</h2>
-      <figure>
-        <img src="assets/headline_chart.png" alt="Detection accuracy (AUC) by carrier source and detector">
-        <figcaption>Mean detection accuracy (ROC&nbsp;AUC) per detector, split by carrier source. Higher&nbsp;= easier to detect.</figcaption>
-      </figure>
-    </section>
-
-    <!-- FINDINGS -->
-    <section id="findings">
-      <div class="label">Key Findings</div>
-      <h2>What the data shows</h2>
-      <div class="cards">
-        <div class="card"><h3>Carrier source matters</h3><p>4 of 5 detectors found AI-generated images easier to attack than real photos.</p></div>
-        <div class="card"><h3>It depends on the detector</h3><p>One spatial detector flipped the other way &mdash; the effect isn't uniform.</p></div>
-        <div class="card"><h3>Embedding stays invisible</h3><p>All stego images passed the visual-quality floor (PSNR&nbsp;&gt;&nbsp;50&nbsp;dB, SSIM&nbsp;&ge;&nbsp;0.998).</p></div>
-        <div class="card"><h3>Encryption is invisible</h3><p>AES-encrypting the payload had no detectable effect on any detector.</p></div>
-      </div>
-    </section>
-
-    <!-- BENEFIT -->
-    <section id="benefit">
-      <div class="label">Why It Matters</div>
-      <h2>Detection tools can't be blindly trusted across image sources.</h2>
-      <p>A steganalysis tool calibrated on real photographs behaves differently on AI-generated content. As AI images flood the internet, this has a counter-intuitive implication: <strong>AI carriers may be a weakness, not a strength, for hidden communication.</strong></p>
-      <p class="muted">We deliver these conclusions through a fully reproducible, open-source pipeline &mdash; so anyone can re-run the experiments and verify the results.</p>
-    </section>
-
-    <!-- HOW IT WORKS -->
-    <section id="method">
-      <div class="label">How It Works</div>
-      <h2>A five-stage steganalysis pipeline</h2>
-      <ol class="steps">
-        <li><strong>Carriers:</strong> 1,000 caption-matched groups &mdash; real photos (COCO/Flickr30k), SDXL, and FLUX.</li>
-        <li><strong>Embedding:</strong> hide data via spatial LSB (PNG) and frequency DCT-LSB (JPEG), plain and AES-encrypted.</li>
-        <li><strong>Detection:</strong> five training-free detectors score every image for hidden data.</li>
-        <li><strong>Analysis:</strong> compare detection accuracy across sources with paired statistical tests.</li>
-        <li><strong>Verdicts:</strong> aggregate into research-question conclusions and figures.</li>
+    <!-- RESEARCH QUESTIONS -->
+    <section id="rqs">
+      <div class="label">Step 2 &mdash; What We Asked</div>
+      <h2>Our four research questions</h2>
+      <ol class="rq-list">
+        <li><strong>Does carrier source affect detectability?</strong> Real photographs vs. AI-generated images.</li>
+        <li><strong>Within AI carriers, does the generator choice matter?</strong> SDXL vs. FLUX.</li>
+        <li><strong>Does payload size change the gap?</strong> Does hiding more data make AI vs. real differ more?</li>
+        <li><strong>Do spatial and frequency embedding behave differently?</strong> LSB on pixels vs. DCT-LSB on JPEG coefficients.</li>
       </ol>
     </section>
 
-    <!-- FAQ -->
-    <section id="faq">
-      <div class="label">Questions</div>
-      <h2>Anticipated questions</h2>
-      <details>
-        <summary>Why are AI images easier to detect?</summary>
-        <div class="answer">Real photos carry random sensor noise from the camera. Steganography hides bits inside that noise. AI generators produce smoother, cleaner images with no real sensor noise &mdash; so the embedded bits have nowhere to blend in and stand out to detectors.</div>
-      </details>
-      <details>
-        <summary>How many images did you test?</summary>
-        <div class="answer">36,000 hidden-data (stego) images across three carrier sources, scored by five detectors &mdash; over 180,000 detection measurements in total. The full run is reproducible from a single seed.</div>
-      </details>
-      <details>
-        <summary>Does encrypting the hidden data help hide it?</summary>
-        <div class="answer">No. AES-256 encryption had no measurable effect on detectability. Encrypted payloads already look random, which is statistically the same as the unencrypted random payloads we tested &mdash; so detectors see no difference.</div>
-      </details>
+    <!-- PIPELINE -->
+    <section id="pipeline">
+      <div class="label">Step 3 &mdash; How It Works</div>
+      <h2>Our four-stage pipeline</h2>
+      <ol class="steps">
+        <li><strong>Collect:</strong> Gather 9,000 cover images &mdash; 3,000 real photos from COCO and Flickr30k, plus 3,000 each from SDXL and FLUX generated from matching captions.</li>
+        <li><strong>Embed:</strong> Hide a random payload in every image, under 12 different conditions (two embedding methods &times; three payload sizes &times; encrypted or not).</li>
+        <li><strong>Detect:</strong> Run eight different detectors over every stego and cover image, collecting a suspicion score per image.</li>
+        <li><strong>Analyse:</strong> Compare detection accuracy (AUC) across carrier sources using paired statistical tests, then aggregate into per-question verdicts.</li>
+      </ol>
+      <div class="stats">
+        <div class="stat"><span class="num">9,000</span><span class="lab">cover images<br>(3 sources)</span></div>
+        <div class="stat"><span class="num">108,000</span><span class="lab">stego images<br>evaluated</span></div>
+        <div class="stat"><span class="num">8</span><span class="lab">detectors<br>(6 classical + 2 DL)</span></div>
+      </div>
+    </section>
+
+    <!-- DETECTORS -->
+    <section id="detectors">
+      <div class="label">Step 4 &mdash; The Tools</div>
+      <h2>The eight detectors we used</h2>
+      <p>We ran <strong>six classical (training-free) detectors</strong> and <strong>two deep-learning detectors</strong> on every image. Each one looks at the image in a different way, hunting for the statistical fingerprint that hidden data leaves behind.</p>
+
+      <h3>Classical detectors (no training needed)</h3>
+      <div class="detector-grid">
+        <div class="det-card">
+          <span class="pill classical">Classical</span>
+          <h4>RS Analysis</h4>
+          <p>Counts how often pixel groups become "regular" vs "singular" under a tiny flip. Hidden bits shift the balance in a predictable way.</p>
+        </div>
+        <div class="det-card">
+          <span class="pill classical">Classical</span>
+          <h4>&chi;&sup2;-Spatial</h4>
+          <p>Looks at pixel-value pairs that should be uneven in natural images. Embedding averages them out &mdash; the test spots that.</p>
+        </div>
+        <div class="det-card">
+          <span class="pill classical">Classical</span>
+          <h4>Sample Pairs</h4>
+          <p>Examines adjacent-pixel differences. Embedded bits leave a measurable trace in the distribution of those differences.</p>
+        </div>
+        <div class="det-card">
+          <span class="pill classical">Classical</span>
+          <h4>&chi;&sup2;-DCT</h4>
+          <p>Same chi-square idea, but applied to JPEG's compressed frequency coefficients instead of raw pixels.</p>
+        </div>
+        <div class="det-card">
+          <span class="pill classical">Classical</span>
+          <h4>&chi;&sup2;-DCT (tile-local)</h4>
+          <p>A smarter version that analyses small image tiles separately, catching localised embedding patterns the global test misses.</p>
+        </div>
+        <div class="det-card">
+          <span class="pill classical">Classical</span>
+          <h4>Calibration-&chi;&sup2;</h4>
+          <p>Compares the suspect image against a slightly-shifted copy of itself. The shift scrambles any hidden data, so any difference between the two views reveals it.</p>
+        </div>
+      </div>
+
+      <h3>Deep-learning detectors (trained)</h3>
+      <div class="detector-grid">
+        <div class="det-card">
+          <span class="pill dl">Deep Learning</span>
+          <h4>SRNet</h4>
+          <p>A convolutional neural network trained on thousands of examples to recognise the visual fingerprint of hidden data.</p>
+        </div>
+        <div class="det-card">
+          <span class="pill dl">Deep Learning</span>
+          <h4>DCTR</h4>
+          <p>Old-school handcrafted JPEG features fed into a machine-learning classifier &mdash; powerful and well-tested in the literature.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="results">
+      <div class="label">Step 5 &mdash; The Findings</div>
+      <h2>What we found, question by question</h2>
+
+      <!-- RQ1 -->
+      <div class="rq-block">
+        <span class="rq-tag">RQ1</span>
+        <h3>Does carrier source affect detectability?</h3>
+        <p class="muted">Real photographs vs. pooled AI-generated images.</p>
+        <figure>
+          <img src="report/figures/v4_paper/headline_rq1.png" alt="Per-detector mean AUC gap between real and AI carriers">
+          <figcaption>Mean &Delta;AUC per detector (real &minus; pooled AI). Negative = AI easier to detect.</figcaption>
+        </figure>
+        <div class="verdict">
+          <strong>Verdict:</strong> 5 of 6 classical detectors found AI-generated images <em>easier</em> to attack than real photos &mdash; the opposite of what you might expect. &chi;&sup2;-spatial is the outlier (reverses on full AUC, but the effect dissolves at operational error rates).
+        </div>
+        <p>The likely reason: AI generators produce smoother, cleaner images with less natural noise. Real cameras add random sensor noise where hidden bits can hide; AI images don't, so embedding artefacts stand out.</p>
+      </div>
+
+      <!-- RQ2 -->
+      <div class="rq-block">
+        <span class="rq-tag">RQ2</span>
+        <h3>Does the choice of AI generator matter?</h3>
+        <p class="muted">SDXL vs. FLUX.</p>
+        <div class="verdict">
+          <strong>Verdict:</strong> No. SDXL and FLUX behaved essentially identically. The pooled AUC difference was just <strong>0.0004</strong> &mdash; statistical noise.
+        </div>
+        <p>Despite producing visually different images, the two generators leave equivalent statistical fingerprints from a steganalysis standpoint. Detection performance does not depend on which AI generator was used.</p>
+      </div>
+
+      <!-- RQ3 -->
+      <div class="rq-block">
+        <span class="rq-tag">RQ3</span>
+        <h3>Does payload size change the gap?</h3>
+        <p class="muted">Low (0.05 bpp) &middot; Medium (0.15 bpp) &middot; High (0.30 bpp).</p>
+        <figure>
+          <img src="report/figures/v4_paper/rq3_payload_gap.png" alt="Real-vs-AI AUC gap across payload sizes">
+          <figcaption>Per-detector &Delta;AUC (real &minus; pooled AI) at three payload sizes. Pooled estimate in bold.</figcaption>
+        </figure>
+        <div class="verdict">
+          <strong>Verdict:</strong> The gap <em>shrinks</em> as payload grows. At low payload the AI advantage is largest (real harder to detect); at high payload, real and AI converge.
+        </div>
+        <p>Intuition: with a small payload, the embedder's fingerprint is subtle &mdash; and that subtle signal is easier to spot in clean AI images than in noisy real photos. With a large payload the fingerprint is loud enough that both carriers leak it equally.</p>
+      </div>
+
+      <!-- RQ4 -->
+      <div class="rq-block">
+        <span class="rq-tag">RQ4</span>
+        <h3>Spatial vs. frequency embedding &mdash; do they behave differently?</h3>
+        <p class="muted">LSB on raw pixels (PNG) vs. DCT-LSB on JPEG coefficients.</p>
+        <figure>
+          <img src="report/figures/v4_paper/rq4_branch.png" alt="Real-vs-AI AUC gap by embedding branch and payload">
+          <figcaption>Real-vs-AI &Delta;AUC for spatial and frequency branches at three payload sizes.</figcaption>
+        </figure>
+        <div class="verdict">
+          <strong>Verdict:</strong> It depends on payload. At low payload, spatial detectors find a bigger gap. At medium payload, frequency does. At high payload, both branches converge. Overall: the pooled difference is roughly zero.
+        </div>
+        <p>So the two domains aren't uniformly better or worse on AI images &mdash; their relative advantage shifts with how much data is being hidden.</p>
+      </div>
+    </section>
+
+    <!-- BEYOND RQs -->
+    <section id="beyond">
+      <div class="label">A Surprise Finding</div>
+      <h2>SRNet "cheats" &mdash; and that matters</h2>
+      <p>One of our deep-learning detectors, <strong>SRNet</strong>, looked spectacular at first &mdash; AUC near 1.0 across all three carrier sources. <em>Source-invariant</em>, apparently.</p>
+      <figure>
+        <img src="report/figures/v4_paper/v1_vs_v2a_per_source_bars.png" alt="SRNet per-source AUC under two training configurations">
+        <figcaption>Same SRNet architecture, same test images &mdash; just trained differently. Withholding AI carriers from training opens a &plus;44 percentage-point gap on AI inputs.</figcaption>
+      </figure>
+      <div class="verdict">
+        <strong>Verdict:</strong> SRNet's apparent source-invariance was a <em>training-mix artefact</em>. Trained on real photos only, its AUC collapses from <strong>0.986 on real</strong> to <strong>0.547 on SDXL</strong> &mdash; barely better than guessing.
+      </div>
+      <p>It never learned steganography. It learned to <strong>recognise AI images</strong>. The moment a deployed detector encounters a new generator it hasn't seen, it will fail silently. This is a serious caution for anyone building learned steganalysis systems.</p>
+    </section>
+
+    <!-- CONCLUSION -->
+    <section id="conclusion">
+      <div class="label">The Takeaway</div>
+      <h2>What it all means</h2>
+      <div class="headline">
+        <p class="big">Carrier source affects steganographic detectability &mdash; but not as expected. AI-generated images are slightly <em>easier</em> to detect, not harder.</p>
+      </div>
+      <p style="margin-top:18px;">Three concrete conclusions:</p>
+      <ul style="padding-left: 20px; color: var(--text);">
+        <li style="margin-bottom: 8px;"><strong>AI carriers are not a safe haven for hiding data.</strong> Their cleaner statistics actually expose embedding artefacts more readily than real photos do.</li>
+        <li style="margin-bottom: 8px;"><strong>Generator choice doesn't matter.</strong> SDXL and FLUX are interchangeable from a steganalysis perspective.</li>
+        <li style="margin-bottom: 8px;"><strong>Deep detectors that look source-invariant may not be.</strong> They might be memorising their training distribution rather than learning steganography.</li>
+      </ul>
+      <p>Future steganalysis benchmarks need to account for carrier origin &mdash; not just embedding method and payload size.</p>
     </section>
 
     <!-- LINKS -->
@@ -291,7 +486,7 @@
       <div class="label">Explore</div>
       <h2>Dig into the project</h2>
       <div class="btn-row">
-        <a class="btn" href="report/final_report_draft_v4.pdf" target="_blank" rel="noopener">Read the Report</a>
+        <a class="btn" href="report/final_report_draft_v4.pdf" target="_blank" rel="noopener">Read the Full Report</a>
       </div>
     </section>
 
@@ -302,7 +497,7 @@
       <div class="team">
         <span>Abdul Moiz Akbar</span>
         <span>Daria Gjonbalaj</span>
-        <span>Nico Muller-Spath</span>
+        <span>Nico M&uuml;ller-Sp&auml;th</span>
         <span>Jimena Narvaez del Cid</span>
         <span>David Wicker</span>
         <span>Nikolas Zouros</span>
