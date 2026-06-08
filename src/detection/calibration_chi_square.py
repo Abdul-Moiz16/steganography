@@ -1,3 +1,4 @@
+#Authors: David Wicker and Abdul Moiz.
 """Calibration-based chi-square steganalysis detector.
 
 Improves on the basic DCT chi-square test by building a calibration

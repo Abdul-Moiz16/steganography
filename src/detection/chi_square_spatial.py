@@ -1,3 +1,4 @@
+#Author: David Wicker and Jimena Narvaez
 """Spatial-domain chi-square steganalysis detector.
 
 Detects LSB replacement by testing whether the pairs-of-values histogram

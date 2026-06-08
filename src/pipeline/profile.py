@@ -1,3 +1,4 @@
+#Author: David Wicker
 from __future__ import annotations
 
 """Named experiment profiles for prototype and full-design runs.

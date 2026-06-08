@@ -1,3 +1,4 @@
+#Author: David Wicker
 """Re-exports all statistical steganalysis detectors.
 
 Each detector lives in its own module under ``src/detection/``.

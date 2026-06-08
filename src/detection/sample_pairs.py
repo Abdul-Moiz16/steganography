@@ -1,3 +1,4 @@
+#Authors: Nico Muller-Spätz and David Wicker
 """Sample Pairs steganalysis detector.
 
 Estimates the embedding rate of sequential LSB replacement by analysing

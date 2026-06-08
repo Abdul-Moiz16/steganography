@@ -1,3 +1,4 @@
+#Authors: Abdul Moiz and David Wicker
 """Structural Similarity Index (SSIM) between a cover and stego image.
 
 Used in the quality-control step (Section 3.4 of the proposal) to verify

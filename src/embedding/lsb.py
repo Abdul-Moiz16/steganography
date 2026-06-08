@@ -1,3 +1,4 @@
+#Author: David Wicker
 """Spatial-domain LSB steganography: embedding and decoding.
 
 Implements sequential (row-major) and keyed (SHA-256 shuffled) LSB

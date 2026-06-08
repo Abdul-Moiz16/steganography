@@ -1,3 +1,4 @@
+#Author: David Wicker
 from __future__ import annotations
 
 """Metric utilities for detector prediction tables."""

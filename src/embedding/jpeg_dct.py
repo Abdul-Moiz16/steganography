@@ -1,3 +1,4 @@
+#Author: David Wicker
 """JPEG DCT coefficient I/O helpers.
 
 This module is intentionally small: the DCT embedding code only needs to

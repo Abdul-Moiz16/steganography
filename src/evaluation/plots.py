@@ -1,3 +1,4 @@
+#Author: Nikolas Zouros and David Wicker
 from __future__ import annotations
 
 """Figure generation from computed metrics tables."""

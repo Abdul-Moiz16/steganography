@@ -1,3 +1,4 @@
+#Authors: Nico Müller-Spätz and Jimena Narvaez
 from __future__ import annotations
 
 import io

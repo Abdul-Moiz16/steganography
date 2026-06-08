@@ -1,3 +1,4 @@
+#Author: David Wicker. 
 """Tiled DCT-domain chi-square steganalysis detector.
 
 Partition the JPEG into a coarse grid of tiles, compute the Westfeld

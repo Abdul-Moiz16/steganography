@@ -1,3 +1,4 @@
+#Author: David Wicker
 """Peak Signal-to-Noise Ratio (PSNR) between a cover and stego image.
 
 Used in the quality-control step (Section 3.4 of the proposal) to rule

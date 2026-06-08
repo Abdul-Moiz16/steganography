@@ -1,3 +1,4 @@
+#Authors: Abdul Moiz, David Wicker and Jimena Narvaez
 """Feature Similarity Index (FSIM) between a cover and stego image.
 
 Used in the quality-control step (Section 3.4 of the proposal) alongside

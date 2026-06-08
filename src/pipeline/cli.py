@@ -1,3 +1,4 @@
+#Author: David Wicker
 from __future__ import annotations
 
 """CLI entrypoint for the proposal-aligned pipeline stages."""

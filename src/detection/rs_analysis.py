@@ -1,3 +1,4 @@
+#Author: David Wicker
 """RS analysis steganalysis detector.
 
 Detects sequential LSB replacement by partitioning pixel groups into

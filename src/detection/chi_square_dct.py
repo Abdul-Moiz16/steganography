@@ -1,3 +1,4 @@
+#Author: David Wicker
 """DCT-domain chi-square steganalysis detector.
 
 Detects LSB replacement in quantised DCT coefficients of JPEG images

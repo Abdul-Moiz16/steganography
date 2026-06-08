@@ -1,3 +1,4 @@
+#Author: David Wicker
 """OutGuess (Provos 2001) DCT-domain steganographic embedding.
 
 Reference

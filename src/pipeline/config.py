@@ -1,3 +1,4 @@
+#Author: David Wicker
 from __future__ import annotations
 
 """Pipeline configuration locked to ``proposal_updated_3.tex``.
