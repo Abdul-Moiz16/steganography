@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Does the Source of the Carrier Image Affect Steganographic Detectability?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ------------------------------------------------------------------
+       v4 poster: declassified intelligence dossier aesthetic
+       A0 portrait, 841 x 1189 mm, prints via Chromium headless.
+       ------------------------------------------------------------------ */
+
+    :root {
+      --umdark: #001C3D;
+      --umlight: #4A90C4;
+      --umorange: #E84E10;
+      --umgray: #6B7280;
+      --paper: #FBF9F5;
+      --paper-tint: #F4EFE2;       /* warmer cream for redaction surfaces  */
+      --ink-red: #8B1A1A;          /* "classified" stamp red, used sparingly */
+      --ink-dark: #0A0A12;         /* near-black for ink stamps              */
+      --grid-line: rgba(0, 28, 61, 0.08);
+      --bit-faint: rgba(0, 28, 61, 0.13);
+
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    @page {
+      size: A0 portrait;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      background: #d8d2c2;          /* surrounding shadow only seen on screen */
+      color: var(--umdark);
+      font-family: var(--font-body);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      font-smooth: always;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Outer page chrome (screen-only sketch) */
+    body {
+      padding: 20mm;
+    }
+    @media print {
+      body { padding: 0; background: var(--paper); }
+    }
+
+    .poster {
+      width: 841mm;
+      height: 1189mm;
+      background: var(--paper);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(0,0,0,0.15);
+      display: grid;
+      grid-template-rows:
+        22mm     /* 1. classified header  */
+        120mm    /* 2. title block        */
+        188mm    /* 3. hook               */
+        200mm    /* 4. finding 01         */
+        200mm    /* 5. finding 02         */
+        268mm    /* 6. finding 03         */
+        159mm    /* 7. ledger (detector roster + QR stamp wrapper) */
+        32mm;    /* 8. classified footer  */
+      /* totals 1189 mm exactly */
+    }
+    @media print {
+      .poster { box-shadow: none; }
+    }
+
+    .poster > * { position: relative; z-index: 1; }
+
+    /* Background decoration: a single inline SVG element with a
+       simple vector dot-grid pattern. PDF embeds this as compact
+       vector primitives -- no rasterized full-page layer, so Adobe
+       pan stays smooth. The vertical edge text adds dossier flavour
+       without competing with the layout. */
+    .bg-deco {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* =================================================================
+       1. CLASSIFIED HEADER STRIP
+       ================================================================= */
+    .dossier-header {
+      background: var(--umdark);
+      color: var(--paper);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      padding: 0 12mm;
+      font-family: var(--font-mono);
+      font-size: 10pt;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      gap: 8mm;
+    }
+    .dossier-header__id    { font-weight: 700; }
+    .dossier-header__div   { text-align: center; opacity: 0.7; }
+    .dossier-header__class {
+      color: var(--ink-red);
+      font-weight: 800;
+      letter-spacing: 0.35em;
+      padding: 1.5mm 4mm;
+      border: 1.5px solid var(--ink-red);
+      background: var(--paper);
+    }
+
+    /* =================================================================
+       2. TITLE BLOCK
+       ================================================================= */
+    .title-block {
+      display: grid;
+      grid-template-columns: 1fr 145mm;
+      gap: 14mm;
+      padding: 14mm 22mm 6mm 22mm;
+      border-bottom: 0.6mm solid var(--umdark);
+      position: relative;
+    }
+    .title-block::after {
+      /* secondary thin rule, dossier-style */
+      content: "";
+      position: absolute;
+      left: 22mm; right: 22mm; bottom: 2mm;
+      height: 0.2mm;
+      background: var(--umdark);
+      opacity: 0.45;
+    }
+
+    .title-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11pt;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--umorange);
+      font-weight: 700;
+      margin-bottom: 5mm;
+    }
+    .title-eyebrow .sep {
+      display: inline-block;
+      width: 14mm;
+      height: 0.4mm;
+      background: var(--umorange);
+      vertical-align: middle;
+      margin: 0 4mm;
+    }
+
+    .title-main {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 68pt;
+      line-height: 1.02;
+      letter-spacing: -0.022em;
+      color: var(--umdark);
+      margin-bottom: 8mm;
+    }
+    .title-main em {
+      font-style: italic;
+      color: var(--umorange);
+      font-weight: 600;
+    }
+
+    .title-scope {
+      font-family: var(--font-body);
+      font-weight: 400;
+      font-size: 17.5pt;
+      line-height: 1.42;
+      color: var(--umdark);
+      opacity: 0.82;
+      max-width: 430mm;
+      margin-bottom: 6mm;
+      letter-spacing: -0.002em;
+    }
+    .title-scope strong {
+      font-weight: 600;
+      color: var(--umdark);
+      opacity: 1;
+    }
+
+    .title-tldr {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-style: italic;
+      font-size: 19pt;
+      line-height: 1.3;
+      color: var(--umdark);
+      max-width: 410mm;
+      letter-spacing: -0.01em;
+      padding-left: 6mm;
+      border-left: 1mm solid var(--umorange);
+    }
+    .title-tldr strong {
+      font-style: normal;
+      font-weight: 700;
+      background: linear-gradient(180deg,
+        transparent 60%, rgba(232,78,16,0.22) 60%);
+      padding: 0 2mm;
+    }
+
+    /* Right column: case officers + filed metadata */
+    .case-officers {
+      border-left: 0.4mm solid var(--umdark);
+      padding-left: 8mm;
+      padding-top: 2mm;
+      font-family: var(--font-mono);
+      font-size: 11pt;
+      color: var(--umdark);
+    }
+    .case-officers__label {
+      font-size: 10pt;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--umgray);
+      margin-bottom: 4mm;
+      font-weight: 700;
+    }
+    .case-officers__list {
+      list-style: none;
+      line-height: 1.55;
+      letter-spacing: 0.01em;
+      font-size: 10pt;
+    }
+    .case-officers__list li::before {
+      content: "// ";
+      color: var(--umorange);
+      font-weight: 700;
+      margin-right: 1mm;
+    }
+    .case-officers__filed {
+      margin-top: 7mm;
+      padding-top: 4mm;
+      border-top: 0.2mm dashed var(--umdark);
+      font-size: 10pt;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--umgray);
+      display: grid;
+      gap: 1.5mm;
+    }
+    .case-officers__filed strong {
+      color: var(--umdark);
+      font-weight: 700;
+    }
+
+    /* =================================================================
+       3. HOOK SECTION (the show-stopper)
+       ================================================================= */
+    .hook {
+      padding: 8mm 22mm 6mm 22mm;
+      display: grid;
+      grid-template-rows: auto auto auto 1fr auto;
+      gap: 4mm;
+      background:
+        linear-gradient(180deg,
+          rgba(244, 239, 226, 0.6) 0%,
+          transparent 100%);
+    }
+    .hook__eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10pt;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--umdark);
+      opacity: 0.55;
+      display: flex;
+      align-items: center;
+      gap: 4mm;
+    }
+    .hook__eyebrow::before, .hook__eyebrow::after {
+      content: "";
+      flex: 1;
+      height: 0.2mm;
+      background: var(--umdark);
+      opacity: 0.35;
+    }
+    .hook__headline {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 52pt;
+      line-height: 0.95;
+      letter-spacing: -0.035em;
+      text-align: center;
+      color: var(--umdark);
+    }
+    .hook__headline .redacted {
+      display: inline-block;
+      background: var(--umdark);
+      color: var(--paper);
+      padding: 0 6mm 1mm 6mm;
+      transform: rotate(-1deg);
+      margin: 0 2mm;
+      position: relative;
+    }
+    .hook__headline .redacted::before {
+      /* tiny rivets on the redaction bar */
+      content: "";
+      position: absolute;
+      left: 1.5mm; top: 1.5mm; bottom: 1.5mm;
+      width: 0.3mm;
+      background: var(--paper);
+      opacity: 0.3;
+    }
+    .hook__subhead {
+      font-family: var(--font-body);
+      font-size: 17pt;
+      font-weight: 400;
+      text-align: center;
+      color: var(--umdark);
+      max-width: 550mm;
+      margin: 0 auto;
+      line-height: 1.3;
+    }
+    .hook__subhead em {
+      font-style: italic;
+      color: var(--umorange);
+      font-weight: 600;
+    }
+
+    .exhibits {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12mm;
+      align-items: stretch;
+    }
+
+    .exhibit {
+      display: grid;
+      grid-template-rows: auto auto auto;
+      gap: 2.5mm;
+    }
+
+    .exhibit__tag {
+      font-family: var(--font-mono);
+      font-size: 11.5pt;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--umdark);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .exhibit__tag-id {
+      display: inline-block;
+      background: var(--umdark);
+      color: var(--paper);
+      padding: 1mm 3mm;
+      letter-spacing: 0.35em;
+    }
+    .exhibit__tag-meta {
+      font-size: 10pt;
+      color: var(--umgray);
+      letter-spacing: 0.22em;
+      font-weight: 500;
+    }
+
+    /* Image slot - fixed height, image fills via object-fit: cover.
+       Both EXHIBIT A and EXHIBIT B intentionally use the SAME source
+       image: that is the whole point of LSB stego (visually identical
+       to its cover). */
+    .exhibit__slot {
+      height: 108mm;
+      width: 100%;
+      border: 1.2px solid var(--umdark);
+      background: var(--paper-tint);
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 2mm var(--paper);
+    }
+    .exhibit__img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      filter: contrast(1.02);
+    }
+    /* "Surveillance frame" corner crosshair marks over the image */
+    .exhibit__slot::before {
+      content: "";
+      position: absolute;
+      inset: 5mm;
+      pointer-events: none;
+      background:
+        linear-gradient(var(--paper), var(--paper)) top left / 8mm 0.5mm no-repeat,
+        linear-gradient(var(--paper), var(--paper)) top left / 0.5mm 8mm no-repeat,
+        linear-gradient(var(--paper), var(--paper)) top right / 8mm 0.5mm no-repeat,
+        linear-gradient(var(--paper), var(--paper)) top right / 0.5mm 8mm no-repeat,
+        linear-gradient(var(--paper), var(--paper)) bottom left / 8mm 0.5mm no-repeat,
+        linear-gradient(var(--paper), var(--paper)) bottom left / 0.5mm 8mm no-repeat,
+        linear-gradient(var(--paper), var(--paper)) bottom right / 8mm 0.5mm no-repeat,
+        linear-gradient(var(--paper), var(--paper)) bottom right / 0.5mm 8mm no-repeat;
+      opacity: 0.85;
+      z-index: 2;
+    }
+    /* Big exhibit letter overlay (A / B) bottom-right of image */
+    .exhibit__slot-id {
+      position: absolute;
+      right: 6mm;
+      bottom: 4mm;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 64pt;
+      letter-spacing: -0.02em;
+      color: var(--paper);
+      line-height: 1;
+      z-index: 3;
+      text-shadow: 0 0 8mm rgba(0,0,0,0.6);
+      padding: 0 4mm;
+      background: rgba(0, 28, 61, 0.55);
+    }
+
+    /* Horizontal caption row: CLASS, PAYLOAD, SHA-1 inline side-by-side
+       to save vertical space and let the image slot stay tall. */
+    .exhibit__caption {
+      font-family: var(--font-mono);
+      color: var(--umdark);
+      padding-top: 1.5mm;
+      border-top: 0.3mm solid var(--umdark);
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: baseline;
+      gap: 9mm;
+    }
+    .exhibit__caption-item {
+      display: flex;
+      gap: 2.5mm;
+      align-items: baseline;
+      white-space: nowrap;
+    }
+    .exhibit__caption dt {
+      color: var(--umgray);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 9.5pt;
+    }
+    .exhibit__caption dd {
+      color: var(--umdark);
+      font-weight: 600;
+      font-size: 10.5pt;
+    }
+    .exhibit__caption dd.warn { color: var(--umorange); }
+
+    .hook__decoded {
+      grid-row: 4;
+      margin-top: 6mm;
+      padding: 5mm 8mm;
+      border-left: 1mm solid var(--umorange);
+      background: rgba(232, 78, 16, 0.05);
+      font-family: var(--font-mono);
+      font-size: 11pt;
+      line-height: 1.6;
+      color: var(--umdark);
+    }
+    .hook__decoded-label {
+      font-size: 9pt;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--umorange);
+      font-weight: 700;
+      margin-bottom: 2mm;
+    }
+    .hook__decoded-text {
+      font-size: 12pt;
+      color: var(--umdark);
+    }
+    .hook__decoded-text .redaction {
+      display: inline-block;
+      background: var(--umdark);
+      color: transparent;
+      user-select: none;
+      padding: 0 1.5mm;
+      border-radius: 0.5mm;
+      transform: translateY(0.5mm);
+      letter-spacing: 0.06em;
+    }
+
+    /* =================================================================
+       FINDING SECTIONS — shared
+       ================================================================= */
+    .finding {
+      padding: 0 22mm;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 6mm;
+      position: relative;
+    }
+
+    /* binary-pattern divider sits ABOVE each finding */
+    .bit-divider {
+      grid-column: 1 / -1;
+      position: relative;
+      padding: 2mm 22mm 2mm 22mm;
+      margin: 0 -22mm;
+      font-family: var(--font-mono);
+      font-size: 7.5pt;
+      letter-spacing: 0.16em;
+      color: var(--bit-faint);
+      overflow: hidden;
+      white-space: nowrap;
+      user-select: none;
+      border-top: 0.3mm dotted var(--umdark);
+      border-bottom: 0.3mm dotted var(--umdark);
+      display: flex;
+      align-items: center;
+      gap: 8mm;
+    }
+    .bit-divider__decoded {
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 0.32em;
+      color: var(--umorange);
+      text-transform: uppercase;
+      opacity: 1;
+      padding-right: 6mm;
+      border-right: 0.3mm solid var(--umorange);
+    }
+    .bit-divider__stream {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: clip;
+    }
+
+    .finding__header {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10mm;
+      padding-top: 0.5mm;
+    }
+
+    .finding__number {
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 36pt;
+      letter-spacing: -0.02em;
+      color: var(--umorange);
+      line-height: 1;
+      position: relative;
+      padding-right: 8mm;
+      border-right: 0.5mm solid var(--umdark);
+    }
+    .finding__number-binary {
+      display: block;
+      font-size: 9pt;
+      font-weight: 500;
+      color: var(--umgray);
+      letter-spacing: 0.2em;
+      margin-top: 2mm;
+    }
+
+    .finding__title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 1mm;
+    }
+    .finding__kicker {
+      font-family: var(--font-mono);
+      font-size: 9.5pt;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--umgray);
+      font-weight: 600;
+    }
+    .finding__title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 38pt;
+      line-height: 1.0;
+      letter-spacing: -0.022em;
+      color: var(--umdark);
+    }
+    .finding__title em {
+      font-style: italic;
+      color: var(--umorange);
+    }
+
+    /* INK STAMPS — slightly off-axis, faux-rubber-stamp */
+    .stamp {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3mm 6mm 2.5mm 6mm;
+      border: 0.8mm solid currentColor;
+      border-radius: 1mm;
+      font-family: var(--font-mono);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      font-weight: 700;
+      line-height: 1;
+      position: relative;
+      transform: rotate(-2.5deg);
+      box-shadow:
+        inset 0 0 0 1mm var(--paper),
+        inset 0 0 0 1.4mm currentColor;
+    }
+    .stamp::before {
+      /* faint stamp wear */
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 30%, transparent 60%, rgba(255,255,255,0.5) 100%);
+      pointer-events: none;
+    }
+    .stamp__label {
+      font-size: 7pt;
+      opacity: 0.7;
+      margin-bottom: 1.5mm;
+    }
+    .stamp__verdict {
+      font-size: 18pt;
+      font-weight: 800;
+    }
+    .stamp--supported     { color: var(--umlight); transform: rotate(-2.5deg); }
+    .stamp--methodological { color: var(--umorange); transform: rotate(3deg); font-size: 1.05em; }
+    .stamp--trivial       { color: var(--umgray); transform: rotate(-1deg); }
+
+    .finding__body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14mm;
+      align-items: start;
+    }
+
+    .finding__prose {
+      font-family: var(--font-body);
+      font-size: 18.5pt;
+      line-height: 1.42;
+      color: var(--umdark);
+      max-width: 100%;
+    }
+    .finding__prose p { margin-bottom: 4mm; }
+    .finding__prose p:last-child { margin-bottom: 0; }
+    .finding__prose strong {
+      font-weight: 700;
+      color: var(--umorange);
+    }
+
+    .finding__figures {
+      display: grid;
+      gap: 4mm;
+    }
+    .finding__figures img {
+      width: 100%;
+      height: auto;
+      max-height: 130mm;
+      object-fit: contain;
+      display: block;
+      border: 0.3mm solid var(--grid-line);
+      background: transparent;  /* let bg-deco show through behind the chart */
+    }
+    .finding--03 .finding__figures img {
+      max-height: 118mm;
+    }
+    .finding__figure-label {
+      font-family: var(--font-mono);
+      font-size: 10pt;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--umgray);
+      padding-top: 1mm;
+    }
+
+    /* When prose is in one column and figures stack in the other */
+    .finding--01 .finding__body,
+    .finding--02 .finding__body {
+      grid-template-columns: 350mm 1fr;
+    }
+    .finding--01 .finding__figures,
+    .finding--02 .finding__figures {
+      grid-template-columns: 1fr 1fr;
+      gap: 5mm;
+    }
+    .finding--01 .finding__figures > div,
+    .finding--02 .finding__figures > div {
+      display: grid;
+      gap: 1mm;
+    }
+
+    /* =================================================================
+       FINDING 03 — the methodological climax with hero number
+       ================================================================= */
+    .finding--03 .finding__body {
+      grid-template-columns: 1fr;
+      gap: 4mm;
+    }
+    .hero-stack {
+      display: grid;
+      grid-template-columns: 360mm 1fr;
+      gap: 16mm;
+      align-items: start;
+    }
+    .hero-num {
+      grid-column: 1;
+      background: var(--umdark);
+      color: var(--paper);
+      padding: 8mm 10mm 7mm 10mm;
+      position: relative;
+      transform: rotate(-1.5deg);
+      box-shadow:
+        4mm 4mm 0 0 var(--umorange);
+    }
+    .hero-num__label {
+      font-family: var(--font-mono);
+      font-size: 9.5pt;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--umorange);
+      font-weight: 700;
+      margin-bottom: 1mm;
+    }
+    .hero-num__value {
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 80pt;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      color: var(--paper);
+    }
+    .hero-num__value .unit {
+      font-size: 0.4em;
+      color: var(--umorange);
+      letter-spacing: 0;
+      margin-left: 1mm;
+    }
+    .hero-num__sub {
+      margin-top: 3mm;
+      font-family: var(--font-body);
+      font-size: 12pt;
+      line-height: 1.35;
+      color: var(--paper);
+      opacity: 0.85;
+      max-width: 250mm;
+    }
+    .hero-num__sub strong { color: var(--umorange); font-weight: 600; }
+
+    .hero-prose {
+      grid-column: 2;
+      font-family: var(--font-body);
+      font-size: 18.5pt;
+      line-height: 1.42;
+      color: var(--umdark);
+    }
+    .hero-prose p { margin-bottom: 4mm; }
+    .hero-prose strong { font-weight: 700; color: var(--umorange); }
+
+    .finding--03 .finding__figures {
+      grid-template-columns: 1fr 1fr;
+      gap: 5mm;
+      margin-top: 2mm;
+    }
+    .finding--03 .finding__figures > div { display: grid; gap: 1mm; }
+
+    /* =================================================================
+       7. LEDGER ROW: contributions | methods | scan-me
+       ================================================================= */
+    .ledger {
+      padding: 6mm 22mm 5mm 22mm;
+      border-top: 0.8mm solid var(--umdark);
+      display: grid;
+      grid-template-columns: 1.4fr 0.85fr 0.85fr;
+      gap: 10mm;
+      background: rgba(244, 239, 226, 0.82);  /* slight transparency lets the bg-deco show through */
+      position: relative;
+      align-items: start;  /* prevents columns from stretching and creating gaps */
+    }
+    .ledger::before {
+      content: "";
+      position: absolute;
+      top: 2mm; left: 22mm; right: 22mm;
+      height: 0.2mm;
+      background: var(--umdark);
+      opacity: 0.4;
+    }
+
+    .ledger__col {
+      display: flex;
+      flex-direction: column;
+      gap: 4mm;
+      min-width: 0;
+    }
+    .ledger__label {
+      font-family: var(--font-mono);
+      font-size: 9pt;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--umorange);
+      font-weight: 700;
+      padding-bottom: 2mm;
+      border-bottom: 0.3mm solid var(--umorange);
+    }
+    .ledger__heading {
+      font-family: var(--font-display);
+      font-size: 20pt;
+      font-weight: 600;
+      color: var(--umdark);
+      line-height: 1.1;
+      letter-spacing: -0.015em;
+    }
+    .ledger__body {
+      font-family: var(--font-body);
+      font-size: 14pt;
+      line-height: 1.42;
+      color: var(--umdark);
+    }
+    .ledger__body strong { color: var(--umorange); font-weight: 700; }
+    .ledger__list {
+      list-style: none;
+      font-family: var(--font-mono);
+      font-size: 11.5pt;
+      line-height: 1.75;
+      color: var(--umdark);
+    }
+    .ledger__list li {
+      display: grid;
+      grid-template-columns: 30mm 1fr;
+      gap: 3mm;
+    }
+    .ledger__list li::before {
+      content: attr(data-key);
+      color: var(--umorange);
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 10.5pt;
+    }
+
+    /* Methods column: detector roster grid + conditions matrix */
+    .setup-subhead {
+      font-family: var(--font-mono);
+      font-size: 9.5pt;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--umorange);
+      font-weight: 700;
+      margin-top: 3mm;
+      padding-bottom: 1.5mm;
+      border-bottom: 0.3mm dotted var(--umdark);
+    }
+    .detector-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2mm 6mm;
+      font-family: var(--font-mono);
+      font-size: 10pt;
+    }
+    .detector-cell {
+      display: grid;
+      grid-template-columns: 9mm 1fr auto;
+      gap: 2mm;
+      align-items: baseline;
+      padding: 1mm 0;
+      border-bottom: 0.2mm dotted rgba(0,28,61,0.2);
+    }
+    .detector-cell .d-num {
+      color: var(--umorange);
+      font-weight: 700;
+      font-size: 9pt;
+      letter-spacing: 0.1em;
+    }
+    .detector-cell .d-name {
+      color: var(--umdark);
+      font-weight: 600;
+    }
+    .detector-cell .d-tag {
+      font-size: 7.5pt;
+      color: var(--umgray);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    .detector-cell.d-new .d-num,
+    .detector-cell.d-new .d-name { color: var(--umorange); }
+
+    .conditions {
+      font-family: var(--font-mono);
+      font-size: 10pt;
+      line-height: 1.55;
+      color: var(--umdark);
+      display: grid;
+      gap: 1.5mm;
+    }
+    .conditions__row {
+      display: grid;
+      grid-template-columns: 25mm 1fr;
+      gap: 3mm;
+    }
+    .conditions__row dt {
+      color: var(--umorange);
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 9pt;
+      align-self: baseline;
+    }
+    .conditions__row dd {
+      color: var(--umdark);
+    }
+
+    /* Contributions column: the WHOLE text block (label + heading + body)
+       is stacked on the left in .contrib-text; the figure sits to the
+       right of that entire stack at a generous size. The label's
+       border-bottom therefore spans only the text-block width, not the
+       full ledger column. */
+    .ledger__col--contrib {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 9mm;
+      align-items: start;
+    }
+    .contrib-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4mm;
+      min-width: 0;
+    }
+    .contrib-fig {
+      height: 116mm;
+      width: auto;
+      max-width: 220mm;
+      border: 0.3mm solid var(--grid-line);
+      object-fit: contain;
+      align-self: start;
+      background: transparent;
+    }
+
+    /* ===================================================================
+       DOSSIER CARD (QR area): styled as a real declassified file folder
+       page rather than a simple bordered box. Layers:
+         * paper background with subtle horizontal scanlines
+         * three "binder hole" punches running down the left edge
+         * solid navy header strip with stencil-style "TOP SECRET" text
+         * 3-column file-metadata bar below the header
+         * the QR centered in the body
+         * two rotated rubber-stamp ovals overlapping the margins
+         * CTA strip at bottom
+       =================================================================== */
+    .dossier-card {
+      position: relative;
+      background:
+        repeating-linear-gradient(0deg,
+          transparent 0,
+          transparent 6mm,
+          rgba(0,28,61,0.03) 6mm,
+          rgba(0,28,61,0.03) 6.18mm),
+        #FAF4E2;
+      border: 0.4mm solid var(--umdark);
+      box-shadow:
+        inset 0 0 0 0.8mm var(--paper);
+      padding: 0 6mm 4mm 14mm;  /* extra left padding for binder holes */
+      overflow: visible;
+      width: 100%;
+    }
+    /* Three binder-hole punches running down the left margin */
+    .dossier-card__binder {
+      position: absolute;
+      left: 4mm;
+      top: 22mm;
+      bottom: 18mm;
+      width: 5mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+    .dossier-card__binder span {
+      width: 5mm;
+      height: 5mm;
+      border-radius: 50%;
+      background: var(--paper);
+      box-shadow:
+        inset 0 0 0 0.4mm var(--umdark),
+        inset 0.6mm 0.6mm 0 0 rgba(0,28,61,0.18);
+    }
+    /* Solid navy classification header strip, edge-to-edge */
+    .dossier-card__header {
+      background: var(--umdark);
+      color: var(--paper);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      letter-spacing: 0.35em;
+      font-size: 11pt;
+      padding: 3mm 2mm;
+      margin: 0 -6mm 3mm -14mm;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4mm;
+    }
+    .dossier-card__header::before,
+    .dossier-card__header::after {
+      content: "";
+      flex: 1;
+      height: 0.4mm;
+      background: var(--paper);
+      opacity: 0.35;
+      max-width: 14mm;
+    }
+    .dossier-card__header .accent {
+      color: var(--umorange);
+      font-weight: 800;
+    }
+    /* Sub-strip: file metadata in three columns */
+    .dossier-card__meta {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 6mm;
+      align-items: baseline;
+      font-family: var(--font-mono);
+      font-size: 8pt;
+      letter-spacing: 0.22em;
+      color: var(--umdark);
+      text-transform: uppercase;
+      padding-bottom: 2mm;
+      border-bottom: 0.25mm dashed var(--umdark);
+      margin-bottom: 4mm;
+    }
+    .dossier-card__meta .meta-mid {
+      text-align: center;
+      color: var(--umorange);
+      font-weight: 700;
+    }
+    /* QR centered in the body */
+    .dossier-card__qr {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 3mm 0 2mm 0;
+      position: relative;
+      z-index: 1;
+    }
+    .dossier-card__qr-frame {
+      padding: 4mm;
+      background: var(--paper);
+      box-shadow:
+        0 0 0 0.4mm var(--umdark),
+        0 0 0 1.5mm var(--paper),
+        0 0 0 1.9mm var(--umdark);
+    }
+    .dossier-card__qr-frame img {
+      width: 78mm;
+      height: 78mm;
+      display: block;
+    }
+    /* Overlapping rotated rubber-stamp ovals */
+    .stamp-oval {
+      position: absolute;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      padding: 2mm 5mm 1.8mm 5mm;
+      border-radius: 999px;
+      pointer-events: none;
+      z-index: 2;
+      line-height: 1;
+    }
+    .stamp-oval--eyes {
+      top: 14mm;
+      right: -6mm;
+      color: var(--umorange);
+      border: 0.6mm solid var(--umorange);
+      box-shadow: inset 0 0 0 0.2mm var(--umorange);
+      transform: rotate(9deg);
+      font-size: 12pt;
+      background: rgba(250, 244, 226, 0.78);
+    }
+    .stamp-oval--declass {
+      bottom: 18mm;
+      left: 4mm;
+      color: var(--umdark);
+      border: 0.6mm solid var(--umdark);
+      transform: rotate(-7deg);
+      font-size: 10pt;
+      background: rgba(250, 244, 226, 0.78);
+    }
+    /* CTA strip at bottom */
+    .dossier-card__cta {
+      margin: 4mm -2mm 0 -8mm;
+      padding: 2.5mm 2mm 1.5mm 14mm;
+      text-align: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 19pt;
+      color: var(--umdark);
+      border-top: 0.4mm solid var(--umdark);
+      letter-spacing: -0.01em;
+      position: relative;
+    }
+    .dossier-card__cta-arrow {
+      color: var(--umorange);
+      margin-left: 3mm;
+      font-weight: 800;
+    }
+    /* Diagonal corner "EVIDENCE" tape across the top-right */
+    .dossier-card__tape {
+      position: absolute;
+      top: -3mm;
+      right: -8mm;
+      background: var(--umorange);
+      color: var(--paper);
+      font-family: var(--font-mono);
+      font-size: 7pt;
+      font-weight: 700;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      padding: 1mm 14mm;
+      transform: rotate(45deg);
+      transform-origin: center;
+      pointer-events: none;
+      box-shadow: 0 0.5mm 0 rgba(0,0,0,0.15);
+      z-index: 3;
+    }
+    .qr-caption {
+      font-family: var(--font-mono);
+      font-size: 11pt;
+      line-height: 1.5;
+      color: var(--umdark);
+      letter-spacing: 0.04em;
+    }
+    .qr-caption strong { color: var(--umorange); }
+
+    /* =================================================================
+       8. CLASSIFIED FOOTER
+       ================================================================= */
+    .dossier-footer {
+      background: var(--umdark);
+      color: var(--paper);
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      align-items: center;
+      padding: 0 22mm;
+      font-family: var(--font-mono);
+      position: relative;
+      overflow: hidden;
+    }
+    .dossier-footer::before {
+      /* faint binary pattern across the dark footer */
+      content: "01001101 01000101 01010011 01010011 01000001 01000111 01000101 00100000 01000010 01000101 01000111 01001001 01001110 01010011 00100000 01001000 01000101 01010010 01000101 00111010 00100000 01010100 01001000 01000001 01001110 01001011 00100000 01011001 01001111 01010101 00100000 01000110 01001111 01010010 00100000 01010010 01000101 01000001 01000100 01001001 01001110 01000111";
+      position: absolute;
+      top: 1mm; left: 22mm; right: 22mm;
+      font-size: 6pt;
+      color: var(--paper);
+      opacity: 0.18;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .footer-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12mm;
+      font-size: 10pt;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+    .footer-row--top { padding-top: 7mm; }
+    .footer-row--bottom { padding-bottom: 4mm; opacity: 0.75; font-size: 9pt; }
+    .footer-row__mid { text-align: center; opacity: 0.65; }
+    .footer-row__right { text-align: right; font-weight: 700; color: var(--umorange); }
+
+    .decoded-msg {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 10pt;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--paper);
+      padding-top: 1mm;
+    }
+    .decoded-msg .label {
+      color: var(--umorange);
+      font-weight: 700;
+    }
+    .decoded-msg .msg {
+      color: var(--paper);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+<main class="poster">
+
+  <!-- =================================================================
+       Background decoration (single vector SVG, no full-page raster).
+       All vector primitives -- patterns, text, lines -- so Adobe pan
+       stays smooth. Layers, back to front:
+         * subtle dot-grid + horizontal ruled lines (paper feel)
+         * corner hatch patches (dossier marker)
+         * registration crosshair ticks at the four page corners
+         * large diagonal "CLASSIFIED" watermark across the page
+         * vertical dossier-strip text up the right margin
+         * vertical binary text strip up the left margin
+       ================================================================= -->
+  <svg class="bg-deco" aria-hidden="true" preserveAspectRatio="none"
+       xmlns="http://www.w3.org/2000/svg" viewBox="0 0 841 1189">
+    <defs>
+      <pattern id="paper-dot" x="0" y="0" width="7" height="7" patternUnits="userSpaceOnUse">
+        <circle cx="0.8" cy="0.8" r="0.5" fill="#001C3D" opacity="0.18"/>
+      </pattern>
+      <pattern id="paper-rule" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+        <line x1="0" y1="0.3" x2="40" y2="0.3" stroke="#001C3D" stroke-width="0.18" opacity="0.13"/>
+      </pattern>
+      <pattern id="corner-hatch" x="0" y="0" width="6" height="6"
+               patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line x1="0" y1="0" x2="0" y2="6" stroke="#001C3D" stroke-width="0.5" opacity="0.22"/>
+      </pattern>
+    </defs>
+
+    <!-- Layer 1: full-page dot-grid -->
+    <rect x="0" y="0" width="841" height="1189" fill="url(#paper-dot)"/>
+    <!-- Layer 2: ruled-paper horizontal lines -->
+    <rect x="0" y="0" width="841" height="1189" fill="url(#paper-rule)"/>
+
+    <!-- Layer 3: dossier corner hatches -->
+    <rect x="0"   y="0"    width="70" height="70" fill="url(#corner-hatch)"/>
+    <rect x="771" y="0"    width="70" height="70" fill="url(#corner-hatch)"/>
+    <rect x="0"   y="1119" width="70" height="70" fill="url(#corner-hatch)"/>
+    <rect x="771" y="1119" width="70" height="70" fill="url(#corner-hatch)"/>
+
+    <!-- Layer 4: three CLASSIFIED stamps in umorange, spread evenly down
+         the page at vertical thirds. Slight per-stamp rotation variance
+         for a hand-stamped feel. Sized to fit within 841 mm width when
+         rotated. -->
+
+    <!-- Stamp 1: upper third -->
+    <g transform="translate(420, 240) rotate(-26)" opacity="0.115">
+      <rect x="-425" y="-65" width="850" height="130"
+            fill="none" stroke="#E84E10" stroke-width="3.8"/>
+      <rect x="-415" y="-55" width="830" height="110"
+            fill="none" stroke="#E84E10" stroke-width="1.3"/>
+      <text x="0" y="24" text-anchor="middle"
+            font-family="'JetBrains Mono', monospace"
+            font-size="76" font-weight="800" letter-spacing="9" fill="#E84E10">
+        CLASSIFIED
+      </text>
+    </g>
+
+    <!-- Stamp 2: middle third -->
+    <g transform="translate(420, 600) rotate(-23)" opacity="0.115">
+      <rect x="-425" y="-65" width="850" height="130"
+            fill="none" stroke="#E84E10" stroke-width="3.8"/>
+      <rect x="-415" y="-55" width="830" height="110"
+            fill="none" stroke="#E84E10" stroke-width="1.3"/>
+      <text x="0" y="24" text-anchor="middle"
+            font-family="'JetBrains Mono', monospace"
+            font-size="76" font-weight="800" letter-spacing="9" fill="#E84E10">
+        CLASSIFIED
+      </text>
+    </g>
+
+    <!-- Stamp 3: lower third -->
+    <g transform="translate(420, 955) rotate(-28)" opacity="0.115">
+      <rect x="-425" y="-65" width="850" height="130"
+            fill="none" stroke="#E84E10" stroke-width="3.8"/>
+      <rect x="-415" y="-55" width="830" height="110"
+            fill="none" stroke="#E84E10" stroke-width="1.3"/>
+      <text x="0" y="24" text-anchor="middle"
+            font-family="'JetBrains Mono', monospace"
+            font-size="76" font-weight="800" letter-spacing="9" fill="#E84E10">
+        CLASSIFIED
+      </text>
+    </g>
+
+    <!-- Layer 5: vertical right-margin dossier strip -->
+    <g transform="translate(835, 780) rotate(-90)" opacity="0.32">
+      <text x="0" y="0"
+            font-family="'JetBrains Mono', monospace" font-size="8"
+            fill="#001C3D" letter-spacing="3" font-weight="600">
+        STEGANALYSIS DIVISION &#183; M2-2 / 002 &#183; FILED 2026.06.01 &#183; DECLASSIFIED &#183; MAASTRICHT UNIVERSITY &#183; DEPARTMENT OF ADVANCED COMPUTING SCIENCES
+      </text>
+    </g>
+    <!-- Layer 6: vertical left-margin binary strip -->
+    <g transform="translate(11, 1100) rotate(-90)" opacity="0.26">
+      <text x="0" y="0"
+            font-family="'JetBrains Mono', monospace" font-size="7"
+            fill="#001C3D" letter-spacing="2">
+        01010011 01000101 01000011 01010010 01000101 01010100 &#183; 01001000 01001001 01000100 01000100 01000101 01001110 &#183; 01001101 01000101 01010011 01010011 01000001 01000111 01000101 &#183; 01000111 01010010 01001111 01000111 01010101
+      </text>
+    </g>
+
+    <!-- Layer 7: registration tick marks at four corners -->
+    <g opacity="0.32" fill="none" stroke="#001C3D" stroke-width="0.55">
+      <!-- top-left -->
+      <line x1="36" y1="22" x2="48" y2="22"/>
+      <line x1="42" y1="16" x2="42" y2="28"/>
+      <!-- top-right -->
+      <line x1="793" y1="22" x2="805" y2="22"/>
+      <line x1="799" y1="16" x2="799" y2="28"/>
+      <!-- bottom-left -->
+      <line x1="36" y1="1167" x2="48" y2="1167"/>
+      <line x1="42" y1="1161" x2="42" y2="1173"/>
+      <!-- bottom-right -->
+      <line x1="793" y1="1167" x2="805" y2="1167"/>
+      <line x1="799" y1="1161" x2="799" y2="1173"/>
+    </g>
+  </svg>
+
+  <!-- =================================================================
+       1. CLASSIFIED HEADER STRIP
+       ================================================================= -->
+  <header class="dossier-header">
+    <span class="dossier-header__id">FILE M2-2 / 002</span>
+    <span class="dossier-header__div">Steganalysis Division &middot; Maastricht University &middot; Project Period 2025-2026</span>
+    <span class="dossier-header__class">DECLASSIFIED</span>
+  </header>
+
+  <!-- =================================================================
+       2. TITLE BLOCK
+       ================================================================= -->
+  <section class="title-block">
+    <div>
+      <div class="title-eyebrow">
+        Report No. 002<span class="sep"></span>Steganalysis &middot; Empirical Investigation
+      </div>
+      <h1 class="title-main">
+        Can a detector still catch a <em>secret</em> hidden in an AI image?
+      </h1>
+      <p class="title-scope">
+        A systematic comparison of <strong>six classical</strong> and
+        <strong>two deep-learning</strong> steganalysis detectors across real
+        (MS-COCO) and AI-generated (SDXL, FLUX) carriers. Three payload sizes
+        from 0.05 to 0.30 bpp, two embedding modes (spatial-LSB and DCT-LSB),
+        plain and AES-encrypted message streams, with external validation on
+        BOSSBase 1.01 for the new detector.
+      </p>
+      <p class="title-tldr">
+        <strong>Source matters,</strong> but less than payload, and far
+        less than how the detector was trained.
+      </p>
+    </div>
+
+    <aside class="case-officers">
+      <div class="case-officers__label">Case Officers</div>
+      <ul class="case-officers__list">
+        <li>A. M. Akbar</li>
+        <li>D. Gjonbalaj</li>
+        <li>N. M&uuml;ller-Sp&auml;th</li>
+        <li>J. Narvaez del Cid</li>
+        <li>D. Wicker</li>
+        <li>N. Zouros</li>
+      </ul>
+      <div class="case-officers__filed">
+        <span><strong>Filed:</strong> 2026 &middot; 06 &middot; 01</span>
+        <span><strong>Course:</strong> M2-2 &middot; Group 02</span>
+        <span><strong>Institution:</strong> Maastricht University, DKE</span>
+        <span><strong>Scope:</strong> JPEG carriers, LSB family</span>
+        <span><strong>Status:</strong> Submitted for thesis defense</span>
+      </div>
+    </aside>
+  </section>
+
+  <!-- =================================================================
+       3. HOOK - SPOT THE DIFFERENCE
+       ================================================================= -->
+  <section class="hook">
+
+    <div class="hook__eyebrow">Exhibit Pair &middot; Working Example</div>
+
+    <h2 class="hook__headline">
+      Spot the <span class="redacted">difference.</span>
+    </h2>
+
+    <p class="hook__subhead">
+      One of these images hides a <em>6,000-character message</em>. The other
+      is the unmodified original. They are pixel-identical to within ~0.03%.
+      Steganalysis is the work of finding the one that isn't.
+    </p>
+
+    <div class="exhibits">
+      <!-- EXHIBIT A : cover -->
+      <figure class="exhibit">
+        <figcaption class="exhibit__tag">
+          <span class="exhibit__tag-id">EXHIBIT A</span>
+          <span class="exhibit__tag-meta">1024 &times; 768 &middot; JPG &middot; Q=75</span>
+        </figcaption>
+        <div class="exhibit__slot">
+          <img src="figures/babyyoda.jpg" alt="cover image" class="exhibit__img">
+          <span class="exhibit__slot-id">A</span>
+        </div>
+        <dl class="exhibit__caption">
+          <div class="exhibit__caption-item"><dt>Class</dt><dd>cover image</dd></div>
+          <div class="exhibit__caption-item"><dt>Payload</dt><dd>none</dd></div>
+          <div class="exhibit__caption-item"><dt>SHA-1</dt><dd>2a4d&hellip;c91f</dd></div>
+        </dl>
+      </figure>
+
+      <!-- EXHIBIT B : stego -->
+      <figure class="exhibit">
+        <figcaption class="exhibit__tag">
+          <span class="exhibit__tag-id">EXHIBIT B</span>
+          <span class="exhibit__tag-meta">1024 &times; 768 &middot; JPG &middot; Q=75</span>
+        </figcaption>
+        <div class="exhibit__slot">
+          <img src="figures/babyyoda.jpg" alt="stego image (visually identical to cover by design)" class="exhibit__img">
+          <span class="exhibit__slot-id">B</span>
+        </div>
+        <dl class="exhibit__caption">
+          <div class="exhibit__caption-item"><dt>Class</dt><dd>stego image</dd></div>
+          <div class="exhibit__caption-item"><dt>Payload</dt><dd class="warn">6,000 chars &middot; LSB-DCT &middot; 0.30 bpp</dd></div>
+          <div class="exhibit__caption-item"><dt>SHA-1</dt><dd>9e1b&hellip;3a07</dd></div>
+        </dl>
+      </figure>
+    </div>
+
+  </section>
+
+  <!-- =================================================================
+       4. FINDING 01 - SOURCE MATTERS, BARELY
+       ================================================================= -->
+  <section class="finding finding--01">
+    <div class="bit-divider">
+      <span class="bit-divider__decoded">// section 01 :: source</span>
+      <span class="bit-divider__stream">
+        01010011 01001111 01010101 01010010 01000011 01000101 00100000
+        01001101 01000001 01010100 01010100 01000101 01010010 01010011
+        00100000 01000010 01000001 01010010 01000101 01001100 01011001
+        00100000 01010100 01001000 01000101 00100000 01001000 01000101
+        01000001 01000100 01001100 01001001 01001110 01000101 00100000
+        01001110 01010101 01001101 01000010 01000101 01010010 00100000
+      </span>
+    </div>
+
+    <div class="finding__header">
+      <div class="finding__number">
+        01
+        <span class="finding__number-binary">00000001</span>
+      </div>
+      <div class="finding__title-block">
+        <span class="finding__kicker">Research Questions 1 &amp; 2</span>
+        <h3 class="finding__title">Source matters, <em>barely.</em></h3>
+      </div>
+      <div class="stamp stamp--supported">
+        <span class="stamp__label">Verdict</span>
+        <span class="stamp__verdict">Supported</span>
+      </div>
+    </div>
+
+    <div class="finding__body">
+      <div class="finding__prose">
+        <p>
+          We tested <strong>six classical detectors</strong> (calibration-&chi;<sup>2</sup>,
+          &chi;<sup>2</sup>-DCT, &chi;<sup>2</sup>-DCT tile-local,
+          &chi;<sup>2</sup>-spatial, RS, sample-pairs) on real photos from
+          MS-COCO versus AI carriers from SDXL and FLUX, at three payload sizes.
+        </p>
+        <p>
+          Five of six find AI carriers easier to attack, by ~4 percentage points
+          on average. The single outlier, <strong>&chi;<sup>2</sup>-spatial</strong>,
+          reverses direction on full AUC but the effect dissolves under partial
+          AUC at operational false-positive rates.
+        </p>
+        <p>
+          SDXL and FLUX are statistically <strong>interchangeable</strong>: every
+          detector's per-source AUC difference sits inside the &plusmn;0.025
+          equivalence band, including the pooled estimate at +0.0004. The two AI
+          models behave as one for steganalysis purposes.
+        </p>
+        <p style="font-family: var(--font-mono); font-size: 11pt; color: var(--umgray); line-height: 1.6; margin-top: 4mm;">
+          // 5 of 6 detectors agree on direction<br>
+          // pooled real, AI &Delta;AUC = -0.041<br>
+          // SDXL, FLUX pooled gap = +0.0004 (well inside equivalence band)
+        </p>
+      </div>
+      <div class="finding__figures">
+        <div>
+          <img src="figures/rq1.png" alt="RQ1 lollipop: 5 of 6 classical detectors find AI carriers easier">
+          <div class="finding__figure-label">FIG. 1 &middot; per-detector real - AI &Delta;AUC</div>
+        </div>
+        <div>
+          <img src="figures/rq2.png" alt="RQ2 forest plot: SDXL and FLUX inside the equivalence band">
+          <div class="finding__figure-label">FIG. 2 &middot; SDXL vs FLUX equivalence test</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================================================
+       5. FINDING 02 - PAYLOAD MATTERS MORE
+       ================================================================= -->
+  <section class="finding finding--02">
+    <div class="bit-divider">
+      <span class="bit-divider__decoded">// section 02 :: payload</span>
+      <span class="bit-divider__stream">
+        01010000 01000001 01011001 01001100 01001111 01000001 01000100
+        00100000 01010111 01000001 01010011 01001000 01000101 01010011
+        00100000 01001111 01010101 01010100 00100000 01010100 01001000
+        01000101 00100000 01010011 01001111 01010101 01010010 01000011
+        01000101 00100000 01000111 01000001 01010000 00100000 01010011
+        01001000 01010010 01001001 01001110 01001011 01010011
+      </span>
+    </div>
+
+    <div class="finding__header">
+      <div class="finding__number">
+        02
+        <span class="finding__number-binary">00000010</span>
+      </div>
+      <div class="finding__title-block">
+        <span class="finding__kicker">Research Questions 3 &amp; 4</span>
+        <h3 class="finding__title">Payload matters <em>more.</em></h3>
+      </div>
+      <div class="stamp stamp--supported">
+        <span class="stamp__label">Verdict</span>
+        <span class="stamp__verdict">Supported</span>
+      </div>
+    </div>
+
+    <div class="finding__body">
+      <div class="finding__prose">
+        <p>
+          The real-vs-AI gap <strong>shrinks monotonically</strong> as message
+          size grows. Pooled across all eight detectors:
+        </p>
+        <p style="font-family: var(--font-mono); font-size: 26pt; font-weight: 700; color: var(--umdark); letter-spacing: -0.01em; line-height: 1.1; margin: 5mm 0 5mm 0;">
+          -4.9 <span style="color: var(--umgray); font-weight: 400;">&rsaquo;</span>
+          -2.8 <span style="color: var(--umgray); font-weight: 400;">&rsaquo;</span>
+          -1.6 <span style="font-size: 17pt; color: var(--umorange);">pp</span>
+        </p>
+        <p>
+          Embedding more bits drives the cover and stego distributions further
+          apart, dominating any source-dependent baseline. By high payload the
+          residual gap is inside the &plusmn;0.025 equivalence band.
+        </p>
+        <p>
+          Whichever steganalysis branch wins, <strong>spatial</strong> (LSB on
+          pixels) or <strong>frequency</strong> (DCT-LSB on JPEG coefficients),
+          also depends on payload. Spatial dominates at low, frequency at
+          medium, tie at high. No universal winner; the contest is
+          payload-dependent.
+        </p>
+      </div>
+      <div class="finding__figures">
+        <div>
+          <img src="figures/rq3.png" alt="RQ3: real-vs-AI gap shrinks with payload, classical detectors">
+          <div class="finding__figure-label">FIG. 3 &middot; gap vs payload &middot; classical detectors</div>
+        </div>
+        <div>
+          <img src="figures/rq4.png" alt="RQ4: spatial vs frequency branch winner depends on payload">
+          <div class="finding__figure-label">FIG. 4 &middot; spatial vs frequency by payload</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================================================
+       6. FINDING 03 - TRAINING MATTERS MOST (hero number panel)
+       ================================================================= -->
+  <section class="finding finding--03">
+    <div class="bit-divider">
+      <span class="bit-divider__decoded">// section 03 :: training</span>
+      <span class="bit-divider__stream">
+        01010100 01010010 01000001 01001001 01001110 01001001 01001110
+        01000111 00100000 01000100 01000101 01000011 01001001 01000100
+        01000101 01010011 00100000 01010100 01001000 01000101 00100000
+        01010110 01000101 01010010 01000100 01001001 01000011 01010100
+        00100000 01000010 01000101 01000110 01001111 01010010 01000101
+        00100000 01010100 01001000 01000101 00100000 01000100 01000001
+        01010100 01000001
+      </span>
+    </div>
+
+    <div class="finding__header">
+      <div class="finding__number">
+        03
+        <span class="finding__number-binary">00000011</span>
+      </div>
+      <div class="finding__title-block">
+        <span class="finding__kicker">Methodological &middot; ablation V1 vs V2a</span>
+        <h3 class="finding__title">Training matters <em>most.</em></h3>
+      </div>
+      <div class="stamp stamp--methodological">
+        <span class="stamp__label">Verdict</span>
+        <span class="stamp__verdict">Methodological</span>
+      </div>
+    </div>
+
+    <div class="finding__body">
+      <div class="hero-stack">
+
+        <aside class="hero-num">
+          <div class="hero-num__label">Source gap, real-only training</div>
+          <div class="hero-num__value">+39<span class="unit">pp</span></div>
+          <div class="hero-num__sub">
+            SRNet's real-vs-AI &Delta;AUC at <strong>medium payload</strong>
+            jumps from <strong>+0.001</strong> under matched training to
+            <strong>+0.39</strong> when AI carriers are removed from training.
+            Up to a <strong>-44 pp</strong> accuracy drop on AI inputs.
+          </div>
+        </aside>
+
+        <div class="hero-prose">
+          <p>
+            Deep-learning detectors <strong>look source-invariant,</strong> until
+            you change what they train on. The apparent invariance is a
+            training artefact: the network matched real and AI carriers only
+            because both were in its training mix.
+          </p>
+          <p>
+            Strip AI carriers out of training and the source response snaps
+            open. <strong>Both</strong> learned detectors exit the
+            &plusmn;0.025 source-invariance band; SRNet's gap balloons by
+            two orders of magnitude.
+          </p>
+        </div>
+      </div>
+
+      <div class="finding__figures" style="margin-top: 4mm;">
+        <div>
+          <img src="figures/rq3_learned.png" alt="Learned detectors: V1 matched vs V2a real-only training">
+          <div class="finding__figure-label">FIG. 5 &middot; learned detectors &middot; matched vs real-only training</div>
+        </div>
+        <div>
+          <img src="figures/deep_learning_cheat.png" alt="SRNet matched vs real-only with -44 pp callout">
+          <div class="finding__figure-label">FIG. 6 &middot; SRNet ablation &middot; the -44 pp drop on AI carriers</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================================================
+       7. LEDGER: contributions + methods + scan-me
+       ================================================================= -->
+  <section class="ledger">
+
+    <!-- Contributions: full text block (label + heading + body) stacked on
+         the left, figure on the right at full ledger height. The label
+         border-bottom now only spans the text block. -->
+    <div class="ledger__col ledger__col--contrib">
+      <div class="contrib-text">
+        <div class="ledger__label">Detector-side contributions</div>
+        <div class="ledger__heading">Tile-local &chi;<sup>2</sup>-DCT &middot; +9 pp on BOSSBase</div>
+        <div class="ledger__body">
+          New &chi;<sup>2</sup> variant runs the histogram test on
+          <strong>8&times;8 DCT tiles</strong> rather than the whole image.
+          Beats the 1999 global &chi;<sup>2</sup> by <strong>+0.090 AUC</strong>
+          on BOSSBase 1.01 JSteg at Q=75, externally validated. Paired with a
+          <strong>caption-clustered bootstrap</strong> as the test of record
+          for cross-source contrasts.
+        </div>
+      </div>
+      <img src="figures/tile_local.png" alt="tile-local chi-squared DCT detector vs global baseline on BOSSBase" class="contrib-fig">
+    </div>
+
+    <!-- Methods: detector roster + conditions matrix -->
+    <div class="ledger__col">
+      <div class="ledger__label">Experimental setup</div>
+      <div class="ledger__heading">8 detectors &middot; 3 payloads &middot; 3 sources</div>
+
+      <div class="setup-subhead">Detector roster</div>
+      <div class="detector-grid">
+        <div class="detector-cell"><span class="d-num">01</span><span class="d-name">cal-&chi;<sup>2</sup></span><span class="d-tag">classical</span></div>
+        <div class="detector-cell"><span class="d-num">05</span><span class="d-name">RS</span><span class="d-tag">classical</span></div>
+        <div class="detector-cell"><span class="d-num">02</span><span class="d-name">&chi;<sup>2</sup>-DCT</span><span class="d-tag">classical</span></div>
+        <div class="detector-cell"><span class="d-num">06</span><span class="d-name">sample-pairs</span><span class="d-tag">classical</span></div>
+        <div class="detector-cell d-new"><span class="d-num">03</span><span class="d-name">&chi;<sup>2</sup>-DCT tile</span><span class="d-tag">ours</span></div>
+        <div class="detector-cell"><span class="d-num">07</span><span class="d-name">SRNet</span><span class="d-tag">deep</span></div>
+        <div class="detector-cell"><span class="d-num">04</span><span class="d-name">&chi;<sup>2</sup>-spatial</span><span class="d-tag">classical</span></div>
+        <div class="detector-cell"><span class="d-num">08</span><span class="d-name">DCTR</span><span class="d-tag">deep</span></div>
+      </div>
+
+      <div class="setup-subhead">Conditions matrix</div>
+      <dl class="conditions">
+        <div class="conditions__row"><dt>Sources</dt><dd>MS-COCO real + SDXL + FLUX generations</dd></div>
+        <div class="conditions__row"><dt>Payload</dt><dd>0.05 / 0.15 / 0.30 bpp (low / med / high)</dd></div>
+        <div class="conditions__row"><dt>Embed</dt><dd>spatial-LSB + DCT-LSB</dd></div>
+        <div class="conditions__row"><dt>Crypto</dt><dd>plain + AES-CTR encrypted streams</dd></div>
+        <div class="conditions__row"><dt>Stats</dt><dd>AUC, partial AUC, P_E min; DeLong + caption-clustered bootstrap</dd></div>
+      </dl>
+    </div>
+
+    <!-- QR: dossier-card treatment with binder holes, TOP SECRET header,
+         file metadata strip, evidence-tape corner, and two overlapping
+         rubber-stamp ovals at the margins. -->
+    <div class="ledger__col">
+      <div class="ledger__label">Code &middot; data &middot; full paper</div>
+      <div class="dossier-card">
+
+        <!-- evidence tape sticking out the corner -->
+        <div class="dossier-card__tape">Sealed</div>
+
+        <!-- binder holes down the left edge -->
+        <div class="dossier-card__binder">
+          <span></span><span></span><span></span>
+        </div>
+
+        <!-- classification header -->
+        <div class="dossier-card__header">
+          Top Secret <span class="accent">// DKE</span>
+        </div>
+
+        <!-- file metadata strip -->
+        <div class="dossier-card__meta">
+          <span>File M2-2 / 002</span>
+          <span class="meta-mid">Eyes Only</span>
+          <span>2026.06.01</span>
+        </div>
+
+        <!-- the QR itself, inset in a double-stroked frame -->
+        <div class="dossier-card__qr">
+          <div class="dossier-card__qr-frame">
+            <img src="figures/qr_repo.svg" alt="QR code linking to the project's GitLab repository">
+          </div>
+        </div>
+
+        <!-- overlapping rubber-stamp ovals -->
+        <div class="stamp-oval stamp-oval--eyes">Eyes Only</div>
+        <div class="stamp-oval stamp-oval--declass">Declassified</div>
+
+        <!-- CTA strip at bottom -->
+        <div class="dossier-card__cta">
+          Open the dossier<span class="dossier-card__cta-arrow">&rarr;</span>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- =================================================================
+       8. CLASSIFIED FOOTER
+       ================================================================= -->
+  <footer class="dossier-footer">
+    <div class="footer-row footer-row--top">
+      <span>File M2-2 / 002 &middot; Submitted for thesis defense</span>
+      <span class="footer-row__mid">end of report</span>
+      <span class="footer-row__right">Maastricht University 2026</span>
+    </div>
+    <div class="decoded-msg">
+      <span class="label">Decoded from binary section dividers:</span>
+      <span class="msg">&ldquo;source matters &middot; payload washes it out &middot; training decides&rdquo;</span>
+    </div>
+  </footer>
+
+</main>
+
+</body>
+</html>
