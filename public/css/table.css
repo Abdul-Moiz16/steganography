@@ -15,7 +15,7 @@
 }
 
 .data-table thead tr {
-    background: var(--surface-cont-lo);
+    background: var(--surface-cont);
 }
 
 .data-table th {
@@ -173,7 +173,7 @@
 }
 
 .table-footer {
-    background: var(--surface-cont-lo);
+    background: var(--surface-cont);
     padding: 10px 24px;
     font-size: 10px;
     font-family: monospace;

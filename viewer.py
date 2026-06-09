@@ -37,6 +37,11 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
         pass
 
 PROJECT_ROOT = Path(__file__).parent.resolve()
+
+from src.toolbox.encode import encode as toolbox_encode
+from src.toolbox.decode import decode as toolbox_decode
+from src.toolbox.analyze import analyze as toolbox_analyze
+
 PUBLIC_DIR = PROJECT_ROOT / "public"
 RUNS_DIR = PROJECT_ROOT / "runs"
 RUNNING_JOBS: dict[str, dict] = {}  # job_id -> {'proc': Popen, 'run_id': str}
@@ -408,13 +413,21 @@ class Handler(BaseHTTPRequestHandler):
             self._sse_events()
         elif p == "/api/proposal-pdf":
             self._serve_proposal_pdf()
+        elif p == "/api/report-pdf":
+            self._serve_report_pdf()
         elif p.startswith("/api/pipeline/stream/"):
             self._sse_stream(p[len("/api/pipeline/stream/"):])
         else:
             self._err(404, "not found")
 
     def do_POST(self):
-        if self.path == "/api/pipeline/start":
+        if self.path == "/api/toolbox/encode":
+            self._toolbox_encode()
+        elif self.path == "/api/toolbox/decode":
+            self._toolbox_decode()
+        elif self.path == "/api/toolbox/analyze":
+            self._toolbox_analyze()
+        elif self.path == "/api/pipeline/start":
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n)) if n else {}
             self._start_pipeline(body)
@@ -571,6 +584,19 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _serve_report_pdf(self):
+        pdf_path = (PROJECT_ROOT / "docs" / "report" / "final_report_draft_v4.pdf").resolve()
+        if not pdf_path.exists():
+            return self._err(404, "report PDF not found")
+        data = pdf_path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/pdf")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Content-Disposition", "inline; filename=\"final_report.pdf\"")
+        self.send_header("Cache-Control", "max-age=3600")
+        self.end_headers()
+        self.wfile.write(data)
+
     def _preview_pipeline(self, body: dict):
         """Validate a config without launching anything; surface planned figures."""
         try:
@@ -674,6 +700,53 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             self._err(500, str(exc))
 
+    def _toolbox_encode(self):
+        try:
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n))
+            image_bytes = base64.b64decode(body["image_b64"])
+            filename = body.get("filename", "upload")
+            message = body.get("message", "")
+            if not message:
+                return self._err(400, "missing field: message")
+            result = toolbox_encode(image_bytes, filename, message)
+            self._json({
+                "status": "ok",
+                "image_b64": base64.b64encode(result.image_bytes).decode(),
+                "format": result.format,
+            })
+        except Exception as exc:
+            self._err(500, str(exc))
+
+    def _toolbox_decode(self):
+        try:
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n))
+            image_bytes = base64.b64decode(body["image_b64"])
+            filename = body.get("filename", "upload")
+            result = toolbox_decode(image_bytes, filename)
+            self._json({"status": "ok", "message": result.message})
+        except Exception as exc:
+            self._err(500, str(exc))
+
+    def _toolbox_analyze(self):
+        try:
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n))
+            image_bytes = base64.b64decode(body["image_b64"])
+            filename = body.get("filename", "upload")
+            result = toolbox_analyze(image_bytes, filename)
+            self._json({
+                "status": "ok",
+                "format": result.format,
+                "scores": [
+                    {"detector": s.detector, "score": s.score}
+                    for s in result.scores
+                ],
+            })
+        except Exception as exc:
+            self._err(500, str(exc))
+
     def _system_check(self):
         import importlib.util
         import importlib.metadata
@@ -735,7 +808,7 @@ class Handler(BaseHTTPRequestHandler):
                     # Keepalive comment every 25 s to prevent proxy timeouts
                     self.wfile.write(b": keepalive\n\n")
                     self.wfile.flush()
-        except (BrokenPipeError, ConnectionResetError):
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             pass
         finally:
             with _SSE_LOCK:

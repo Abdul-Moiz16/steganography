@@ -72,17 +72,6 @@ body {
 .panel { display: none; }
 .panel.active { display: block; }
 
-/* ── Card overrides for toolbox (internal padding) ── */
-.toolbox-main .card {
-    padding: 16px 18px;
-    margin-bottom: 14px;
-}
-
-.toolbox-main .card-title {
-    margin-bottom: 10px;
-    display: block;
-}
-
 /* ── Upload zone ── */
 .upload-zone {
     border: 2px dashed var(--outline);

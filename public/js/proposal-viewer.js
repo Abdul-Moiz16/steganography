@@ -190,9 +190,10 @@ class PDFViewer {
 }
 
 const scrollArea = document.getElementById('scroll-area');
+const pdfUrl = scrollArea.dataset.pdfUrl || '/api/proposal-pdf';
 
 new PDFViewer({
-  pdfUrl: '/api/proposal-pdf',
+  pdfUrl,
   scrollArea,
   toolbar: new ToolbarController({
     btnPrev:    document.getElementById('btn-prev'),

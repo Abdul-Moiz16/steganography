@@ -6,7 +6,7 @@
     top: var(--topbar-h);
     bottom: 0;
     width: var(--sidebar-w);
-    background: var(--surface-cont-lo);
+    background: var(--surface-cont);
     border-right: 1px solid #e5e7eb;
     display: flex;
     flex-direction: column;

@@ -1,53 +1,71 @@
 :root {
     color-scheme: light;
 
-    /* M3 surfaces */
-    --bg:              #f5f6fa;
-    --surface:         #f5f6fa;
-    --surface-cont-lo: #ffffff;
-    --surface-cont:    #ffffff;
-    --surface-cont-hi: #eef0f8;
-    --surface-cont-max:#e4e7f4;
-    --surface-bright:  #d8dcf0;
+    /* Surfaces */
+    --surface:          #f5f6fa;
+    --surface-cont:     #ffffff;
+    --surface-cont-hi:  #eef0f8;
+    --surface-cont-max: #e4e7f4;
+    --surface-bright:   #d8dcf0;
 
-    --on-bg:           #111827;
-    --on-surface:      #111827;
-    --on-surface-var:  #1f2937;
+    /* Text */
+    --on-surface:       #111827;
+    --on-surface-var:   #1f2937;
+    --secondary:        #374151;
+    --secondary-dim:    #6b7280;
 
-    --secondary:       #374151;
-    --secondary-dim:   #6b7280;
+    /* Borders */
+    --outline:          #d1d5db;
+    --outline-var:      #e5e7eb;
 
-    /* borders */
-    --outline:         #d1d5db;
-    --outline-var:     #e5e7eb;
+    /* Brand / Primary */
+    --primary:          #4f46e5;
+    --primary-dim:      #6366f1;
+    --primary-cont:     #eef2ff;
+    --on-primary:       #ffffff;
+    --on-primary-cont:  #3730a3;
 
-    --primary:         #4f46e5;
-    --primary-dim:     #6366f1;
-    --primary-cont:    #eef2ff;
-    --on-primary:      #ffffff;
-    --on-primary-cont: #3730a3;
+    /* Semantic */
+    --error:            #dc2626;
+    --error-dim:        #ef4444;
+    --error-cont:       #fef2f2;
+    --on-error:         #ffffff;
 
-    --error:           #dc2626;
-    --error-dim:       #ef4444;
-    --error-cont:      #fef2f2;
-    --on-error:        #ffffff;
+    --tertiary:         #7c3aed;
+    --tertiary-dim:     #8b5cf6;
+    --tertiary-cont:    #f5f3ff;
 
-    /* tertiary */
-    --tertiary:        #7c3aed;
-    --tertiary-dim:    #8b5cf6;
-    --tertiary-cont:   #f5f3ff;
+    --green:            #16a34a;
+    --amber:            #d97706;
 
-    --green:           #16a34a;
-    --amber:           #d97706;
+    /* Layout */
+    --topbar-h:   56px;
+    --sidebar-w:  300px;
 
-    /* layout */
-    --topbar-h:  56px;
-    --sidebar-w: 300px;
-    --radius:    2px;
-    --radius-lg: 4px;
-    --radius-xl: 8px;
+    /* Radii */
+    --radius:     2px;
+    --radius-lg:  4px;
+    --radius-xl:  8px;
     --radius-full: 12px;
+    --radius-extra: 14px;
 
+    /* Typography */
     --headline: 'Space Grotesk', system-ui, sans-serif;
     --body:     'Inter', system-ui, sans-serif;
+
+    /* Animation */
+    --transition-fast:  0.15s ease;
+    --transition-base:  0.2s ease;
+    --transition-slow:  0.3s ease;
+
+    /* Decorative rings / glows */
+    --primary-ring:       rgba(79, 70, 229, 0.25);
+    --primary-glow-sm:    rgba(79, 70, 229, 0.2);
+    --primary-glow-md:    rgba(79, 70, 229, 0.3);
+    --error-ring:         rgba(238, 125, 119, 0.2);
+
+    /* Extended amber (proto-banner shade) */
+    --amber-bright:       #f59e0b;
+    --amber-bright-cont:  rgba(245, 158, 11, 0.10);
+    --amber-bright-ring:  rgba(245, 158, 11, 0.30);
 }

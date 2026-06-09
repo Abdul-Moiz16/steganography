@@ -16,12 +16,12 @@
 .btn-primary {
     background: var(--primary);
     color: var(--on-primary);
-    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.2);
+    box-shadow: 0 4px 16px var(--primary-glow-sm);
 }
 
 .btn-primary:hover {
     filter: brightness(1.1);
-    box-shadow: 0 4px 24px rgba(79, 70, 229, 0.3);
+    box-shadow: 0 4px 24px var(--primary-glow-md);
     transform: translateY(-1px);
 }
 
@@ -36,11 +36,11 @@
 .btn-danger {
     background: var(--error-cont);
     color: var(--error);
-    border: 1px solid rgba(238, 125, 119, 0.2);
+    border: 1px solid var(--error-ring);
 }
 
 .btn-danger:hover {
-    background: #fef2f2;
+    background: var(--error-cont);
     box-shadow: 0 0 16px rgba(220, 38, 38, 0.15);
 }
 
@@ -61,11 +61,10 @@
     transition: all 0.15s ease;
 }
 
-.btn-icon:hover { background: rgba(238, 125, 119, 0.1); color: var(--error); }
+.btn-icon:hover { background: var(--error-cont); color: var(--error); }
 
 
 /* fab */
-
 .fab {
     display: none;
     position: fixed;
@@ -80,10 +79,52 @@
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 6px 24px rgba(79, 70, 229, 0.3);
+    box-shadow: 0 6px 24px var(--primary-glow-md);
     z-index: 100;
     transition: all 0.2s ease;
 }
 
 .fab:hover { transform: scale(1.05); box-shadow: 0 8px 32px rgba(79, 70, 229, 0.4); }
 .fab .material-symbols-outlined { font-size: 24px; }
+
+/* Toolbox Buttons */
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    font-family: var(--headline);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--secondary-dim);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tab-btn .material-symbols-outlined { font-size: 16px; }
+
+.tab-btn:hover { color: var(--on-surface); }
+
+.tab-btn.active {
+    background: var(--surface-cont);
+    color: var(--primary);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.clear-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--secondary-dim);
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+
+.clear-btn:hover { color: var(--error); }
+.clear-btn .material-symbols-outlined { font-size: 16px; }
