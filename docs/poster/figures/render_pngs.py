@@ -10,9 +10,10 @@ typography becomes whatever the OS provides.
 from pathlib import Path
 import cairosvg
 
-# Target raster width in pixels. 2400 px gives a crisp ~150 ppi figure
-# at the on-poster physical size (each SVG occupies roughly 16 cm wide).
-TARGET_WIDTH_PX = 2400
+# Target raster width in pixels. 1600 px is plenty for a figure that
+# occupies ~16 cm of A0 print -- well above the ~120 ppi threshold at
+# 1m viewing distance, and keeps embedded PDF size tractable.
+TARGET_WIDTH_PX = 1200
 
 HERE = Path(__file__).parent
 
