@@ -30,6 +30,11 @@
 \usepackage{multicol}
 \usepackage[toc,page]{appendix}
 \setcounter{tocdepth}{2}   % TOC lists sections + subsections only
+% Bare TOC body (no auto "Contents" heading); defined here where @ is a letter
+% so it can be called from inside the \twocolumn[...] title block.
+\makeatletter
+\newcommand{\barecontents}{\@starttoc{toc}}
+\makeatother
 \DeclareRobustCommand{\by}[1]{\textnormal{\normalfont\footnotesize\space--- #1}}
 
 
@@ -141,18 +146,21 @@ Nikolas~Zouros\\[2pt]
 %============================================================
 \end{minipage}
 \end{center}
-\vspace{0.3cm}
-% Table of contents: full-width, balanced two columns, kept on the abstract
-% page (no \onecolumn/\twocolumn page breaks).
-{\footnotesize
-\setlength{\columnsep}{1.4em}%
+\vspace{0.7cm}
+% Table of contents: full-width, balanced two columns, on the title page.
+% A \clearpage after the front matter starts the body (Introduction) on page 2.
+{\centering\small\bfseries\scshape Contents\par}
+\vspace{0.25cm}
+{\small
+\setlength{\columnsep}{2.2em}%
 \begin{multicols}{2}
-\setlength{\parskip}{0pt}%
-\tableofcontents
+\setlength{\parskip}{3pt}%
+\barecontents
 \end{multicols}}
-\vspace{0.2cm}
+\vspace{0.3cm}
 \end{@twocolumnfalse}
 ]
+\clearpage
 
 % ============================================================
 \section[Introduction\by{\textbf{Writer:} Nico Müller-Späth  \textbf{Reviewer:} David Wicker  \textbf{Contributor:}  Abdul Moiz Akbar}]{Introduction}
