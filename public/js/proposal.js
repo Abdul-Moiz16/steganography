@@ -43,7 +43,7 @@ function renderProposalPage() {
 	if (activeTab === 'report') {
 		return `<div class="proposal-page">
 			${tabBar}
-			<iframe class="proposal-embed" src="/public/report-viewer.html"></iframe>
+			<iframe class="proposal-embed" src="/public/report-viewer.html" title="Final report PDF viewer"></iframe>
 		</div>`;
 	}
 
@@ -72,6 +72,6 @@ function renderProposalPage() {
             </div>
             <div class="div-cards">${cards}</div>
         </div>
-        <iframe class="proposal-embed" src="/public/proposal.html"></iframe>
+        <iframe class="proposal-embed" src="/public/proposal.html" title="Project proposal PDF viewer"></iframe>
     </div>`;
 }
