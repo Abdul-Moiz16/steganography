@@ -9,8 +9,8 @@ exported to a print-ready PDF.
 | File | Purpose |
 |---|---|
 | `poster.html` | The poster itself. Open in any modern browser (Chrome, Arc, Safari, Firefox). |
-| `qr_repo.png` | QR code linking to the project's GitLab repository. Regenerate with `build_qr.sh`. |
-| `build_qr.sh` | One-liner: regenerates `qr_repo.png` from the canonical repo URL. |
+| `figures/qr_repo.svg` | QR code linking to the project's GitLab repository. Regenerate with `figures/build_qr.py`. |
+| `figures/build_qr.py` | Regenerates `figures/qr_repo.svg` from the canonical repo URL. |
 | `HPC Group 1 Poster.png` | The reference poster from a prior project, kept here for scale reference (A0 portrait, scientific-conference style). |
 
 ## Viewing
@@ -62,18 +62,12 @@ If the repo URL changes (e.g. the repo is mirrored to GitHub for the
 public release), regenerate the QR code:
 
 ```bash
-bash docs/poster/build_qr.sh
+python docs/poster/figures/build_qr.py
 ```
 
-Or directly:
-
-```bash
-venv312/bin/python -c "
-import qrcode
-url = 'https://gitlab.maastrichtuniversity.nl/m2-2_group02/m2-2_steganography'
-qrcode.make(url, box_size=20, border=2).save('docs/poster/qr_repo.png')
-"
-```
+The script reads the canonical repo URL from its own `URL` constant and
+writes `docs/poster/figures/qr_repo.svg`; edit that constant if the repo
+moves (e.g. mirrored to GitHub for the public release).
 
 ## Editing the design
 

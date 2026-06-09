@@ -11,8 +11,8 @@ web-based explorer for visualising results.
 ## Paper
 
 The final paper is at
-[`docs/report/final_report_draft_v4.pdf`](docs/report/final_report_draft_v4.pdf)
-(LaTeX source: `final_report_draft_v4.tex`). Headline findings:
+[`docs/report/final_report.pdf`](docs/report/final_report.pdf)
+(LaTeX source: `final_report.tex`). Headline findings:
 
 - Across 3{,}000 caption-matched image groups and six training-free detectors,
   the carrier-source effect is small (pooled $|\Delta_\text{AUC}|\!\approx\!0.013$),
@@ -41,7 +41,6 @@ The final paper is at
 - [Repository Structure](#repository-structure)
 - [Manual Pipeline Steps](#manual-pipeline-steps)
 - [Proposal Deviation: PixArt-α → FLUX.1-schnell](#proposal-deviation-pixart-α--flux1-schnell)
-- [Notes for Teammates](#notes-for-teammates)
 
 ## Quick Start
 
@@ -184,13 +183,16 @@ metrics, predictions, and figures.
 
 ```
 src/
-├── common/        # Shared enums, filenames, canonical paths
-├── data/          # Cover download, ML generation, standardization
-├── embedding/     # AES-256-CBC encryption, LSB, DCT-LSB embedding
-├── detection/     # RS, Chi-Square, Sample Pairs, Calibration detectors
-├── evaluation/    # Metric aggregation (ROC-AUC, EER, accuracy, PSNR/SSIM)
-├── metrics/       # Quality metrics (PSNR, SSIM, FSIM, BRISQUE)
-└── pipeline/      # Orchestration, profiles, CLI
+├── common/            # Shared enums, filenames, canonical paths
+├── data/              # Cover download, ML generation, standardization
+├── embedding/         # AES-256-CBC encryption, LSB, DCT-LSB embedding
+├── detection/         # RS, Chi-Square, Sample Pairs, Calibration detectors
+├── detection_learned/ # Learned baselines: SRNet, DCTR + LDA ensemble
+├── analysis/          # RQ verdicts, power analysis, t-test/Wilcoxon, encryption invariance
+├── evaluation/        # Metric aggregation (ROC-AUC, EER, accuracy, PSNR/SSIM)
+├── metrics/           # Quality metrics (PSNR, SSIM, FSIM, BRISQUE)
+├── toolbox/           # Standalone encode/decode/analyze utilities
+└── pipeline/          # Orchestration, profiles, CLI
 
 run.py             # Top-level pipeline entry point
 viewer.py          # HTTP server for explorer + pipeline API
