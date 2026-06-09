@@ -1,4 +1,7 @@
-#Authors: Nico Müller-Spätz and Jimena Narvaez
+# Main writer: David Wicker, Nico Müller-Späth
+# The reviewer: David Wicker, Jimena Narvaez del Cid
+# Contributors: Jimena Narvaez del Cid
+
 from __future__ import annotations
 
 import io
