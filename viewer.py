@@ -585,7 +585,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _serve_report_pdf(self):
-        pdf_path = (PROJECT_ROOT / "docs" / "report" / "final_report_draft_v4.pdf").resolve()
+        pdf_path = (PROJECT_ROOT / "docs" / "report" / "final_report.pdf").resolve()
         if not pdf_path.exists():
             return self._err(404, "report PDF not found")
         data = pdf_path.read_bytes()
