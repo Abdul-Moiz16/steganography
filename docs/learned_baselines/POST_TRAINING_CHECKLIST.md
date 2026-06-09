@@ -48,7 +48,7 @@ if we left them on Vast.ai.
 - Section V.A–V.I (RQ1–RQ5 primary results): unchanged from v1, classical detectors only, byte-identical numbers and figures.
 - Section V.J (NEW supplementary): "Learned-Detector Robustness Check" with its own per-RQ contrast tables. Explicitly states this is a sensitivity analysis on the pre-registered findings.
 - Discussion section: one paragraph relating learned-detector results back to each primary verdict (corroborate / refine / contradict).
-- The placeholder PDF table structure in `final_report_draft_v2.tex` already supports this exactly.
+- The placeholder PDF table structure in `final_report.tex` already supports this exactly.
 
 ---
 
@@ -230,7 +230,7 @@ Wall-clock: ~30–45 minutes manual transcription.
 
 - [ ] **E.1** Open the v2 paper and find all remaining placeholders:
   ```bash
-  grep -nE '\\TBD\{' docs/report/final_report_draft_v2.tex | wc -l
+  grep -nE '\\TBD\{' docs/report/final_report.tex | wc -l
   # Currently 34 placeholders. After filling each, re-run this to track progress.
   ```
 
@@ -250,7 +250,7 @@ Wall-clock: ~30–45 minutes manual transcription.
 
 - [ ] **E.9** Confirm zero remaining placeholders:
   ```bash
-  grep -nE '\\TBD\{' docs/report/final_report_draft_v2.tex && echo "STILL HAS TBDS" || echo "ALL FILLED"
+  grep -nE '\\TBD\{' docs/report/final_report.tex && echo "STILL HAS TBDS" || echo "ALL FILLED"
   ```
 
 ---
@@ -262,8 +262,8 @@ Wall-clock: ~3 minutes.
 - [ ] **F.1** Compile (twice for cross-refs):
   ```bash
   cd docs/report
-  pdflatex -interaction=nonstopmode final_report_draft_v2.tex
-  pdflatex -interaction=nonstopmode final_report_draft_v2.tex
+  pdflatex -interaction=nonstopmode final_report.tex
+  pdflatex -interaction=nonstopmode final_report.tex
   ```
 
 - [ ] **F.2** Visual scan for any remaining red `[TBD: ...]` markers — there should be zero.
